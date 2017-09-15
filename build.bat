@@ -5,6 +5,7 @@ IF NOT EXIST build mkdir build
 
 REM  better way?
 xcopy /s /y /q lib\ffmpeg-3.3.3-win64-shared\bin\*.dll build
+xcopy /s /y /q lib\SDL2-2.0.5\lib\x64\*.dll build
 
 
 if not defined DevEnvDir (
@@ -28,15 +29,18 @@ REM  -we4302 (treat truncation warnings as errors)
 REM  -Wv:18  (disable warnings introduced after compiler v18)
 
 
-
-set LinkerFlags= -link -LIBPATH:"..\lib\ffmpeg-3.3.3-win64-dev\lib"
+REM  better way to do this?
+set lib1= -LIBPATH:"..\lib\ffmpeg-3.3.3-win64-dev\lib" 
+set lib2= -LIBPATH:"..\lib\SDL2-2.0.5\lib\x64" 
+set LinkerFlags= -link %lib1% %lib2% -SUBSYSTEM:CONSOLE
 
 REM  -link           pass the rest of the args to the linker
 REM  -LIBPATH:dir    add a lib directory (.lib)
 
 
-
-set CompilerFlags= -FC -Zi -I"..\lib\ffmpeg-3.3.3-win64-dev\include" 
+set include1= -I"..\lib\ffmpeg-3.3.3-win64-dev\include" 
+set include2= -I"..\lib\SDL2-2.0.5\include" 
+set CompilerFlags= -FC -Zi %include1% %include2% 
 
 REM  -Idir           add an include directory (.h)
 REM  -Zi             enable debugging info (.pdb)
