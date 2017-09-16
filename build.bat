@@ -32,10 +32,11 @@ REM  -Wv:18  (disable warnings introduced after compiler v18)
 REM  better way to do this?
 set lib1= -LIBPATH:"..\lib\ffmpeg-3.3.3-win64-dev\lib" 
 set lib2= -LIBPATH:"..\lib\SDL2-2.0.5\lib\x64" 
-set LinkerFlags= -link %lib1% %lib2% -SUBSYSTEM:CONSOLE
+set LinkerFlags= -link %lib1% %lib2% 
 
 REM  -link           pass the rest of the args to the linker
 REM  -LIBPATH:dir    add a lib directory (.lib)
+REM  -SUBSYSTEM:CONSOLE
 
 
 set include1= -I"..\lib\ffmpeg-3.3.3-win64-dev\include" 

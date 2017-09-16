@@ -3,6 +3,14 @@
 #include <assert.h>
 #include <math.h>
 
+
+#include <gl/gl.h>
+// #include <gl/glew.h>
+#pragma comment(lib, "opengl32.lib")
+#pragma comment(lib, "gdi32.lib")
+// #pragma comment(lib, "glew32.lib")
+
+
 #include <SDL.h>
 #include <SDL_thread.h>
 #pragma comment(lib, "SDL2main.lib")
@@ -35,9 +43,11 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
 
 #define u8  uint8_t
 #define u16 uint16_t
+#define u32 uint32_t
 
 #define i8  int8_t
 #define i16 int16_t
+#define i32 int32_t
 
 
 
@@ -125,22 +135,6 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, u8 *audio_buf, int buf_size) {
 
 
 
-void logSpec(SDL_AudioSpec *as) {
-	printf(
-		" freq______%5d\n"
-		" format____%5d\n"
-		" channels__%5d\n"
-		" silence___%5d\n"
-		" samples___%5d\n"
-		" size______%5d\n\n",
-		(int) as->freq,
-		(int) as->format,
-		(int) as->channels,
-		(int) as->silence,
-		(int) as->samples,
-		(int) as->size
-	);
-}
 
 
 int main(int argc, char *argv[])
@@ -210,100 +204,6 @@ int main(int argc, char *argv[])
     }
 
 
-    // audio
-    AVCodecContext *acc_orig;
-    AVCodecContext *acc;
-    acc_orig = fc->streams[audioStream]->codec;
-    AVCodec *audioCodec;
-    audioCodec = avcodec_find_decoder(acc_orig->codec_id);
-    if (!audioCodec) { MsgBox("Unsupported audio codec!"); return -1; }
-    acc = avcodec_alloc_context3(audioCodec);
-    if (avcodec_copy_context(acc, acc_orig) != 0)
-    {
-        MsgBox("Couldn't copy audio codec context.");
-        return -1;
-    }
-
-    SDL_AudioSpec wanted_spec, spec;
-    wanted_spec.freq = 44100;//acc->sample_rate;
-    wanted_spec.format = AUDIO_S16SYS;//AUDIO_F32;//AUDIO_S16SYS;
-    wanted_spec.channels = 1;//acc->channels;
-    wanted_spec.silence = 0;
-    wanted_spec.samples = 4096; // SDL_AUDIO_BUFFER_SIZE
-    wanted_spec.callback = 0;  // none to set samples ourself
-    wanted_spec.userdata = 0;
-
-    // // legacy, also, used deviceID 1 (in case you want to still use it)
-    // if(SDL_OpenAudio(&wanted_spec, &spec) < 0) {
-    //     fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
-    //     return -1;
-    // }
-
-    SDL_AudioDeviceID audioID = SDL_OpenAudioDevice(0, 0,
-        &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
-
-    if (audioID == 0)
-    {
-        fprintf(stderr, "SDL failed to open audio: %s\n", SDL_GetError());
-        return -1;
-    }
-
-    if (wanted_spec.format != spec.format)
-    {
-    	// try another one?
-        fprintf(stderr, "SDL couldn't find desired format: %s\n", SDL_GetError());
-        return -1;
-    }
-
-	printf("want:\n");
-	logSpec(&wanted_spec);
-	printf("audioSpec:\n");
-	logSpec(&spec);
-
-
-
-    avcodec_open2(acc, audioCodec, 0);
-
-
-
-    const int samples_per_second = 44100;
-    const int cycles_per_second = 440;
-    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
-
-    const int buffer_seconds = 2;
-
-    const int cycles_per_buffer = cycles_per_second * buffer_seconds;
-    const int samples_per_buffer = samples_per_second * buffer_seconds;
-
-    i16 samples[samples_per_buffer];
-    int samples_into_this_cycle = 0;
-    i16 signal = 32000;
-    for (int i = 0; i < samples_per_buffer; i++)
-    {
-    	// // square wave
-    	// if (samples_into_this_cycle >= samples_per_cycle)
-    	// {
-    	// 	samples_into_this_cycle = 0;
-    	// 	signal = signal * -1;
-    	// }
-    	// samples_into_this_cycle++;
-    	// samples[i] = signal;
-
-    	// sine wave
-    	samples[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
-    	samples_into_this_cycle++;
-    }
-
-    printf("audioID: %i\n", audioID);
-    if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
-    {
-    	// MsgBox("Error queueing audio.");
-        printf("Error queueing audio: %s\n", SDL_GetError());
-    }
-
-
-    SDL_PauseAudioDevice(audioID, 0);
-    // end audio
 
 
     // shortcut to the codec context
@@ -510,3 +410,375 @@ int main(int argc, char *argv[])
 
 
 
+int SetupAudioAV(AVFormatContext *fc, int audioStream)
+{
+    AVCodecContext *acc_orig;
+    AVCodecContext *acc;
+    acc_orig = fc->streams[audioStream]->codec;
+    AVCodec *audioCodec;
+    audioCodec = avcodec_find_decoder(acc_orig->codec_id);
+    if (!audioCodec) { MsgBox("Unsupported audio codec!"); return -1; }
+    acc = avcodec_alloc_context3(audioCodec);
+    if (avcodec_copy_context(acc, acc_orig) != 0)
+    {
+        MsgBox("Couldn't copy audio codec context.");
+        return -1;
+    }
+
+    avcodec_open2(acc, audioCodec, 0);
+
+    return 0;
+}
+
+
+
+void logSpec(SDL_AudioSpec *as) {
+	printf(
+		" freq______%5d\n"
+		" format____%5d\n"
+		" channels__%5d\n"
+		" silence___%5d\n"
+		" samples___%5d\n"
+		" size______%5d\n\n",
+		(int) as->freq,
+		(int) as->format,
+		(int) as->channels,
+		(int) as->silence,
+		(int) as->samples,
+		(int) as->size
+	);
+}
+
+
+const int samples_per_second = 44100;
+bool SetupAudioSDL()
+{
+    SDL_AudioSpec wanted_spec, spec;
+    wanted_spec.freq = samples_per_second;//acc->sample_rate;
+    wanted_spec.format = AUDIO_S16SYS;//AUDIO_F32;//AUDIO_S16SYS;
+    wanted_spec.channels = 1;//acc->channels;
+    wanted_spec.silence = 0;
+    wanted_spec.samples = 4096; // SDL_AUDIO_BUFFER_SIZE
+    wanted_spec.callback = 0;  // none to set samples ourself
+    wanted_spec.userdata = 0;
+
+
+    SDL_AudioDeviceID audioID = SDL_OpenAudioDevice(0, 0,
+        &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+
+    if (audioID == 0)
+    {
+        fprintf(stderr, "SDL failed to open audio: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (wanted_spec.format != spec.format)
+    {
+    	// try another one?
+        fprintf(stderr, "SDL couldn't find desired format: %s\n", SDL_GetError());
+        return false;
+    }
+
+	printf("want:\n");
+	logSpec(&wanted_spec);
+	printf("audioSpec:\n");
+	logSpec(&spec);
+
+
+
+    const int cycles_per_second = 440;
+    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
+
+    const int buffer_seconds = 2;
+
+    const int cycles_per_buffer = cycles_per_second * buffer_seconds;
+    const int samples_per_buffer = samples_per_second * buffer_seconds;
+
+    i16 samples[samples_per_buffer];
+    int samples_into_this_cycle = 0;
+    i16 signal = 32000;
+    for (int i = 0; i < samples_per_buffer; i++)
+    {
+    	// // square wave
+    	// if (samples_into_this_cycle >= samples_per_cycle)
+    	// {
+    	// 	samples_into_this_cycle = 0;
+    	// 	signal = signal * -1;
+    	// }
+    	// samples_into_this_cycle++;
+    	// samples[i] = signal;
+
+    	// sine wave
+    	samples[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
+    	samples_into_this_cycle++;
+    }
+
+    printf("audioID: %i\n", audioID);
+    if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
+    {
+    	// MsgBox("Error queueing audio.");
+        printf("Error queueing audio: %s\n", SDL_GetError());
+    }
+
+
+    SDL_PauseAudioDevice(audioID, 0);
+    // end audio
+
+    return true;
+}
+
+
+
+
+void InitOpenGL(HWND window)
+{
+    HDC hdc = GetDC(window);
+
+    PIXELFORMATDESCRIPTOR pixel_format = {};
+    pixel_format.nSize = sizeof(pixel_format);
+    pixel_format.nVersion = 1;
+    pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+    pixel_format.iPixelType = PFD_TYPE_RGBA;
+    pixel_format.cColorBits = 32;
+    pixel_format.cAlphaBits = 8;
+
+    int format_index = ChoosePixelFormat(hdc, &pixel_format);
+    SetPixelFormat(hdc, format_index, &pixel_format);
+
+    HGLRC gl_rendering_context = wglCreateContext(hdc);
+    wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
+
+    ReleaseDC(window, hdc);
+}
+
+
+
+void RenderToScreen()
+{
+
+	// GLuint tex;
+	// glGenTextures(1, &tex); // not actually needed?
+ //    glBindTexture(GL_TEXTURE_2D, tex);
+
+
+	// GLuint readFboId = 0;
+	// glGenFramebuffers(1, &readFboId);
+	// glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
+
+	// glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+	//                        GL_TEXTURE_2D, tex, 0);
+
+	// glBlitFramebuffer(0, 0, texWidth, texHeight,
+	//                   0, 0, winWidth, winHeight,
+	//                   GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+	// glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	// glDeleteFramebuffers(1, &readFboId);
+}
+
+void RenderToScreen(void *memory, int width, int height, HWND window)
+{
+
+	HDC deviceContext = GetDC(window);
+
+
+
+    glViewport(0,0, width, height);
+
+	GLuint tex;
+	glGenTextures(1, &tex); // not actually needed?
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,
+                 GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+
+
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+
+    glEnable(GL_TEXTURE_2D);
+
+
+    glClearColor(0.5f, 0.8f, 1.0f, 0.0f);
+    // glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);  // some offscreen buffer
+
+
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+
+    glBegin(GL_TRIANGLES);
+
+
+    // note the texture coords are upside down
+    // to get our texture right side up
+    glTexCoord2f(0, 1); glVertex2f(-1, -1);
+    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+    glTexCoord2f(1, 1); glVertex2f(1, -1);
+
+    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+    glTexCoord2f(1, 0); glVertex2f(1, 1);
+    glTexCoord2f(1, 1); glVertex2f(1, -1);
+    glEnd();
+
+
+    SwapBuffers(deviceContext);
+
+    ReleaseDC(window, deviceContext);
+
+}
+
+
+
+static bool appRunning = true;
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch(message)
+    {
+        case WM_CLOSE: {
+            appRunning = false;
+        } break;
+
+		case WM_NCHITTEST: {
+	        LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
+	        if (hit == HTCLIENT) hit = HTCAPTION;
+	        	return hit;
+	    } break;
+
+	    default: {
+	    	return DefWindowProc(hwnd, message, wParam, lParam);
+	    } break;
+    }
+    return 0;
+}
+
+
+
+int CALLBACK WinMain(
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine,
+    int nCmdShow
+)
+{
+
+    timeBeginPeriod(1);  // sets the granularity of Sleep (in ms)
+
+
+    // SDL
+
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
+    {
+        char err[1024];
+        sprintf(err, "Couldn't initialize SDL - %s", SDL_GetError());
+        MsgBox(err);
+        return -1;
+    }
+    SetupAudioSDL();
+
+
+
+    // WINDOW
+
+    // register wndproc
+    WNDCLASS wc = {};
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.lpszClassName = "JusSomeWinClass";
+    if (!RegisterClass(&wc))
+    {
+        MsgBox("RegisterClass failed.");
+        return 1;
+    }
+
+
+    const int WID = 600;
+    const int HEI = 400;
+    RECT neededRect = {};
+    neededRect.right = WID; //960;
+    neededRect.bottom = HEI; //720;
+    // adjust window size based on desired client size
+    // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
+
+    // transparency options
+    bool SEE_THROUGH   = false;
+    bool CLICK_THROUGH = false;
+    // bool SEE_THROUGH   = true;
+    // bool CLICK_THROUGH = true;
+
+    DWORD exStyles = 0;
+    if (SEE_THROUGH)                  exStyles  = WS_EX_LAYERED;
+    if (CLICK_THROUGH)                exStyles |= WS_EX_TRANSPARENT;
+    if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
+
+    HWND window = CreateWindowEx(
+        exStyles,
+        wc.lpszClassName, "vid player",
+        WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
+        0, 0, hInstance, 0);
+
+    if (!window)
+    {
+        MsgBox("Window couldn't open.");
+    }
+
+    // set window transparent (if styles above are right)
+    if (SEE_THROUGH || CLICK_THROUGH)
+        SetLayeredWindowAttributes(window, 0, 122, LWA_ALPHA);
+
+
+
+    // OPENGL
+
+    InitOpenGL(window);
+
+
+
+    u32 *buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
+    u8 r = 0;
+    u8 g = 0;
+    u8 b = 0;
+    for (int y = 0; y < HEI; y++)
+    {
+    	r = sin(y*M_PI / HEI) * 255;
+	    for (int x = 0; x < WID; x++)
+	    {
+	    	b = sin(x*M_PI / WID) * 255;
+	    	buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+	    }
+    }
+
+
+    // MAIN LOOP
+
+    while (appRunning)
+    {
+        MSG Message;
+        // if we never create a window, do we never get any messages?
+        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&Message);
+            DispatchMessage(&Message);
+        }
+
+		RenderToScreen((void*)buf, WID, HEI, window);
+
+        Sleep(42);
+    }
+
+
+    return 0;
+}
