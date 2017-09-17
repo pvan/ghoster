@@ -348,10 +348,10 @@ SDL_AudioDeviceID SetupAudioSDL()
     wanted_spec.userdata = 0;
 
 
-    SDL_AudioDeviceID audioID = SDL_OpenAudioDevice(0, 0,
+    SDL_AudioDeviceID audio_device = SDL_OpenAudioDevice(0, 0,
         &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 
-    if (audioID == 0)
+    if (audio_device == 0)
     {
         fprintf(stderr, "SDL failed to open audio: %s\n", SDL_GetError());
         return 0;
@@ -383,17 +383,17 @@ SDL_AudioDeviceID SetupAudioSDL()
  //        0);
 
 
- //    if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
+ //    if (SDL_QueueAudio(audio_device, samples, samples_per_buffer*sizeof(i16)) < 0)
  //    {
  //    	// MsgBox("Error queueing audio.");
  //        printf("Error queueing audio: %s\n", SDL_GetError());
  //    }
 
 
-    // SDL_PauseAudioDevice(audioID, 0);
+    // SDL_PauseAudioDevice(audio_device, 0);
 
 
-    return audioID;
+    return audio_device;
 }
 
 
@@ -688,7 +688,7 @@ int CALLBACK WinMain(
         MsgBox(err);
         return -1;
     }
-    SDL_AudioDeviceID audioID = SetupAudioSDL();
+    SDL_AudioDeviceID audio_device = SetupAudioSDL();
 
 //asdf
 
@@ -707,7 +707,7 @@ int CALLBACK WinMain(
 
 
     if (SDL_QueueAudio(
-                       audioID,
+                       audio_device,
                        sound_buffer,
                        samples_per_buffer*sizeof(i16)) < 0)
     {
@@ -715,7 +715,7 @@ int CALLBACK WinMain(
         printf("Error queueing audio: %s\n", SDL_GetError());
     }
 
-    SDL_PauseAudioDevice(audioID, 0);
+    SDL_PauseAudioDevice(audio_device, 0);
 
 
     // MORE FFMPEG
@@ -811,7 +811,7 @@ int CALLBACK WinMain(
 	    //     printf("Error queueing audio: %s\n", SDL_GetError());
 	    // }
 
-	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audioID);
+	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
 
         char audiomsg[256];
         sprintf(audiomsg, "\nbytes left: %u", bytes_left_in_queue);
