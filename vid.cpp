@@ -301,7 +301,7 @@ int FillBufferWithSoundWave(
     float tone_hz,
     float volume, //0-1
     i16 *buffer,
-    int buffer_seconds,
+    int samples_to_add,  //buffer_seconds
     int samples_per_second,
     int samples_into_first_cycle)
 {
@@ -309,13 +309,13 @@ int FillBufferWithSoundWave(
     float cycles_per_second = tone_hz;
     float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
 
-    int cycles_per_buffer = cycles_per_second * buffer_seconds;
-    int samples_per_buffer = samples_per_second * buffer_seconds;
+    // int cycles_per_buffer = cycles_per_second * buffer_seconds;
+    // int samples_per_buffer = samples_per_second * buffer_seconds;
 
     // i16 samples[samples_per_buffer];
     int samples_into_this_cycle = samples_into_first_cycle;
     i16 signal = (i16)(32000.f * volume);
-    for (int i = 0; i < samples_per_buffer; i++)
+    for (int i = 0; i < samples_to_add; i++)
     {
     	// // square wave
     	// if (samples_into_this_cycle >= samples_per_cycle)
@@ -701,7 +701,7 @@ int CALLBACK WinMain(
         440,
         1,
         sound_buffer,
-        buffer_seconds,
+        samples_per_buffer,
         samples_per_second,
         samples_into_last_cycle);
 
@@ -791,13 +791,27 @@ int CALLBACK WinMain(
 
 		// SOUND
 
+	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
 
-//asdf2
+		u32 audio_channels = 1;
+	    u32 bytes_per_sample = sizeof(i16) * audio_channels;
+	    u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
+
+	    if (bytes_left_in_queue % bytes_per_sample != 0)
+	    {
+	    	OutputDebugString("\n--- PROBLEM ---  bytes left in audio queue split a sample");
+	    }
+
+	    u32 desired_samples_ahead = buffer_seconds * samples_per_buffer;
+	    u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
+	    u32 samples_to_add = needed_extra_samples;
+
+
 	    // samples_into_last_cycle = FillBufferWithSoundWave(
 	    //     440,
 	    //     1,
 	    //     sound_buffer,
-	    //     buffer_seconds,
+	    //     samples_to_add,
 	    //     samples_per_second,
 	    //     samples_into_last_cycle);
 
@@ -811,10 +825,9 @@ int CALLBACK WinMain(
 	    //     printf("Error queueing audio: %s\n", SDL_GetError());
 	    // }
 
-	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
 
         char audiomsg[256];
-        sprintf(audiomsg, "\nbytes left: %u", bytes_left_in_queue);
+        sprintf(audiomsg, "\nneeded_extra_samples: %u", needed_extra_samples);
         OutputDebugString(audiomsg);
 
 
