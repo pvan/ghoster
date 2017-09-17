@@ -34,9 +34,7 @@ extern "C"
 
 
 
-char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test2.mp4";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
+char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
 
 
 
@@ -80,70 +78,68 @@ void SaveFrame(AVFrame *frame, int width, int height, int frame_index)
 }
 
 
-int audio_decode_frame(AVCodecContext *aCodecCtx, u8 *audio_buf, int buf_size) {
 
-    // static AVPacket pkt;
-    // static u8 *audio_pkt_data = NULL;
-    // static int audio_pkt_size = 0;
-    // static AVFrame frame;
 
-    // int len1, data_size = 0;
 
-    // for(;;) {
-    //     while(audio_pkt_size > 0) {
-    //         int got_frame = 0;
-    //         len1 = avcodec_decode_audio4(aCodecCtx, &frame, &got_frame, &pkt);
-    //         if(len1 < 0) {
-    //             /* if error, skip frame */
-    //             fprintf(stderr, "skip audio frame");
-    //             audio_pkt_size = 0;
-    //             break;
-    //         }
-    //         audio_pkt_data += len1;
-    //         audio_pkt_size -= len1;
-    //         data_size = 0;
-    //         if(got_frame) {
-    //             data_size = av_samples_get_buffer_size(NULL,
-    //                 aCodecCtx->channels,
-    //                 frame.nb_samples,
-    //                 aCodecCtx->sample_fmt,
-    //                 1);
-    //             assert(data_size <= buf_size);
-    //             memcpy(audio_buf, frame.data[0], data_size);
-    //         }
-    //         if(data_size <= 0) {
-    //             /* No data yet, get more frames */
-    //             continue;
-    //         }
-    //         /* We have data, return it and come back for more later */
-    //         return data_size;
-    //     }
-    //     if(pkt.data)
-    //         av_free_packet(&pkt);
+// return bytes (not samples) written to outBuffer
+int GetNextAudioFrame(
+						AVFormatContext *fc,
+						AVCodecContext *cc,
+						int streamIndex,
+						void *outBuffer,
+						int outBufferSize)
+{
+	AVFrame *frame = av_frame_alloc();  // ok re-creating this so often?
+	if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return 0; }
 
-    //     if(quit != 0) {
-    //         // MsgBox("test");
-    //         return -1;
-    //     }
+	AVPacket packet;
 
-    //     if(packet_queue_get(&audioq, &pkt, 1) < 0) {
-    //         return -1;
-    //     }
-    //     audio_pkt_data = pkt.data;
-    //     audio_pkt_size = pkt.size;
-    // }
-    return -1;
+	while (av_read_frame(fc, &packet) >= 0)
+	{
+        if (packet.stream_index == streamIndex)
+        {
+        	int frame_finished;
+
+        	int byte_length = avcodec_decode_audio4(cc, frame, &frame_finished, &packet);
+        	if (byte_length < 0)
+			{
+				char averr[256];
+			    av_strerror(byte_length, averr, sizeof(averr));
+				char buferr[256];
+				sprintf(buferr, "ffmpeg: Skipping audio frame... problem?\n%s\n", averr);
+				OutputDebugString(buferr);
+			}
+
+			if (frame_finished)
+			{
+                int frame_buf_size = av_samples_get_buffer_size(NULL,
+                    cc->channels,
+                    frame->nb_samples, // vs cc->frame_size ??
+                    cc->sample_fmt,
+                    0);  // alignment 0=default 1=none
+
+                if (frame_buf_size < 0)
+                {
+                	OutputDebugString("ffmpeg: Error getting frame audio buffer size?");
+                	continue;
+                }
+                assert(frame_buf_size <= outBufferSize);
+                memcpy(outBuffer, frame->data[0], frame_buf_size);
+                return frame_buf_size;
+			}
+        }
+	}
+	av_frame_unref(frame);
+	av_packet_unref(&packet);
+	return 0; // ever get here?
 }
-
-
-
 
 bool GetNextVideoFrame(
 						AVFormatContext *fc,
 						AVCodecContext *cc,
 						SwsContext *sws_context,
 						int streamIndex,
-						AVFrame *inFrame,
+						AVFrame *inFrame,  // don't really need this outside this func?
 						AVFrame *outFrame)
 {
 	AVPacket packet;
@@ -166,8 +162,9 @@ bool GetNextVideoFrame(
 	          		outFrame->data,
 	          		outFrame->linesize);
             }
-            return true;
+            return true; // or only when frame_finished??
         }
+        // call these before returning or avcodec_decode_video2 will mem leak i think
         // av_packet_unref(&packet); // needed??
         // av_frame_unref(inFrame);  // note dont unref outFrame or we'll lose its memory
 	}
@@ -667,25 +664,33 @@ int CALLBACK WinMain(
     SDL_AudioDeviceID audio_device = SetupAudioSDL();
 
 
-	int audio_channels = 1;
+	// int audio_channels = 1;
 	int buffer_seconds = 2;
-    int samples_per_buffer = samples_per_second * buffer_seconds;
-    i16 *sound_buffer = (i16*)malloc(samples_per_buffer * sizeof(i16));
-    int samples_into_last_cycle = 0;
+    int samples_in_buffer = samples_per_second * buffer_seconds;
+    int bytes_in_buffer = samples_in_buffer * sizeof(i16); //tied to AUDIO_S16SYS
+    void *sound_buffer = (void*)malloc(bytes_in_buffer);
 
-    samples_into_last_cycle = FillBufferWithSoundWave(
-        440,
-        1,
-        sound_buffer,
-        samples_per_buffer,
-        samples_per_second,
-        samples_into_last_cycle);
+    // int samples_into_last_cycle = FillBufferWithSoundWave(
+    //     440,
+    //     1,
+    //     sound_buffer,
+    //     samples_in_buffer,
+    //     samples_per_second,
+    //     samples_into_last_cycle);
+
+
+	int bytes_queued_up = GetNextAudioFrame(
+		video_file.fc,
+		video_file.audio.codecContext,
+		video_file.audio.index,
+		sound_buffer,
+		bytes_in_buffer);
 
 
     if (SDL_QueueAudio(
                        audio_device,
                        sound_buffer,
-                       samples_per_buffer*sizeof(i16)) < 0)
+                       samples_in_buffer*sizeof(i16)) < 0)
     {
         char audioerr[256];
         sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
@@ -700,7 +705,8 @@ int CALLBACK WinMain(
 	AVFrame *frame_source = av_frame_alloc();
 	AVFrame *frame_output = av_frame_alloc();  // just metadata
 
-	if (!frame_source || !frame_output) { MsgBox("Couldn't make frames."); return -1; }
+	if (!frame_source || !frame_output)
+		{ MsgBox("ffmpeg: Couldn't alloc frames."); return -1; }
 
 
     // actual mem for frame
@@ -754,48 +760,79 @@ int CALLBACK WinMain(
 		// VIDEO
 
 
-		GetNextVideoFrame(
-			video_file.fc,
-			video_file.video.codecContext,
-			sws_context,
-			video_file.video.index,
-			frame_source,
-			frame_output);
+		// GetNextVideoFrame(
+		// 	video_file.fc,
+		// 	video_file.video.codecContext,
+		// 	sws_context,
+		// 	video_file.video.index,
+		// 	frame_source,
+		// 	frame_output);
 
-		RenderToScreen((void*)buffer, WID, HEI, window);
+		// RenderToScreen((void*)buffer, WID, HEI, window);
+		RenderToScreen((void*)buf, WID, HEI, window);
 
 
 
 		// SOUND
 
-	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+	    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+	        char msg[256];
+	        sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+	        OutputDebugString(msg);
 
-	    u32 bytes_per_sample = sizeof(i16) * audio_channels;
-	    u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
 
-	    if (bytes_left_in_queue % bytes_per_sample != 0)
+	    int wanted_bytes = bytes_in_buffer - bytes_left_in_queue;
+
+	    if (wanted_bytes >= bytes_queued_up)
 	    {
-	    	OutputDebugString("--- PROBLEM ---  bytes left in audio queue split a sample\n");
+		    if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
+		    {
+		        char audioerr[256];
+		        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+		        OutputDebugString(audioerr);
+		    }
+		    bytes_queued_up = 0;
+		}
+		if (bytes_queued_up == 0)
+		{
+			bytes_queued_up = GetNextAudioFrame(
+				video_file.fc,
+				video_file.audio.codecContext,
+				video_file.audio.index,
+				sound_buffer,
+				bytes_in_buffer);
 	    }
 
-	    u32 desired_samples_ahead = buffer_seconds * samples_per_buffer;
-	    u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
-	    u32 samples_to_add = needed_extra_samples;
 
-	    samples_into_last_cycle = FillBufferWithSoundWave(
-	        440,
-	        1,
-	        sound_buffer,
-	        samples_to_add,
-	        samples_per_second,
-	        samples_into_last_cycle);
 
-	    if (SDL_QueueAudio(audio_device, sound_buffer, samples_to_add*sizeof(i16)) < 0)
-	    {
-	        char audioerr[256];
-	        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-	        OutputDebugString(audioerr);
-	    }
+	    // u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+
+	    // u32 bytes_per_sample = sizeof(i16) * audio_channels;
+	    // u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
+
+	    // if (bytes_left_in_queue % bytes_per_sample != 0)
+	    // {
+	    // 	OutputDebugString("--- PROBLEM ---  bytes left in audio queue split a sample\n");
+	    // }
+
+	    // u32 desired_samples_ahead = buffer_seconds * samples_in_buffer;
+	    // u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
+	    // u32 samples_to_add = needed_extra_samples;
+
+	    // samples_into_last_cycle = FillBufferWithSoundWave(
+	    //     440,
+	    //     1,
+	    //     sound_buffer,
+	    //     samples_to_add,
+	    //     samples_per_second,
+	    //     samples_into_last_cycle);
+
+	    // if (SDL_QueueAudio(audio_device, sound_buffer, samples_to_add*sizeof(i16)) < 0)
+	    // {
+	    //     char audioerr[256];
+	    //     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+	    //     OutputDebugString(audioerr);
+	    // }
 
 
 
