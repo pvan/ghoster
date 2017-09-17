@@ -497,6 +497,58 @@ void RenderToScreen(void *memory, int width, int height, HWND window)
 
 
 
+
+
+struct Timer
+{
+	LARGE_INTEGER starting_ticks;    // .QuadPart to get number as int64
+	LARGE_INTEGER ticks_per_second;  // via QueryPerformanceFrequency
+	LARGE_INTEGER ticks_last_frame;
+	bool started = false;
+	void Start()
+	{
+		started = true;
+	    QueryPerformanceFrequency(&ticks_per_second);
+	    QueryPerformanceCounter(&starting_ticks);
+	}
+	double MsElapsedBetween(LARGE_INTEGER old_ticks, LARGE_INTEGER ticks_now)
+	{
+    	int64_t ticks_elapsed = ticks_now.QuadPart - old_ticks.QuadPart;
+    	ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
+    	double delta_ms = (double)ticks_elapsed / (double)ticks_per_second.QuadPart;
+    	return delta_ms;
+	}
+	double MsElapsedSince(LARGE_INTEGER old_ticks)
+	{
+		LARGE_INTEGER ticks_now;
+		QueryPerformanceCounter(&ticks_now);
+    	return MsElapsedBetween(old_ticks, ticks_now);;
+	}
+	double MsSinceStart()
+	{
+		if (!started) {
+			fprintf(stderr, "Timer: tried to use uninitialized timer.");
+			Start();
+		}
+    	return MsElapsedSince(starting_ticks);
+	}
+
+	// these feel a little state-y
+	double MsSinceLastFrame()
+	{
+    	return MsElapsedSince(ticks_last_frame);
+	}
+	void EndFrame()
+	{
+		QueryPerformanceCounter(&ticks_last_frame);
+	}
+
+};
+
+
+
+
+
 static bool appRunning = true;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -522,6 +574,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+
 int CALLBACK WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -530,7 +583,16 @@ int CALLBACK WinMain(
 )
 {
 
-    timeBeginPeriod(1);  // sets the granularity of Sleep (in ms)
+	// TIMER
+
+    if (timeBeginPeriod(1) != TIMERR_NOERROR)
+    	fprintf(stderr, "unable to set sleep resolution to 1ms");
+
+    double targetFPS = 24;
+    double targetMsPerFrame = 1000 / targetFPS;
+
+    Timer timer;
+    timer.Start();
 
 
 
@@ -671,8 +733,10 @@ int CALLBACK WinMain(
 
 
 
-
     // MAIN LOOP
+
+    // seed our first frame dt
+	timer.EndFrame();
 
     while (appRunning)
     {
@@ -695,7 +759,36 @@ int CALLBACK WinMain(
 
 		RenderToScreen((void*)buffer, WID, HEI, window);
 
-        Sleep(42);
+
+
+
+		double dt = timer.MsSinceLastFrame();
+		if (dt < targetMsPerFrame)
+		{
+			double msToSleep = targetMsPerFrame - dt;
+			Sleep(msToSleep);
+            while (dt < targetMsPerFrame)  // is this weird?
+            {
+                dt = timer.MsSinceLastFrame();
+            }
+            // char msg[256]; sprintf(msg, "\nfps: %.5f", 1000/dt); OutputDebugString(msg);
+            // char msg[256]; sprintf(msg, "\nms: %.5f", dt); OutputDebugString(msg);
+		}
+		else
+		{
+			// missed fps target
+            char msg[256];
+            sprintf(msg, "\n!! missed fps !! target ms: %.5f, frame ms: %.5f",
+			        targetMsPerFrame, dt);
+            OutputDebugString(msg);
+		}
+		timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+
+
+
+
+
+
     }
 
 
