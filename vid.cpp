@@ -35,6 +35,7 @@ extern "C"
 
 
 char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
+// char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
 
 
 
@@ -79,6 +80,30 @@ void SaveFrame(AVFrame *frame, int width, int height, int frame_index)
 
 
 
+void DisplayAudioBuffer(u32 *buf, int wid, int hei, i16 *audio, int audioLen)
+{
+    u8 r = 0;
+    u8 g = 0;
+    u8 b = 0;
+    for (int x = 0; x < wid; x++)
+    {
+    	float audioSample = audio[x];
+    	float audioScaled = audioSample / 32767 * hei/2;
+    	audioScaled += hei/2;
+	    for (int y = 0; y < hei; y++)
+	    {
+	    	if (y < hei/2) {
+		    	if (y < audioScaled) r = 0;
+		    	else r = 255;
+		    } else {
+		    	if (y > audioScaled) r = 0;
+		    	else r = 255;
+		    }
+	    	buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+	    }
+    }
+}
+
 
 
 // return bytes (not samples) written to outBuffer
@@ -86,7 +111,7 @@ int GetNextAudioFrame(
 						AVFormatContext *fc,
 						AVCodecContext *cc,
 						int streamIndex,
-						void *outBuffer,
+						u8 *outBuffer,
 						int outBufferSize)
 {
 	AVFrame *frame = av_frame_alloc();  // ok re-creating this so often?
@@ -94,44 +119,130 @@ int GetNextAudioFrame(
 
 	AVPacket packet;
 
-	while (av_read_frame(fc, &packet) >= 0)
-	{
-        if (packet.stream_index == streamIndex)
-        {
-        	int frame_finished;
+	AVFrame *decoded_frame = 0;
+	int len;
 
-        	int byte_length = avcodec_decode_audio4(cc, frame, &frame_finished, &packet);
-        	if (byte_length < 0)
-			{
-				char averr[256];
-			    av_strerror(byte_length, averr, sizeof(averr));
-				char buferr[256];
-				sprintf(buferr, "ffmpeg: Skipping audio frame... problem?\n%s\n", averr);
-				OutputDebugString(buferr);
-			}
+	int bytes_written = 0;
 
-			if (frame_finished)
-			{
-                int frame_buf_size = av_samples_get_buffer_size(NULL,
-                    cc->channels,
-                    frame->nb_samples, // vs cc->frame_size ??
-                    cc->sample_fmt,
-                    0);  // alignment 0=default 1=none
+	int frame_count = 0;
 
-                if (frame_buf_size < 0)
-                {
-                	OutputDebugString("ffmpeg: Error getting frame audio buffer size?");
-                	continue;
-                }
-                assert(frame_buf_size <= outBufferSize);
-                memcpy(outBuffer, frame->data[0], frame_buf_size);
-                return frame_buf_size;
-			}
+    while (av_read_frame(fc, &packet) >= 0) {
+        int got_frame = 0;
+
+        if (!decoded_frame) {
+            if (!(decoded_frame = av_frame_alloc())) {
+                OutputDebugString("Could not allocate audio frame\n");
+            }
         }
-	}
-	av_frame_unref(frame);
-	av_packet_unref(&packet);
-	return 0; // ever get here?
+        // else
+            // avcodec_get_frame_defaults(decoded_frame);
+
+        len = avcodec_decode_audio4(cc, decoded_frame, &got_frame, &packet);
+        if (len < 0) {
+            OutputDebugString("Error while decoding\n");
+        }
+        if (got_frame) {
+        	frame_count++;
+
+
+            /* if a frame has been decoded, output it */
+            int data_size = av_samples_get_buffer_size(NULL, cc->channels,
+                                                       decoded_frame->nb_samples,
+                                                       cc->sample_fmt, 1);
+            // fwrite(decoded_frame->data[0], 1, data_size, outfile);
+            if (bytes_written+data_size > outBufferSize)
+            {
+	        	char hrm[222];
+	        	sprintf(hrm, "count: %i\n", frame_count);
+	        	OutputDebugString(hrm);
+            	return bytes_written;
+            }
+            memcpy(outBuffer, frame->data, data_size);
+            outBuffer+=data_size;
+            bytes_written+=data_size;
+        }
+        // packet.size -= len;
+        // packet.data += len;
+        // packet.dts =
+        // packet.pts = AV_NOPTS_VALUE;
+        // if (packet.size < 4096) {  // AUDIO_REFILL_THRESH
+        //      // Refill the input buffer, to avoid trying to decode
+        //      // * incomplete frames. Instead of this, one could also use
+        //      // * a parser, or use a proper container format through
+        //      // * libavformat.
+        //     memmove(inbuf, packet.data, packet.size);
+        //     packet.data = inbuf;
+        //     len = fread(packet.data + packet.size, 1,
+        //                 20480 - packet.size, f);  //AUDIO_INBUF_SIZE
+        //     if (len > 0)
+        //         packet.size += len;
+        // }
+    }
+	        	char hrm[222];
+	        	sprintf(hrm, "count: %i\n", frame_count);
+	        	OutputDebugString(hrm);
+    return bytes_written;
+
+
+
+	// while (av_read_frame(fc, &packet) >= 0)
+	// {
+ //        if (packet.stream_index == streamIndex)
+ //        {
+ //    //     	// replaced deprecated avcodec_decode_audio4?
+ //    //     	if (avcodec_send_packet(cc, &packet) < 0)
+ //    //     	{
+	// 			// OutputDebugString("ffmpeg: avcodec_send_packet error");
+ //    //     	}
+
+ //        	int frame_finished;
+
+ //        	int byte_length = avcodec_decode_audio4(cc, frame, &frame_finished, &packet);
+ //        	if (byte_length < 0)
+	// 		{
+	// 			char averr[256];
+	// 		    av_strerror(byte_length, averr, sizeof(averr));
+	// 			char buferr[256];
+	// 			sprintf(buferr, "ffmpeg: Skipping audio frame... problem?\n%s\n", averr);
+	// 			OutputDebugString(buferr);
+	// 		}
+
+	// 		// byte_length = min(byte_length, packet.size);
+
+	// 		if (frame_finished)
+	// 		{
+ //                int frame_buf_size = av_samples_get_buffer_size(NULL,
+ //                    cc->channels,
+ //                    frame->nb_samples, // vs cc->frame_size ??
+ //                    cc->sample_fmt,
+ //                    1);  // alignment 0=default 1=none
+
+ //                if (frame_buf_size < 0)
+ //                {
+ //                	OutputDebugString("ffmpeg: Error getting frame audio buffer size?");
+ //                	continue;
+ //                }
+ //                assert(frame_buf_size <= outBufferSize);
+ //                memcpy(outBuffer, frame->data[0], frame_buf_size);
+
+	// 			av_frame_unref(frame);
+	// 			av_packet_unref(&packet);
+
+	// 			char hmm[256];
+	// 			sprintf(hmm, "bytes this packet: %i\n", frame_buf_size);
+	// 			OutputDebugString(hmm);
+
+ //                return frame_buf_size;
+	// 		}
+	// 		// else
+	// 		// {
+	// 		// 	OutputDebugString("error here perhaps?");
+	// 		// }
+ //        }
+	// }
+	// av_frame_unref(frame);
+	// av_packet_unref(&packet);
+	// return 0; // ever get here?
 }
 
 bool GetNextVideoFrame(
@@ -238,6 +349,7 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 
     // find first video and audio stream
+    // use av_find_best_stream?
     file.video.index = -1;
     file.audio.index = -1;
     for (int i = 0; i < file.fc->nb_streams; i++)
@@ -665,32 +777,33 @@ int CALLBACK WinMain(
 
 
 	// int audio_channels = 1;
-	int buffer_seconds = 2;
+	int buffer_seconds = 5;
     int samples_in_buffer = samples_per_second * buffer_seconds;
-    int bytes_in_buffer = samples_in_buffer * sizeof(i16); //tied to AUDIO_S16SYS
+    int bytes_in_buffer = samples_in_buffer * sizeof(i16); //tied to AUDIO_S16SYS, #chanels, etc
     void *sound_buffer = (void*)malloc(bytes_in_buffer);
 
-    // int samples_into_last_cycle = FillBufferWithSoundWave(
-    //     440,
-    //     1,
-    //     sound_buffer,
-    //     samples_in_buffer,
-    //     samples_per_second,
-    //     samples_into_last_cycle);
+
+    int samples_into_last_cycle = FillBufferWithSoundWave(
+        440,
+        1,
+        (i16*)sound_buffer,
+        samples_in_buffer,
+        samples_per_second,
+        0);
 
 
-	int bytes_queued_up = GetNextAudioFrame(
-		video_file.fc,
-		video_file.audio.codecContext,
-		video_file.audio.index,
-		sound_buffer,
-		bytes_in_buffer);
+	// int bytes_queued_up = GetNextAudioFrame(
+	// 	video_file.fc,
+	// 	video_file.audio.codecContext,
+	// 	video_file.audio.index,
+	// 	(u8*)sound_buffer,
+	// 	bytes_in_buffer);
 
 
     if (SDL_QueueAudio(
                        audio_device,
                        sound_buffer,
-                       samples_in_buffer*sizeof(i16)) < 0)
+                       bytes_in_buffer) < 0)
     {
         char audioerr[256];
         sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
@@ -769,39 +882,43 @@ int CALLBACK WinMain(
 		// 	frame_output);
 
 		// RenderToScreen((void*)buffer, WID, HEI, window);
+
+
+		DisplayAudioBuffer(buf, WID, HEI,
+		                   (i16*)sound_buffer, bytes_in_buffer);
 		RenderToScreen((void*)buf, WID, HEI, window);
 
 
 
 		// SOUND
 
-	    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-	        char msg[256];
-	        sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-	        OutputDebugString(msg);
+	 //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+	 //        char msg[256];
+	 //        sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+	 //        OutputDebugString(msg);
 
 
-	    int wanted_bytes = bytes_in_buffer - bytes_left_in_queue;
+	 //    int wanted_bytes = bytes_in_buffer - bytes_left_in_queue;
 
-	    if (wanted_bytes >= bytes_queued_up)
-	    {
-		    if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
-		    {
-		        char audioerr[256];
-		        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-		        OutputDebugString(audioerr);
-		    }
-		    bytes_queued_up = 0;
-		}
-		if (bytes_queued_up == 0)
-		{
-			bytes_queued_up = GetNextAudioFrame(
-				video_file.fc,
-				video_file.audio.codecContext,
-				video_file.audio.index,
-				sound_buffer,
-				bytes_in_buffer);
-	    }
+	 //    if (wanted_bytes >= bytes_queued_up)
+	 //    {
+		//     if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
+		//     {
+		//         char audioerr[256];
+		//         sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+		//         OutputDebugString(audioerr);
+		//     }
+		//     bytes_queued_up = 0;
+		// }
+		// if (bytes_queued_up == 0)
+		// {
+		// 	bytes_queued_up = GetNextAudioFrame(
+		// 		video_file.fc,
+		// 		video_file.audio.codecContext,
+		// 		video_file.audio.index,
+		// 		sound_buffer,
+		// 		bytes_in_buffer);
+	 //    }
 
 
 
