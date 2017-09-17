@@ -205,11 +205,11 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 	AVCodec *codec = avcodec_find_decoder(orig->codec_id);
     AVCodecContext *result = avcodec_alloc_context3(codec);
     if (!codec)
-    	{ MsgBox("Unsupported codec. Yipes."); return false; }
+    	{ MsgBox("ffmpeg: Unsupported codec. Yipes."); return false; }
     if (avcodec_copy_context(result, orig) != 0)
-    	{ MsgBox("Codec context copy failed."); return false; }
+    	{ MsgBox("ffmpeg: Codec context copy failed."); return false; }
     if (avcodec_open2(result, codec, 0) < 0)
-    	{ MsgBox("Couldn't open codec."); return false; }
+    	{ MsgBox("ffmpeg: Couldn't open codec."); return false; }
     return result;
 }
 
@@ -222,17 +222,18 @@ VideoFile OpenVideoFileAV(char *filepath)
     int open_result = avformat_open_input(&file.fc, filepath, 0, 0);
     if (open_result != 0)
     {
-        MsgBox("Can't open file.");
-        char errbuf[1024];
-        av_strerror(open_result, errbuf, 1024);
-        MsgBox(errbuf);
+        char averr[1024];
+        av_strerror(open_result, averr, 1024);
+        char msg[2048];
+        sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
+        MsgBox(msg);
         return file;
     }
 
     // populate fc->streams
     if (avformat_find_stream_info(file.fc, 0) < 0)
     {
-        MsgBox("Can't find stream info.");
+        MsgBox("ffmpeg: Can't find stream info in file.");
         return file;
     }
 
@@ -257,12 +258,12 @@ VideoFile OpenVideoFileAV(char *filepath)
     }
     if (file.video.index == -1)
     {
-        MsgBox("No video stream found.");
+        MsgBox("ffmpeg: No video stream found.");
         return file;  // todo: support missing streams
     }
     if (file.audio.index == -1)
     {
-        MsgBox("No audio stream found.");
+        MsgBox("ffmpeg: No audio stream found.");
         return file;  // todo: support missing streams
     }
 
@@ -277,23 +278,6 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 
 
-void logSpec(SDL_AudioSpec *as) {
-	printf(
-		" freq______%5d\n"
-		" format____%5d\n"
-		" channels__%5d\n"
-		" silence___%5d\n"
-		" samples___%5d\n"
-		" size______%5d\n\n",
-		(int) as->freq,
-		(int) as->format,
-		(int) as->channels,
-		(int) as->silence,
-		(int) as->samples,
-		(int) as->size
-	);
-}
-
 
 
 
@@ -305,14 +289,9 @@ int FillBufferWithSoundWave(
     int samples_per_second,
     int samples_into_first_cycle)
 {
-
     float cycles_per_second = tone_hz;
     float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
 
-    // int cycles_per_buffer = cycles_per_second * buffer_seconds;
-    // int samples_per_buffer = samples_per_second * buffer_seconds;
-
-    // i16 samples[samples_per_buffer];
     int samples_into_this_cycle = samples_into_first_cycle;
     i16 signal = (i16)(32000.f * volume);
     for (int i = 0; i < samples_to_add; i++)
@@ -335,6 +314,25 @@ int FillBufferWithSoundWave(
 
 
 
+void logSpec(SDL_AudioSpec *as) {
+    char log[1024];
+	sprintf(log,
+		" freq______%5d\n"
+		" format____%5d\n"
+		" channels__%5d\n"
+		" silence___%5d\n"
+		" samples___%5d\n"
+		" size______%5d\n\n",
+		(int) as->freq,
+		(int) as->format,
+		(int) as->channels,
+		(int) as->silence,
+		(int) as->samples,
+		(int) as->size
+	);
+	OutputDebugString(log);
+}
+
 const int samples_per_second = 44100;
 SDL_AudioDeviceID SetupAudioSDL()
 {
@@ -347,51 +345,30 @@ SDL_AudioDeviceID SetupAudioSDL()
     wanted_spec.callback = 0;  // none to set samples ourself
     wanted_spec.userdata = 0;
 
-
     SDL_AudioDeviceID audio_device = SDL_OpenAudioDevice(0, 0,
         &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 
     if (audio_device == 0)
     {
-        fprintf(stderr, "SDL failed to open audio: %s\n", SDL_GetError());
+        char audioerr[256];
+        sprintf(audioerr, "SDL: Failed to open audio: %s\n", SDL_GetError());
+        OutputDebugString(audioerr);
         return 0;
     }
 
     if (wanted_spec.format != spec.format)
     {
-    	// try another one?
-        fprintf(stderr, "SDL couldn't find desired format: %s\n", SDL_GetError());
+    	// try another one instead of failing?
+        char audioerr[256];
+        sprintf(audioerr, "SDL: Couldn't find desired format: %s\n", SDL_GetError());
+        OutputDebugString(audioerr);
         return 0;
     }
 
-	printf("want:\n");
+	OutputDebugString("SDL: audio spec wanted:\n");
 	logSpec(&wanted_spec);
-	printf("audioSpec:\n");
+	OutputDebugString("SDL: audio spec got:\n");
 	logSpec(&spec);
-
-
-	// int buffer_seconds = 2;
- //    int samples_per_buffer = samples_per_second * buffer_seconds;
- //    i16 *samples = (i16*)malloc(samples_per_buffer * sizeof(i16));
-
- //    FillBufferWithSoundWave(
- //        440,
- //        1,
- //        samples,
- //        buffer_seconds,
- //        samples_per_second,
- //        0);
-
-
- //    if (SDL_QueueAudio(audio_device, samples, samples_per_buffer*sizeof(i16)) < 0)
- //    {
- //    	// MsgBox("Error queueing audio.");
- //        printf("Error queueing audio: %s\n", SDL_GetError());
- //    }
-
-
-    // SDL_PauseAudioDevice(audio_device, 0);
-
 
     return audio_device;
 }
@@ -526,7 +503,7 @@ struct Timer
 	double MsSinceStart()
 	{
 		if (!started) {
-			fprintf(stderr, "Timer: tried to use uninitialized timer.");
+	        OutputDebugString("Timer: Tried to get time without starting first.");
 			Start();
 		}
     	return MsElapsedSince(starting_ticks);
@@ -584,8 +561,11 @@ int CALLBACK WinMain(
 
 	// TIMER
 
-    if (timeBeginPeriod(1) != TIMERR_NOERROR)
-    	fprintf(stderr, "unable to set sleep resolution to 1ms");
+    if (timeBeginPeriod(1) != TIMERR_NOERROR) {
+    	char err[256];
+    	sprintf(err, "Unable to set resolution of Sleep to 1ms");
+    	OutputDebugString(err);
+    }
 
     double targetFPS = 24;
     double targetMsPerFrame = 1000 / targetFPS;
@@ -612,11 +592,7 @@ int CALLBACK WinMain(
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.lpszClassName = "best class";
-    if (!RegisterClass(&wc))
-    {
-        MsgBox("RegisterClass failed.");
-        return 1;
-    }
+    if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
     const int WID = video_file.video.codecContext->width;
     const int HEI = video_file.video.codecContext->height;
@@ -647,7 +623,7 @@ int CALLBACK WinMain(
 
     if (!window)
     {
-        MsgBox("Window couldn't open.");
+        MsgBox("Couldn't open window.");
     }
 
     // set window transparent (if styles above are right)
@@ -683,15 +659,15 @@ int CALLBACK WinMain(
     // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
     if (SDL_Init(SDL_INIT_AUDIO))
     {
-        char err[1024];
-        sprintf(err, "Couldn't initialize SDL - %s", SDL_GetError());
+        char err[256];
+        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
         MsgBox(err);
         return -1;
     }
     SDL_AudioDeviceID audio_device = SetupAudioSDL();
 
-//asdf
 
+	int audio_channels = 1;
 	int buffer_seconds = 2;
     int samples_per_buffer = samples_per_second * buffer_seconds;
     i16 *sound_buffer = (i16*)malloc(samples_per_buffer * sizeof(i16));
@@ -711,8 +687,9 @@ int CALLBACK WinMain(
                        sound_buffer,
                        samples_per_buffer*sizeof(i16)) < 0)
     {
-    	// MsgBox("Error queueing audio.");
-        printf("Error queueing audio: %s\n", SDL_GetError());
+        char audioerr[256];
+        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+        OutputDebugString(audioerr);
     }
 
     SDL_PauseAudioDevice(audio_device, 0);
@@ -793,19 +770,17 @@ int CALLBACK WinMain(
 
 	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
 
-		u32 audio_channels = 1;
 	    u32 bytes_per_sample = sizeof(i16) * audio_channels;
 	    u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
 
 	    if (bytes_left_in_queue % bytes_per_sample != 0)
 	    {
-	    	OutputDebugString("\n--- PROBLEM ---  bytes left in audio queue split a sample");
+	    	OutputDebugString("--- PROBLEM ---  bytes left in audio queue split a sample\n");
 	    }
 
 	    u32 desired_samples_ahead = buffer_seconds * samples_per_buffer;
 	    u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
 	    u32 samples_to_add = needed_extra_samples;
-
 
 	    samples_into_last_cycle = FillBufferWithSoundWave(
 	        440,
@@ -815,21 +790,12 @@ int CALLBACK WinMain(
 	        samples_per_second,
 	        samples_into_last_cycle);
 
-
-	    if (SDL_QueueAudio(
-	                       audio_device,
-	                       sound_buffer,
-	                       samples_to_add*sizeof(i16)) < 0)
+	    if (SDL_QueueAudio(audio_device, sound_buffer, samples_to_add*sizeof(i16)) < 0)
 	    {
 	        char audioerr[256];
 	        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
 	        OutputDebugString(audioerr);
 	    }
-
-
-        char audiomsg[256];
-        sprintf(audiomsg, "\nneeded_extra_samples: %u", needed_extra_samples);
-        OutputDebugString(audiomsg);
 
 
 
@@ -844,14 +810,14 @@ int CALLBACK WinMain(
             {
                 dt = timer.MsSinceLastFrame();
             }
-            // char msg[256]; sprintf(msg, "\nfps: %.5f", 1000/dt); OutputDebugString(msg);
-            // char msg[256]; sprintf(msg, "\nms: %.5f", dt); OutputDebugString(msg);
+            // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
+            // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
 		}
 		else
 		{
 			// missed fps target
             char msg[256];
-            sprintf(msg, "\n!! missed fps !! target ms: %.5f, frame ms: %.5f",
+            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
 			        targetMsPerFrame, dt);
             OutputDebugString(msg);
 		}
