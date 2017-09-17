@@ -336,7 +336,7 @@ int FillBufferWithSoundWave(
 
 
 const int samples_per_second = 44100;
-bool SetupAudioSDL()
+SDL_AudioDeviceID SetupAudioSDL()
 {
     SDL_AudioSpec wanted_spec, spec;
     wanted_spec.freq = samples_per_second;//acc->sample_rate;
@@ -354,14 +354,14 @@ bool SetupAudioSDL()
     if (audioID == 0)
     {
         fprintf(stderr, "SDL failed to open audio: %s\n", SDL_GetError());
-        return false;
+        return 0;
     }
 
     if (wanted_spec.format != spec.format)
     {
     	// try another one?
         fprintf(stderr, "SDL couldn't find desired format: %s\n", SDL_GetError());
-        return false;
+        return 0;
     }
 
 	printf("want:\n");
@@ -370,31 +370,30 @@ bool SetupAudioSDL()
 	logSpec(&spec);
 
 
-	int buffer_seconds = 2;
-    int samples_per_buffer = samples_per_second * buffer_seconds;
-    i16 *samples = (i16*)malloc(samples_per_buffer * sizeof(i16));
+	// int buffer_seconds = 2;
+ //    int samples_per_buffer = samples_per_second * buffer_seconds;
+ //    i16 *samples = (i16*)malloc(samples_per_buffer * sizeof(i16));
 
-    FillBufferWithSoundWave(
-        440,
-        1,
-        samples,
-        buffer_seconds,
-        samples_per_second,
-        0);
-
-
-    printf("audioID: %i\n", audioID);
-    if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
-    {
-    	// MsgBox("Error queueing audio.");
-        printf("Error queueing audio: %s\n", SDL_GetError());
-    }
+ //    FillBufferWithSoundWave(
+ //        440,
+ //        1,
+ //        samples,
+ //        buffer_seconds,
+ //        samples_per_second,
+ //        0);
 
 
-    SDL_PauseAudioDevice(audioID, 0);
+ //    if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
+ //    {
+ //    	// MsgBox("Error queueing audio.");
+ //        printf("Error queueing audio: %s\n", SDL_GetError());
+ //    }
 
 
-    return true;
+    // SDL_PauseAudioDevice(audioID, 0);
+
+
+    return audioID;
 }
 
 
@@ -689,9 +688,34 @@ int CALLBACK WinMain(
         MsgBox(err);
         return -1;
     }
-    SetupAudioSDL();
+    SDL_AudioDeviceID audioID = SetupAudioSDL();
+
+//asdf
+
+	int buffer_seconds = 2;
+    int samples_per_buffer = samples_per_second * buffer_seconds;
+    i16 *sound_buffer = (i16*)malloc(samples_per_buffer * sizeof(i16));
+    int samples_into_last_cycle = 0;
+
+    samples_into_last_cycle = FillBufferWithSoundWave(
+        440,
+        1,
+        sound_buffer,
+        buffer_seconds,
+        samples_per_second,
+        samples_into_last_cycle);
 
 
+    if (SDL_QueueAudio(
+                       audioID,
+                       sound_buffer,
+                       samples_per_buffer*sizeof(i16)) < 0)
+    {
+    	// MsgBox("Error queueing audio.");
+        printf("Error queueing audio: %s\n", SDL_GetError());
+    }
+
+    SDL_PauseAudioDevice(audioID, 0);
 
 
     // MORE FFMPEG
@@ -749,6 +773,10 @@ int CALLBACK WinMain(
         }
 
 
+
+		// VIDEO
+
+
 		GetNextVideoFrame(
 			video_file.fc,
 			video_file.video.codecContext,
@@ -761,6 +789,37 @@ int CALLBACK WinMain(
 
 
 
+		// SOUND
+
+
+//asdf2
+	    // samples_into_last_cycle = FillBufferWithSoundWave(
+	    //     440,
+	    //     1,
+	    //     sound_buffer,
+	    //     buffer_seconds,
+	    //     samples_per_second,
+	    //     samples_into_last_cycle);
+
+
+	    // if (SDL_QueueAudio(
+	    //                    video_file.audio.index,
+	    //                    sound_buffer,
+	    //                    samples_per_buffer*sizeof(i16)) < 0)
+	    // {
+	    // 	// MsgBox("Error queueing audio.");
+	    //     printf("Error queueing audio: %s\n", SDL_GetError());
+	    // }
+
+	    u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audioID);
+
+        char audiomsg[256];
+        sprintf(audiomsg, "\nbytes left: %u", bytes_left_in_queue);
+        OutputDebugString(audiomsg);
+
+
+
+	    // TIMER
 
 		double dt = timer.MsSinceLastFrame();
 		if (dt < targetMsPerFrame)
@@ -783,9 +842,6 @@ int CALLBACK WinMain(
             OutputDebugString(msg);
 		}
 		timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
-
-
-
 
 
 
