@@ -807,23 +807,24 @@ int CALLBACK WinMain(
 	    u32 samples_to_add = needed_extra_samples;
 
 
-	    // samples_into_last_cycle = FillBufferWithSoundWave(
-	    //     440,
-	    //     1,
-	    //     sound_buffer,
-	    //     samples_to_add,
-	    //     samples_per_second,
-	    //     samples_into_last_cycle);
+	    samples_into_last_cycle = FillBufferWithSoundWave(
+	        440,
+	        1,
+	        sound_buffer,
+	        samples_to_add,
+	        samples_per_second,
+	        samples_into_last_cycle);
 
 
-	    // if (SDL_QueueAudio(
-	    //                    video_file.audio.index,
-	    //                    sound_buffer,
-	    //                    samples_per_buffer*sizeof(i16)) < 0)
-	    // {
-	    // 	// MsgBox("Error queueing audio.");
-	    //     printf("Error queueing audio: %s\n", SDL_GetError());
-	    // }
+	    if (SDL_QueueAudio(
+	                       audio_device,
+	                       sound_buffer,
+	                       samples_to_add*sizeof(i16)) < 0)
+	    {
+	        char audioerr[256];
+	        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+	        OutputDebugString(audioerr);
+	    }
 
 
         char audiomsg[256];
