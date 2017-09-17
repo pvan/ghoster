@@ -295,6 +295,46 @@ void logSpec(SDL_AudioSpec *as) {
 }
 
 
+
+
+int FillBufferWithSoundWave(
+    float tone_hz,
+    float volume, //0-1
+    i16 *buffer,
+    int buffer_seconds,
+    int samples_per_second,
+    int samples_into_first_cycle)
+{
+
+    float cycles_per_second = tone_hz;
+    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
+
+    int cycles_per_buffer = cycles_per_second * buffer_seconds;
+    int samples_per_buffer = samples_per_second * buffer_seconds;
+
+    // i16 samples[samples_per_buffer];
+    int samples_into_this_cycle = samples_into_first_cycle;
+    i16 signal = (i16)(32000.f * volume);
+    for (int i = 0; i < samples_per_buffer; i++)
+    {
+    	// // square wave
+    	// if (samples_into_this_cycle >= samples_per_cycle)
+    	// {
+    	// 	samples_into_this_cycle = 0;
+    	// 	signal = signal * -1;
+    	// }
+    	// samples_into_this_cycle++;
+    	// buffer[i] = signal;
+
+    	// sine wave
+    	buffer[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
+    	samples_into_this_cycle++;
+    }
+    return samples_into_this_cycle;
+}
+
+
+
 const int samples_per_second = 44100;
 bool SetupAudioSDL()
 {
@@ -330,33 +370,18 @@ bool SetupAudioSDL()
 	logSpec(&spec);
 
 
+	int buffer_seconds = 2;
+    int samples_per_buffer = samples_per_second * buffer_seconds;
+    i16 *samples = (i16*)malloc(samples_per_buffer * sizeof(i16));
 
-    const int cycles_per_second = 440;
-    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
+    FillBufferWithSoundWave(
+        440,
+        1,
+        samples,
+        buffer_seconds,
+        samples_per_second,
+        0);
 
-    const int buffer_seconds = 2;
-
-    const int cycles_per_buffer = cycles_per_second * buffer_seconds;
-    const int samples_per_buffer = samples_per_second * buffer_seconds;
-
-    i16 samples[samples_per_buffer];
-    int samples_into_this_cycle = 0;
-    i16 signal = 32000;
-    for (int i = 0; i < samples_per_buffer; i++)
-    {
-    	// // square wave
-    	// if (samples_into_this_cycle >= samples_per_cycle)
-    	// {
-    	// 	samples_into_this_cycle = 0;
-    	// 	signal = signal * -1;
-    	// }
-    	// samples_into_this_cycle++;
-    	// samples[i] = signal;
-
-    	// sine wave
-    	samples[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
-    	samples_into_this_cycle++;
-    }
 
     printf("audioID: %i\n", audioID);
     if (SDL_QueueAudio(audioID, samples, samples_per_buffer*sizeof(i16)) < 0)
@@ -367,7 +392,7 @@ bool SetupAudioSDL()
 
 
     SDL_PauseAudioDevice(audioID, 0);
-    // end audio
+
 
     return true;
 }
@@ -426,7 +451,6 @@ void RenderToScreen(void *memory, int width, int height, HWND window)
 	HDC deviceContext = GetDC(window);
 
 
-
     glViewport(0,0, width, height);
 
 	GLuint tex;
@@ -436,8 +460,6 @@ void RenderToScreen(void *memory, int width, int height, HWND window)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,
                  GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
 
-
-
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
@@ -446,21 +468,14 @@ void RenderToScreen(void *memory, int width, int height, HWND window)
 
     glEnable(GL_TEXTURE_2D);
 
-
     glClearColor(0.5f, 0.8f, 1.0f, 0.0f);
     // glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);  // some offscreen buffer
+    glClear(GL_COLOR_BUFFER_BIT);
 
-
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
+    glMatrixMode(GL_MODELVIEW);  glLoadIdentity();
+    glMatrixMode(GL_PROJECTION); glLoadIdentity();
 
     glBegin(GL_TRIANGLES);
-
 
     // note the texture coords are upside down
     // to get our texture right side up
