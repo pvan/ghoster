@@ -23,14 +23,19 @@ extern "C"
     #include "libswscale/swscale.h"
     #include "libavutil/avutil.h"
     #include "libavutil/avstring.h"
+    #include "libavutil/opt.h"
+    #include "libswresample/swresample.h"
 }
 #pragma comment(lib, "avcodec.lib")
 #pragma comment(lib, "avformat.lib")
 #pragma comment(lib, "swscale.lib")
 #pragma comment(lib, "avutil.lib")
+#pragma comment(lib, "swresample.lib")
 
 
 
+
+const int samples_per_second = 44100;
 
 
 
@@ -80,14 +85,14 @@ void SaveFrame(AVFrame *frame, int width, int height, int frame_index)
 
 
 
-void DisplayAudioBuffer(u32 *buf, int wid, int hei, i16 *audio, int audioLen)
+void DisplayAudioBuffer_I16(u32 *buf, int wid, int hei, i16 *audio, int audioLen)
 {
     u8 r = 0;
     u8 g = 0;
     u8 b = 0;
     for (int x = 0; x < wid; x++)
     {
-    	float audioSample = audio[x];
+    	float audioSample = audio[x*5];
     	float audioScaled = audioSample / 32767 * hei/2;
     	audioScaled += hei/2;
 	    for (int y = 0; y < hei; y++)
@@ -102,147 +107,157 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, i16 *audio, int audioLen)
 	    	buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
 	    }
     }
+    for (int i = 0; i < 20; i++)
+    {
+	    char temp[256];
+	    sprintf(temp, "value: %f\n", (float)audio[i]);
+	    OutputDebugString(temp);
+    }
+}
+
+void DisplayAudioBuffer_FLOAT(u32 *buf, int wid, int hei, float *audio, int audioLen)
+{
+    u8 r = 0;
+    u8 g = 0;
+    u8 b = 0;
+    for (int x = 0; x < wid; x++)
+    {
+    	float audioSample = audio[x*30];
+    	float audioScaled = audioSample * hei/2;
+    	audioScaled += hei/2;
+	    for (int y = 0; y < hei; y++)
+	    {
+	    	if (y < hei/2) {
+		    	if (y < audioScaled) r = 0;
+		    	else r = 255;
+		    } else {
+		    	if (y > audioScaled) r = 0;
+		    	else r = 255;
+		    }
+	    	buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+	    }
+    }
+    // for (int i = 0; i < 20; i++)
+    // {
+	   //  char temp[256];
+	   //  sprintf(temp, "value: %f\n", (float)audio[i]);
+	   //  OutputDebugString(temp);
+    // }
 }
 
 
 
 // return bytes (not samples) written to outBuffer
 int GetNextAudioFrame(
-						AVFormatContext *fc,
-						AVCodecContext *cc,
-						int streamIndex,
-						u8 *outBuffer,
-						int outBufferSize)
+	AVFormatContext *fc,
+	AVCodecContext *cc,
+	int streamIndex,
+	u8 *outBuffer,
+	int outBufferSize)
 {
-	AVFrame *frame = av_frame_alloc();  // ok re-creating this so often?
-	if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return 0; }
 
-	AVPacket packet;
 
-	AVFrame *decoded_frame = 0;
-	int len;
+    // may need a resampler if we ever get a non-float format?
+    SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
+                      AV_CH_LAYOUT_MONO,    // out_ch_layout
+                      AV_SAMPLE_FMT_FLT,    // out_sample_fmt
+                      cc->sample_rate,      // out_sample_rate
+                      cc->channel_layout,   // in_ch_layout
+                      cc->sample_fmt,       // in_sample_fmt
+                      cc->sample_rate,      // in_sample_rate
+                      0,                    // log_offset
+                      NULL);                // log_ctx
+    swr_init(swr);
+    if (!swr_is_initialized(swr)) {
+        OutputDebugString("Resampler has not been properly initialized\n");
+        return -1;
+    }
+
+
+
+    AVPacket readingPacket;
+    av_init_packet(&readingPacket);
+
+
+
+    AVFrame* frame = av_frame_alloc();
+    if (!frame)
+    {
+    	OutputDebugString("Error allocating the frame\n");
+        return 1;
+    }
 
 	int bytes_written = 0;
 
-	int frame_count = 0;
+	// https://stackoverflow.com/questions/20545767/decode-audio-from-memory-c
 
-    while (av_read_frame(fc, &packet) >= 0) {
-        int got_frame = 0;
+    // Read the packets in a loop
+    while (av_read_frame(fc, &readingPacket) == 0)
+    {
+        if (readingPacket.stream_index == streamIndex)
+        {
+            AVPacket decodingPacket = readingPacket;
 
-        if (!decoded_frame) {
-            if (!(decoded_frame = av_frame_alloc())) {
-                OutputDebugString("Could not allocate audio frame\n");
-            }
-        }
-        // else
-            // avcodec_get_frame_defaults(decoded_frame);
-
-        len = avcodec_decode_audio4(cc, decoded_frame, &got_frame, &packet);
-        if (len < 0) {
-            OutputDebugString("Error while decoding\n");
-        }
-        if (got_frame) {
-        	frame_count++;
-
-
-            /* if a frame has been decoded, output it */
-            int data_size = av_samples_get_buffer_size(NULL, cc->channels,
-                                                       decoded_frame->nb_samples,
-                                                       cc->sample_fmt, 1);
-            // fwrite(decoded_frame->data[0], 1, data_size, outfile);
-            if (bytes_written+data_size > outBufferSize)
+            // Audio packets can have multiple audio frames in a single packet
+            while (decodingPacket.size > 0)
             {
-	        	char hrm[222];
-	        	sprintf(hrm, "count: %i\n", frame_count);
-	        	OutputDebugString(hrm);
-            	return bytes_written;
+                // Try to decode the packet into a frame
+                // Some frames rely on multiple packets,
+			    // so we have to make sure the frame is finished before
+                // we can use it
+                int gotFrame = 0;
+                int packet_bytes_decoded = avcodec_decode_audio4(cc, frame, &gotFrame, &decodingPacket);
+
+                if (packet_bytes_decoded >= 0 && gotFrame)
+                {
+
+                    decodingPacket.size -= packet_bytes_decoded;
+                    decodingPacket.data += packet_bytes_decoded;
+
+                    int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
+
+
+		            if (bytes_written+additional_bytes > outBufferSize)
+		            {
+		            	return bytes_written;
+		            }
+
+					memcpy(outBuffer, frame->data[0], additional_bytes);
+
+
+		            outBuffer+=additional_bytes;
+		            bytes_written+=additional_bytes;
+
+                }
+                else
+                {
+                    decodingPacket.size = 0;
+                    decodingPacket.data = nullptr;
+                }
             }
-            memcpy(outBuffer, frame->data, data_size);
-            outBuffer+=data_size;
-            bytes_written+=data_size;
         }
-        // packet.size -= len;
-        // packet.data += len;
-        // packet.dts =
-        // packet.pts = AV_NOPTS_VALUE;
-        // if (packet.size < 4096) {  // AUDIO_REFILL_THRESH
-        //      // Refill the input buffer, to avoid trying to decode
-        //      // * incomplete frames. Instead of this, one could also use
-        //      // * a parser, or use a proper container format through
-        //      // * libavformat.
-        //     memmove(inbuf, packet.data, packet.size);
-        //     packet.data = inbuf;
-        //     len = fread(packet.data + packet.size, 1,
-        //                 20480 - packet.size, f);  //AUDIO_INBUF_SIZE
-        //     if (len > 0)
-        //         packet.size += len;
-        // }
+
+        // You *must* call av_free_packet() after each call to av_read_frame() or else you'll leak memory
+        av_free_packet(&readingPacket);
     }
-	        	char hrm[222];
-	        	sprintf(hrm, "count: %i\n", frame_count);
-	        	OutputDebugString(hrm);
-    return bytes_written;
+
+    // Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
+    // is set, there can be buffered up frames that need to be flushed, so we'll do that
+    if (cc->codec->capabilities & CODEC_CAP_DELAY)
+    {
+    	assert(false);
+        av_init_packet(&readingPacket);
+        // Decode all the remaining frames in the buffer, until the end is reached
+        int gotFrame = 0;
+        while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
+        {
+            // We now have a fully decoded audio frame
+            // printAudioFrameInfo(cc, frame);
+        }
+    }
 
 
-
-	// while (av_read_frame(fc, &packet) >= 0)
-	// {
- //        if (packet.stream_index == streamIndex)
- //        {
- //    //     	// replaced deprecated avcodec_decode_audio4?
- //    //     	if (avcodec_send_packet(cc, &packet) < 0)
- //    //     	{
-	// 			// OutputDebugString("ffmpeg: avcodec_send_packet error");
- //    //     	}
-
- //        	int frame_finished;
-
- //        	int byte_length = avcodec_decode_audio4(cc, frame, &frame_finished, &packet);
- //        	if (byte_length < 0)
-	// 		{
-	// 			char averr[256];
-	// 		    av_strerror(byte_length, averr, sizeof(averr));
-	// 			char buferr[256];
-	// 			sprintf(buferr, "ffmpeg: Skipping audio frame... problem?\n%s\n", averr);
-	// 			OutputDebugString(buferr);
-	// 		}
-
-	// 		// byte_length = min(byte_length, packet.size);
-
-	// 		if (frame_finished)
-	// 		{
- //                int frame_buf_size = av_samples_get_buffer_size(NULL,
- //                    cc->channels,
- //                    frame->nb_samples, // vs cc->frame_size ??
- //                    cc->sample_fmt,
- //                    1);  // alignment 0=default 1=none
-
- //                if (frame_buf_size < 0)
- //                {
- //                	OutputDebugString("ffmpeg: Error getting frame audio buffer size?");
- //                	continue;
- //                }
- //                assert(frame_buf_size <= outBufferSize);
- //                memcpy(outBuffer, frame->data[0], frame_buf_size);
-
-	// 			av_frame_unref(frame);
-	// 			av_packet_unref(&packet);
-
-	// 			char hmm[256];
-	// 			sprintf(hmm, "bytes this packet: %i\n", frame_buf_size);
-	// 			OutputDebugString(hmm);
-
- //                return frame_buf_size;
-	// 		}
-	// 		// else
-	// 		// {
-	// 		// 	OutputDebugString("error here perhaps?");
-	// 		// }
- //        }
-	// }
-	// av_frame_unref(frame);
-	// av_packet_unref(&packet);
-	// return 0; // ever get here?
+	return bytes_written; // ever get here?
 }
 
 bool GetNextVideoFrame(
@@ -388,9 +403,39 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 
 
+int FillBufferWithSoundWave_FLOAT(
+    float tone_hz,
+    float volume, //0-1
+    float *buffer,
+    int samples_to_add,  //buffer_seconds
+    int samples_per_second,
+    int samples_into_first_cycle)
+{
+    float cycles_per_second = tone_hz;
+    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
+
+    int samples_into_this_cycle = samples_into_first_cycle;
+    float signal = volume;
+    for (int i = 0; i < samples_to_add; i++)
+    {
+    	// // square wave
+    	// if (samples_into_this_cycle >= samples_per_cycle)
+    	// {
+    	// 	samples_into_this_cycle = 0;
+    	// 	signal = signal * -1;
+    	// }
+    	// samples_into_this_cycle++;
+    	// buffer[i] = signal;
+
+    	// sine wave
+    	buffer[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
+    	samples_into_this_cycle++;
+    }
+    return samples_into_this_cycle;
+}
 
 
-int FillBufferWithSoundWave(
+int FillBufferWithSoundWave_I16(
     float tone_hz,
     float volume, //0-1
     i16 *buffer,
@@ -442,17 +487,28 @@ void logSpec(SDL_AudioSpec *as) {
 	OutputDebugString(log);
 }
 
-const int samples_per_second = 44100;
-SDL_AudioDeviceID SetupAudioSDL()
+SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
 {
+    // int16 sin
+    // SDL_AudioSpec wanted_spec, spec;
+    // wanted_spec.freq = samples_per_second;//acc->sample_rate;
+    // wanted_spec.format = AUDIO_S16SYS;//AUDIO_F32;//AUDIO_S16SYS;
+    // wanted_spec.channels = 1;//acc->channels;
+    // wanted_spec.silence = 0;
+    // wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE
+    // wanted_spec.callback = 0;  // none to set samples ourself
+    // wanted_spec.userdata = 0;
+
+    // float sin
     SDL_AudioSpec wanted_spec, spec;
     wanted_spec.freq = samples_per_second;//acc->sample_rate;
-    wanted_spec.format = AUDIO_S16SYS;//AUDIO_F32;//AUDIO_S16SYS;
+    wanted_spec.format = AUDIO_F32;//AUDIO_F32;//AUDIO_S16SYS;
     wanted_spec.channels = 1;//acc->channels;
     wanted_spec.silence = 0;
-    wanted_spec.samples = 4096; // SDL_AUDIO_BUFFER_SIZE
+    wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE
     wanted_spec.callback = 0;  // none to set samples ourself
     wanted_spec.userdata = 0;
+
 
     SDL_AudioDeviceID audio_device = SDL_OpenAudioDevice(0, 0,
         &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
@@ -773,31 +829,43 @@ int CALLBACK WinMain(
         MsgBox(err);
         return -1;
     }
-    SDL_AudioDeviceID audio_device = SetupAudioSDL();
+    SDL_AudioDeviceID audio_device = SetupAudioSDL(video_file.audio.codecContext);
 
+    AVCodecContext *acc = video_file.audio.codecContext;
 
-	// int audio_channels = 1;
-	int buffer_seconds = 5;
-    int samples_in_buffer = samples_per_second * buffer_seconds;
-    int bytes_in_buffer = samples_in_buffer * sizeof(i16); //tied to AUDIO_S16SYS, #chanels, etc
+    //asdf
+	int audio_channels = acc->channels;
+	int buffer_seconds = 10;
+    int samples_in_buffer = acc->sample_rate * buffer_seconds;
+    int bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
     void *sound_buffer = (void*)malloc(bytes_in_buffer);
 
 
-    int samples_into_last_cycle = FillBufferWithSoundWave(
-        440,
-        1,
-        (i16*)sound_buffer,
-        samples_in_buffer,
-        samples_per_second,
-        0);
+    // int16 sin
+    // int samples_into_last_cycle = FillBufferWithSoundWave(
+    //     440,
+    //     1,
+    //     (i16*)sound_buffer,
+    //     samples_in_buffer,
+    //     samples_per_second,
+    //     0);
+
+    // // float sin
+    // int samples_into_last_cycle = FillBufferWithSoundWave2(
+    //     440,
+    //     1,
+    //     (float*)sound_buffer,
+    //     samples_in_buffer,
+    //     samples_per_second,
+    //     0);
 
 
-	// int bytes_queued_up = GetNextAudioFrame(
-	// 	video_file.fc,
-	// 	video_file.audio.codecContext,
-	// 	video_file.audio.index,
-	// 	(u8*)sound_buffer,
-	// 	bytes_in_buffer);
+	int bytes_queued_up = GetNextAudioFrame(
+		video_file.fc,
+		video_file.audio.codecContext,
+		video_file.audio.index,
+		(u8*)sound_buffer,
+		bytes_in_buffer);
 
 
     if (SDL_QueueAudio(
@@ -884,8 +952,8 @@ int CALLBACK WinMain(
 		// RenderToScreen((void*)buffer, WID, HEI, window);
 
 
-		DisplayAudioBuffer(buf, WID, HEI,
-		                   (i16*)sound_buffer, bytes_in_buffer);
+		DisplayAudioBuffer_FLOAT(buf, WID, HEI,
+		                   (float*)sound_buffer, bytes_in_buffer);
 		RenderToScreen((void*)buf, WID, HEI, window);
 
 
