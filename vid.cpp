@@ -156,22 +156,32 @@ int GetNextAudioFrame(
 	int outBufferSize)
 {
 
+  //   // may need a resampler if we ever get a non-float format?
+  //   SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
+  //                     AV_CH_LAYOUT_MONO,    // out_ch_layout
+  //                     AV_SAMPLE_FMT_FLT,    // out_sample_fmt
+  //                     cc->sample_rate,      // out_sample_rate
+  //                     cc->channel_layout,   // in_ch_layout
+  //                     cc->sample_fmt,       // in_sample_fmt
+  //                     cc->sample_rate,      // in_sample_rate
+  //                     0,                    // log_offset
+  //                     NULL);                // log_ctx
+  //   swr_init(swr);
+  //   if (!swr_is_initialized(swr)) {
+  //       OutputDebugString("Resampler has not been properly initialized\n");
+  //       return -1;
+  //   }
 
-    // may need a resampler if we ever get a non-float format?
-    SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
-                      AV_CH_LAYOUT_MONO,    // out_ch_layout
-                      AV_SAMPLE_FMT_FLT,    // out_sample_fmt
-                      cc->sample_rate,      // out_sample_rate
-                      cc->channel_layout,   // in_ch_layout
-                      cc->sample_fmt,       // in_sample_fmt
-                      cc->sample_rate,      // in_sample_rate
-                      0,                    // log_offset
-                      NULL);                // log_ctx
-    swr_init(swr);
-    if (!swr_is_initialized(swr)) {
-        OutputDebugString("Resampler has not been properly initialized\n");
-        return -1;
-    }
+		// // to actually resample...
+		// // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
+  //       // // resample frames
+  //       // double* buffer;
+  //       // av_samples_alloc((uint8_t**) &buffer, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
+  //       // int frame_count = swr_convert(swr, (uint8_t**) &buffer, frame->nb_samples, (const uint8_t**) frame->data, frame->nb_samples);
+  //       // // append resampled frames to data
+  //       // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
+  //       // memcpy(*data + *size, buffer, frame_count * sizeof(double));
+  //       // *size += frame_count;
 
 
 
@@ -211,12 +221,15 @@ int GetNextAudioFrame(
                 if (packet_bytes_decoded >= 0 && gotFrame)
                 {
 
+                	// shift packet over to get next frame (if there is one)
                     decodingPacket.size -= packet_bytes_decoded;
                     decodingPacket.data += packet_bytes_decoded;
 
                     int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
 
 
+                    // keep filling until we hit outBufferSize
+                    // don't we drop a packet here??? (the last we pull)
 		            if (bytes_written+additional_bytes > outBufferSize)
 		            {
 		            	return bytes_written;
@@ -228,6 +241,8 @@ int GetNextAudioFrame(
 		            outBuffer+=additional_bytes;
 		            bytes_written+=additional_bytes;
 
+		            // // just one frame;
+		            // return bytes_written;
                 }
                 else
                 {
@@ -236,6 +251,9 @@ int GetNextAudioFrame(
                 }
             }
         }
+
+        // todo: shouldn't we free frame and decodingPacket
+        // from use in avcodec_decode_audio4 ?
 
         // You *must* call av_free_packet() after each call to av_read_frame() or else you'll leak memory
         av_free_packet(&readingPacket);
@@ -833,12 +851,20 @@ int CALLBACK WinMain(
 
     AVCodecContext *acc = video_file.audio.codecContext;
 
-    //asdf
+    // try to keep this full
 	int audio_channels = acc->channels;
-	int buffer_seconds = 10;
+
+	// how big of chunks do we want to decode and queue up at a time
+	int buffer_seconds = 2; // no reason not to just keep this big, right?
+	// int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
     int samples_in_buffer = acc->sample_rate * buffer_seconds;
     int bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
     void *sound_buffer = (void*)malloc(bytes_in_buffer);
+
+    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    int desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
 
 
     // int16 sin
@@ -859,15 +885,14 @@ int CALLBACK WinMain(
     //     samples_per_second,
     //     0);
 
-
+    // queue up a big chunk to start with (no more than our max buffer size, thoguh)
+    // (or not really needed if we never drop frames, right?)
 	int bytes_queued_up = GetNextAudioFrame(
 		video_file.fc,
 		video_file.audio.codecContext,
 		video_file.audio.index,
 		(u8*)sound_buffer,
 		bytes_in_buffer);
-
-
     if (SDL_QueueAudio(
                        audio_device,
                        sound_buffer,
@@ -960,50 +985,60 @@ int CALLBACK WinMain(
 
 		// SOUND
 
-	 //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-	 //        char msg[256];
-	 //        sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-	 //        OutputDebugString(msg);
+	    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+	        // char msg[256];
+	        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+	        // OutputDebugString(msg);
 
 
-	 //    int wanted_bytes = bytes_in_buffer - bytes_left_in_queue;
+	    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+	        // char msg3[256];
+	        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+	        // OutputDebugString(msg3);
 
-	 //    if (wanted_bytes >= bytes_queued_up)
-	 //    {
-		//     if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
-		//     {
-		//         char audioerr[256];
-		//         sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-		//         OutputDebugString(audioerr);
-		//     }
-		//     bytes_queued_up = 0;
-		// }
-		// if (bytes_queued_up == 0)
-		// {
-		// 	bytes_queued_up = GetNextAudioFrame(
-		// 		video_file.fc,
-		// 		video_file.audio.codecContext,
-		// 		video_file.audio.index,
-		// 		sound_buffer,
-		// 		bytes_in_buffer);
-	 //    }
+	    if (wanted_bytes >= 0)
+	    {
+	    	if (wanted_bytes > bytes_in_buffer) {
+		        // char errq[256];
+		        // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+		        // OutputDebugString(errq);
+
+	    		wanted_bytes = bytes_in_buffer;
+	    	}
+
+	    	// ideally a little bite of sound, every frame
+	    	// todo: how to sync this right, pts dts?
+			int bytes_queued_up = GetNextAudioFrame(
+				video_file.fc,
+				video_file.audio.codecContext,
+				video_file.audio.index,
+				(u8*)sound_buffer,
+				wanted_bytes);
+
+			if (bytes_queued_up > 0)
+			{
+			    if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
+			    {
+			        char audioerr[256];
+			        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+			        OutputDebugString(audioerr);
+			    }
+		        // char msg2[256];
+		        // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+		        // OutputDebugString(msg2);
+			}
+		}
 
 
 
+	    // continuous tone
 	    // u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-
 	    // u32 bytes_per_sample = sizeof(i16) * audio_channels;
 	    // u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
-
-	    // if (bytes_left_in_queue % bytes_per_sample != 0)
-	    // {
-	    // 	OutputDebugString("--- PROBLEM ---  bytes left in audio queue split a sample\n");
-	    // }
-
+	    // assert (bytes_left_in_queue % bytes_per_sample == 0);
 	    // u32 desired_samples_ahead = buffer_seconds * samples_in_buffer;
 	    // u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
 	    // u32 samples_to_add = needed_extra_samples;
-
 	    // samples_into_last_cycle = FillBufferWithSoundWave(
 	    //     440,
 	    //     1,
@@ -1011,7 +1046,6 @@ int CALLBACK WinMain(
 	    //     samples_to_add,
 	    //     samples_per_second,
 	    //     samples_into_last_cycle);
-
 	    // if (SDL_QueueAudio(audio_device, sound_buffer, samples_to_add*sizeof(i16)) < 0)
 	    // {
 	    //     char audioerr[256];
