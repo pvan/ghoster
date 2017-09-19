@@ -294,14 +294,26 @@ int GetNextAudioFrame(
 }
 
 bool GetNextVideoFrame(
-						AVFormatContext *fc,
-						AVCodecContext *cc,
-						SwsContext *sws_context,
-						int streamIndex,
-						AVFrame *inFrame,  // don't really need this outside this func?
-						AVFrame *outFrame)
+	AVFormatContext *fc,
+	AVCodecContext *cc,
+	SwsContext *sws_context,
+	int streamIndex,
+	AVFrame *inFrame,  // don't really need this outside this func?
+	AVFrame *outFrame,
+	double msSinceStart)
 {
 	AVPacket packet;
+
+
+            	// char temp2[123];
+            	// sprintf(temp2, "time_base %i / %i\n",
+            	//         fc->streams[streamIndex]->time_base.num,
+            	//         fc->streams[streamIndex]->time_base.den
+            	//         );
+            	// OutputDebugString(temp2);
+
+
+	bool skipped_a_frame_already = false;
 
 	while(av_read_frame(fc, &packet) >= 0)
 	{
@@ -312,6 +324,30 @@ bool GetNextVideoFrame(
 
             if (frame_finished)
             {
+
+            	// char temp[123];
+            	// sprintf(temp, "frame->pts %lli\n", inFrame->pts);
+            	// OutputDebugString(temp);
+
+            	double msToPlayFrame = 1000 * inFrame->pts / fc->streams[streamIndex]->time_base.den;
+
+            	char zxcv[123];
+            	sprintf(zxcv, "msToPlayFrame: %.1f msSinceStart: %.1f\n",
+            	        msToPlayFrame,
+            	        msSinceStart
+            	        );
+            	OutputDebugString(zxcv);
+
+	            // skip frame if too far off
+	            double msDelayAllowed = 20;
+	            if (msToPlayFrame + msDelayAllowed < msSinceStart &&
+	                !skipped_a_frame_already)
+	            {
+	            	OutputDebugString("skipped a frame");
+	            	skipped_a_frame_already = true;
+	            	continue;
+	            }
+
             	sws_scale(
 	          		sws_context,
 	          		(u8**)inFrame->data,
@@ -761,6 +797,7 @@ int CALLBACK WinMain(
 )
 {
 
+
 	// TIMER
 
     if (timeBeginPeriod(1) != TIMERR_NOERROR) {
@@ -769,11 +806,9 @@ int CALLBACK WinMain(
     	OutputDebugString(err);
     }
 
-    double targetFPS = 24;
-    double targetMsPerFrame = 1000 / targetFPS;
-
     Timer timer;
     timer.Start();
+
 
 
 
@@ -782,6 +817,25 @@ int CALLBACK WinMain(
     InitAV();
 
 	VideoFile video_file = OpenVideoFileAV(INPUT_FILE);
+
+
+
+
+	// SET FPS BASED ON LOADED VIDEO
+
+	char vidfps[123];
+	sprintf(vidfps, "video frame rate: %i / %i\n",
+		video_file.vfc->streams[video_file.video.index]->time_base.num,
+		video_file.vfc->streams[video_file.video.index]->time_base.den
+	);
+	OutputDebugString(vidfps);
+
+	double targetFPS = video_file.vfc->streams[video_file.video.index]->time_base.den;
+	double targetMsPerFrame = 1000 / targetFPS;
+	// probaly safe to assume num is 1 ??
+	targetMsPerFrame *= video_file.vfc->streams[video_file.video.index]->time_base.num;
+
+
 
 
 
@@ -904,25 +958,27 @@ int CALLBACK WinMain(
     //     samples_per_second,
     //     0);
 
-    // queue up a big chunk to start with (no more than our max buffer size, thoguh)
-    // (or not really needed if we queue more than we need every frame right?)
-	int bytes_queued_up = GetNextAudioFrame(
-		video_file.afc,
-		video_file.audio.codecContext,
-		video_file.audio.index,
-		(u8*)sound_buffer,
-		bytes_in_buffer);
-    if (SDL_QueueAudio(
-                       audio_device,
-                       sound_buffer,
-                       bytes_in_buffer) < 0)
-    {
-        char audioerr[256];
-        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-        OutputDebugString(audioerr);
-    }
+ //    // queue up a big chunk to start with (no more than our max buffer size, thoguh)
+ //    // (or not really needed if we queue more than we need every frame right?)
+	// int bytes_queued_up = GetNextAudioFrame(
+	// 	video_file.afc,
+	// 	video_file.audio.codecContext,
+	// 	video_file.audio.index,
+	// 	(u8*)sound_buffer,
+	// 	bytes_in_buffer);
+ //    if (SDL_QueueAudio(
+ //                       audio_device,
+ //                       sound_buffer,
+ //                       bytes_in_buffer) < 0)
+ //    {
+ //        char audioerr[256];
+ //        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+ //        OutputDebugString(audioerr);
+ //    }
 
-    SDL_PauseAudioDevice(audio_device, 0);
+    Timer audioTimer;
+    audioTimer.Start(); // todo: need to add latency of sdl buffer?
+ //    SDL_PauseAudioDevice(audio_device, 0);
 
 
     // MORE FFMPEG
@@ -1029,6 +1085,12 @@ int CALLBACK WinMain(
 			}
 		}
 
+		static bool playingAudio = false;
+		if (!playingAudio)
+		{
+			SDL_PauseAudioDevice(audio_device, 0);
+			playingAudio = true;
+		}
 
 
 	    // continuous tone
@@ -1059,6 +1121,7 @@ int CALLBACK WinMain(
 
 		// VIDEO
 
+		double msSinceAudioStart = audioTimer.MsSinceStart();
 
 		GetNextVideoFrame(
 			video_file.vfc,
@@ -1066,7 +1129,8 @@ int CALLBACK WinMain(
 			sws_context,
 			video_file.video.index,
 			frame_source,
-			frame_output);
+			frame_output,
+			msSinceAudioStart);
 
 		RenderToScreen((void*)buffer, WID, HEI, window);
 
