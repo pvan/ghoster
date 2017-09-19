@@ -39,7 +39,8 @@ const int samples_per_second = 44100;
 
 
 
-char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
+// char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
+char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
 
 
@@ -122,7 +123,7 @@ void DisplayAudioBuffer_FLOAT(u32 *buf, int wid, int hei, float *audio, int audi
     u8 b = 0;
     for (int x = 0; x < wid; x++)
     {
-    	float audioSample = audio[x*30];
+    	float audioSample = audio[x*5];
     	float audioScaled = audioSample * hei/2;
     	audioScaled += hei/2;
 	    for (int y = 0; y < hei; y++)
@@ -228,18 +229,29 @@ int GetNextAudioFrame(
                     int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
 
 
-                    // keep filling until we hit outBufferSize
-                    // don't we drop a packet here??? (the last we pull)
-		            if (bytes_written+additional_bytes > outBufferSize)
-		            {
-		            	return bytes_written;
-		            }
+                    // keep a check here so we don't overflow outBuffer??
+              //       // keep filling until we hit outBufferSize
+              //       // don't we drop a packet here??? (the last we pull)
+		            // if (bytes_written+additional_bytes > outBufferSize)
+		            // {
+		            // 	return bytes_written;
+		            // }
+
 
 					memcpy(outBuffer, frame->data[0], additional_bytes);
 
 
 		            outBuffer+=additional_bytes;
 		            bytes_written+=additional_bytes;
+
+
+                    // now try to guess when we're done based on the size of the last frame
+		            if (bytes_written+additional_bytes > outBufferSize)
+		            {
+		            	// av_free_packet(&readingPacket);
+		            	return bytes_written;
+		            }
+
 
 		            // // just one frame;
 		            // return bytes_written;
@@ -249,13 +261,16 @@ int GetNextAudioFrame(
                     decodingPacket.size = 0;
                     decodingPacket.data = nullptr;
                 }
+                // av_frame_unref(frame);
             }
+            // av_packet_unref(&decodingPacket);
         }
 
         // todo: shouldn't we free frame and decodingPacket
         // from use in avcodec_decode_audio4 ?
 
         // You *must* call av_free_packet() after each call to av_read_frame() or else you'll leak memory
+        // todo: free or unref?
         av_free_packet(&readingPacket);
     }
 
@@ -886,7 +901,7 @@ int CALLBACK WinMain(
     //     0);
 
     // queue up a big chunk to start with (no more than our max buffer size, thoguh)
-    // (or not really needed if we never drop frames, right?)
+    // (or not really needed if we queue more than we need every frame right?)
 	int bytes_queued_up = GetNextAudioFrame(
 		video_file.fc,
 		video_file.audio.codecContext,
@@ -1017,7 +1032,7 @@ int CALLBACK WinMain(
 
 			if (bytes_queued_up > 0)
 			{
-			    if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
+			    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
 			    {
 			        char audioerr[256];
 			        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
