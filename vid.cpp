@@ -39,8 +39,10 @@ const int samples_per_second = 44100;
 
 
 
+// char *INPUT_FILE = "D:/Users/phil/Desktop/sync3.mp4";
+char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
-char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
+// char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
 
 
@@ -154,7 +156,8 @@ int GetNextAudioFrame(
 	AVCodecContext *cc,
 	int streamIndex,
 	u8 *outBuffer,
-	int outBufferSize)
+	int outBufferSize,
+	double msSinceStart)
 {
 
   //   // may need a resampler if we ever get a non-float format?
@@ -238,6 +241,33 @@ int GetNextAudioFrame(
 		            // }
 
 
+	            	double msToPlayFrame = 1000 * frame->pts *
+	            		fc->streams[streamIndex]->time_base.num /
+	            		fc->streams[streamIndex]->time_base.den;
+
+	            	// char zxcv[123];
+	            	// sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+	            	//         msToPlayFrame,
+	            	//         msSinceStart
+	            	//         );
+	            	// OutputDebugString(zxcv);
+
+                    // todo: stretch or shrink this buffer
+                    // to external clock? but tough w/ audio latency right?
+		            double msDelayAllowed = 20;  // feels janky
+		            // console yourself with the thought that this should only happen if
+		            // our sound library or driver is playing audio out of sync w/ the system clock???
+		            if (msToPlayFrame + msDelayAllowed < msSinceStart)
+		            {
+		            	OutputDebugString("skipping some audio bytes.. tempy\n");
+		            	//continue;
+
+		            	// todo: replace this with better
+		            	int samples_to_skip = 10;
+		            	additional_bytes -= samples_to_skip *
+		            		av_get_bytes_per_sample(cc->sample_fmt);
+		            }
+
 					memcpy(outBuffer, frame->data[0], additional_bytes);
 
 
@@ -298,7 +328,7 @@ bool GetNextVideoFrame(
 	AVCodecContext *cc,
 	SwsContext *sws_context,
 	int streamIndex,
-	AVFrame *inFrame,  // don't really need this outside this func?
+	AVFrame *inFrame,  // todo: don't really need this outside this func?
 	AVFrame *outFrame,
 	double msSinceStart)
 {
@@ -325,25 +355,41 @@ bool GetNextVideoFrame(
             if (frame_finished)
             {
 
+				// todo: is variable frame rate possible? (eg some frames shown twice?)
+				// todo: is it possible to get these out of pts order?
+
             	// char temp[123];
             	// sprintf(temp, "frame->pts %lli\n", inFrame->pts);
             	// OutputDebugString(temp);
 
             	double msToPlayFrame = 1000 * inFrame->pts / fc->streams[streamIndex]->time_base.den;
 
-            	char zxcv[123];
-            	sprintf(zxcv, "msToPlayFrame: %.1f msSinceStart: %.1f\n",
-            	        msToPlayFrame,
-            	        msSinceStart
-            	        );
-            	OutputDebugString(zxcv);
+            	// char zxcv[123];
+            	// sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f\n",
+            	//         msToPlayFrame,
+            	//         msSinceStart
+            	//         );
+            	// OutputDebugString(zxcv);
+
+            	// todo: this should be somewhere else, also how to estimate?
+            	// and is there any video latency? just research how to properly sync
+            	//asdfasdf
+            	// double msAudioLatencyEstimate = 50;
+
+            	// this feels just a bit early? maybe we should double it? or more?
+            	double msAudioLatencyEstimate = 1024.0 / samples_per_second * 1000.0;
+            	msAudioLatencyEstimate *= 2; // feels just right
+
 
 	            // skip frame if too far off
 	            double msDelayAllowed = 20;
-	            if (msToPlayFrame + msDelayAllowed < msSinceStart &&
+	            if (msToPlayFrame +
+	                msAudioLatencyEstimate +
+	                msDelayAllowed <
+	                msSinceStart &&
 	                !skipped_a_frame_already)
 	            {
-	            	OutputDebugString("skipped a frame");
+	            	OutputDebugString("skipped a frame\n");
 	            	skipped_a_frame_already = true;
 	            	continue;
 	            }
@@ -578,7 +624,7 @@ SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
     wanted_spec.format = AUDIO_F32;//AUDIO_F32;//AUDIO_S16SYS;
     wanted_spec.channels = 1;//acc->channels;
     wanted_spec.silence = 0;
-    wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE
+    wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
     wanted_spec.callback = 0;  // none to set samples ourself
     wanted_spec.userdata = 0;
 
@@ -742,7 +788,8 @@ struct Timer
 	{
 		if (!started) {
 	        OutputDebugString("Timer: Tried to get time without starting first.");
-			Start();
+			// Start();  // actually, don't do this
+			return 0;
 		}
     	return MsElapsedSince(starting_ticks);
 	}
@@ -823,17 +870,35 @@ int CALLBACK WinMain(
 
 	// SET FPS BASED ON LOADED VIDEO
 
+	// todo: check ticks_per_frame ??
+	// .vfc->streams[]->time_base ? or some other time_base?
+
+	// char vidfps[123];
+	// sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
+	// 	video_file.vfc->streams[video_file.video.index]->time_base.num,
+	// 	video_file.vfc->streams[video_file.video.index]->time_base.den,
+	// 	video_file.video.codecContext->ticks_per_frame
+	// );
+	// OutputDebugString(vidfps);
+
+	// double targetFPS = (video_file.vfc->streams[video_file.video.index]->time_base.den /
+	// 				   video_file.vfc->streams[video_file.video.index]->time_base.num) /
+	// 				   video_file.video.codecContext->ticks_per_frame;
+	// double targetMsPerFrame = 1000 / targetFPS;
+
 	char vidfps[123];
-	sprintf(vidfps, "video frame rate: %i / %i\n",
-		video_file.vfc->streams[video_file.video.index]->time_base.num,
-		video_file.vfc->streams[video_file.video.index]->time_base.den
+	sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
+		video_file.video.codecContext->time_base.num,
+		video_file.video.codecContext->time_base.den,
+		video_file.video.codecContext->ticks_per_frame
 	);
 	OutputDebugString(vidfps);
 
-	double targetFPS = video_file.vfc->streams[video_file.video.index]->time_base.den;
+	double targetFPS = (video_file.video.codecContext->time_base.den /
+					    video_file.video.codecContext->time_base.num) /
+					    video_file.video.codecContext->ticks_per_frame;
 	double targetMsPerFrame = 1000 / targetFPS;
-	// probaly safe to assume num is 1 ??
-	targetMsPerFrame *= video_file.vfc->streams[video_file.video.index]->time_base.num;
+
 
 
 
@@ -977,7 +1042,7 @@ int CALLBACK WinMain(
  //    }
 
     Timer audioTimer;
-    audioTimer.Start(); // todo: need to add latency of sdl buffer?
+    // audioTimer.Start(); // todo: need to add latency of sdl buffer?
  //    SDL_PauseAudioDevice(audio_device, 0);
 
 
@@ -1041,6 +1106,14 @@ int CALLBACK WinMain(
 
 		// SOUND
 
+		static bool playingAudio = false;
+		if (!playingAudio)
+		{
+			SDL_PauseAudioDevice(audio_device, 0);
+			audioTimer.Start();
+			playingAudio = true;
+		}
+
 	    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
 	        // char msg[256];
 	        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
@@ -1069,7 +1142,8 @@ int CALLBACK WinMain(
 				video_file.audio.codecContext,
 				video_file.audio.index,
 				(u8*)sound_buffer,
-				wanted_bytes);
+				wanted_bytes,
+				audioTimer.MsSinceStart());
 
 			if (bytes_queued_up > 0)
 			{
@@ -1085,12 +1159,6 @@ int CALLBACK WinMain(
 			}
 		}
 
-		static bool playingAudio = false;
-		if (!playingAudio)
-		{
-			SDL_PauseAudioDevice(audio_device, 0);
-			playingAudio = true;
-		}
 
 
 	    // continuous tone
