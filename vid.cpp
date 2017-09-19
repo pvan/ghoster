@@ -345,7 +345,8 @@ struct StreamAV
 
 struct VideoFile
 {
-	AVFormatContext *fc;
+	AVFormatContext *vfc;
+	AVFormatContext *afc;  // kind of a hack? to read audio and video in sep loops
 	StreamAV video;
 	StreamAV audio;
 };
@@ -373,13 +374,15 @@ VideoFile OpenVideoFileAV(char *filepath)
 {
 	VideoFile file;
 
-    file.fc = 0;  // = 0 or call avformat_alloc_context before opening?
+    file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
+    file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
 
-    int open_result = avformat_open_input(&file.fc, filepath, 0, 0);
-    if (open_result != 0)
+    int open_result1 = avformat_open_input(&file.vfc, filepath, 0, 0);
+    int open_result2 = avformat_open_input(&file.afc, filepath, 0, 0);
+    if (open_result1 != 0 || open_result2 != 0)
     {
         char averr[1024];
-        av_strerror(open_result, averr, 1024);
+        av_strerror(open_result1, averr, 1024);
         char msg[2048];
         sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
         MsgBox(msg);
@@ -387,27 +390,28 @@ VideoFile OpenVideoFileAV(char *filepath)
     }
 
     // populate fc->streams
-    if (avformat_find_stream_info(file.fc, 0) < 0)
+    if (avformat_find_stream_info(file.vfc, 0) < 0 ||
+        avformat_find_stream_info(file.afc, 0) < 0)
     {
         MsgBox("ffmpeg: Can't find stream info in file.");
         return file;
     }
 
-    av_dump_format(file.fc, 0, INPUT_FILE, 0);
+    av_dump_format(file.vfc, 0, INPUT_FILE, 0);
 
 
     // find first video and audio stream
-    // use av_find_best_stream?
+    // todo: use av_find_best_stream?
     file.video.index = -1;
     file.audio.index = -1;
-    for (int i = 0; i < file.fc->nb_streams; i++)
+    for (int i = 0; i < file.vfc->nb_streams; i++)
     {
-        if (file.fc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
+        if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
         {
             if (file.video.index == -1)
                 file.video.index = i;
         }
-        if (file.fc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
+        if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
         {
             if (file.audio.index == -1)
                 file.audio.index = i;
@@ -424,8 +428,8 @@ VideoFile OpenVideoFileAV(char *filepath)
         return file;  // todo: support missing streams
     }
 
-    file.video.codecContext = OpenAndFindCodec(file.fc, file.video.index);
-    file.audio.codecContext = OpenAndFindCodec(file.fc, file.audio.index);
+    file.video.codecContext = OpenAndFindCodec(file.vfc, file.video.index);
+    file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
 
     return file;
 }
@@ -903,7 +907,7 @@ int CALLBACK WinMain(
     // queue up a big chunk to start with (no more than our max buffer size, thoguh)
     // (or not really needed if we queue more than we need every frame right?)
 	int bytes_queued_up = GetNextAudioFrame(
-		video_file.fc,
+		video_file.afc,
 		video_file.audio.codecContext,
 		video_file.audio.index,
 		(u8*)sound_buffer,
@@ -978,25 +982,6 @@ int CALLBACK WinMain(
 
 
 
-		// VIDEO
-
-
-		// GetNextVideoFrame(
-		// 	video_file.fc,
-		// 	video_file.video.codecContext,
-		// 	sws_context,
-		// 	video_file.video.index,
-		// 	frame_source,
-		// 	frame_output);
-
-		// RenderToScreen((void*)buffer, WID, HEI, window);
-
-
-		DisplayAudioBuffer_FLOAT(buf, WID, HEI,
-		                   (float*)sound_buffer, bytes_in_buffer);
-		RenderToScreen((void*)buf, WID, HEI, window);
-
-
 
 		// SOUND
 
@@ -1024,7 +1009,7 @@ int CALLBACK WinMain(
 	    	// ideally a little bite of sound, every frame
 	    	// todo: how to sync this right, pts dts?
 			int bytes_queued_up = GetNextAudioFrame(
-				video_file.fc,
+				video_file.afc,
 				video_file.audio.codecContext,
 				video_file.audio.index,
 				(u8*)sound_buffer,
@@ -1067,6 +1052,30 @@ int CALLBACK WinMain(
 	    //     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
 	    //     OutputDebugString(audioerr);
 	    // }
+
+
+
+
+
+		// VIDEO
+
+
+		GetNextVideoFrame(
+			video_file.vfc,
+			video_file.video.codecContext,
+			sws_context,
+			video_file.video.index,
+			frame_source,
+			frame_output);
+
+		RenderToScreen((void*)buffer, WID, HEI, window);
+
+
+		// DisplayAudioBuffer_FLOAT(buf, WID, HEI,
+		//                    (float*)sound_buffer, bytes_in_buffer);
+		// RenderToScreen((void*)buf, WID, HEI, window);
+
+
 
 
 
