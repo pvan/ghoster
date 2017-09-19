@@ -5,10 +5,8 @@
 
 
 #include <gl/gl.h>
-// #include <gl/glew.h>
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "gdi32.lib")
-// #pragma comment(lib, "glew32.lib")
 
 
 #include <SDL.h>
@@ -66,59 +64,9 @@ void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
 
-void SaveFrame(AVFrame *frame, int width, int height, int frame_index)
-{
-    FILE *file;
-    char filename[256];
-    int y;
-
-    sprintf(filename, "frame%d.ppm", frame_index);
-    file=fopen(filename, "wb");
-    if (file==0) return;
-
-        // file header
-        fprintf(file, "P6\n%d %d\n255\n", width, height);
-
-        // Write pixel data
-        for(y = 0; y < height; y++)
-        fwrite(frame->data[0]+y*frame->linesize[0], 1, width*3, file);
-
-    fclose(file);
-}
 
 
-
-void DisplayAudioBuffer_I16(u32 *buf, int wid, int hei, i16 *audio, int audioLen)
-{
-    u8 r = 0;
-    u8 g = 0;
-    u8 b = 0;
-    for (int x = 0; x < wid; x++)
-    {
-    	float audioSample = audio[x*5];
-    	float audioScaled = audioSample / 32767 * hei/2;
-    	audioScaled += hei/2;
-	    for (int y = 0; y < hei; y++)
-	    {
-	    	if (y < hei/2) {
-		    	if (y < audioScaled) r = 0;
-		    	else r = 255;
-		    } else {
-		    	if (y > audioScaled) r = 0;
-		    	else r = 255;
-		    }
-	    	buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-	    }
-    }
-    for (int i = 0; i < 20; i++)
-    {
-	    char temp[256];
-	    sprintf(temp, "value: %f\n", (float)audio[i]);
-	    OutputDebugString(temp);
-    }
-}
-
-void DisplayAudioBuffer_FLOAT(u32 *buf, int wid, int hei, float *audio, int audioLen)
+void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 {
     u8 r = 0;
     u8 g = 0;
@@ -522,70 +470,6 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 
 
-int FillBufferWithSoundWave_FLOAT(
-    float tone_hz,
-    float volume, //0-1
-    float *buffer,
-    int samples_to_add,  //buffer_seconds
-    int samples_per_second,
-    int samples_into_first_cycle)
-{
-    float cycles_per_second = tone_hz;
-    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
-
-    int samples_into_this_cycle = samples_into_first_cycle;
-    float signal = volume;
-    for (int i = 0; i < samples_to_add; i++)
-    {
-    	// // square wave
-    	// if (samples_into_this_cycle >= samples_per_cycle)
-    	// {
-    	// 	samples_into_this_cycle = 0;
-    	// 	signal = signal * -1;
-    	// }
-    	// samples_into_this_cycle++;
-    	// buffer[i] = signal;
-
-    	// sine wave
-    	buffer[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
-    	samples_into_this_cycle++;
-    }
-    return samples_into_this_cycle;
-}
-
-
-int FillBufferWithSoundWave_I16(
-    float tone_hz,
-    float volume, //0-1
-    i16 *buffer,
-    int samples_to_add,  //buffer_seconds
-    int samples_per_second,
-    int samples_into_first_cycle)
-{
-    float cycles_per_second = tone_hz;
-    float samples_per_cycle = (float)samples_per_second / (float)cycles_per_second;
-
-    int samples_into_this_cycle = samples_into_first_cycle;
-    i16 signal = (i16)(32000.f * volume);
-    for (int i = 0; i < samples_to_add; i++)
-    {
-    	// // square wave
-    	// if (samples_into_this_cycle >= samples_per_cycle)
-    	// {
-    	// 	samples_into_this_cycle = 0;
-    	// 	signal = signal * -1;
-    	// }
-    	// samples_into_this_cycle++;
-    	// buffer[i] = signal;
-
-    	// sine wave
-    	buffer[i] = sinf(samples_into_this_cycle*2*M_PI / samples_per_cycle) * signal;
-    	samples_into_this_cycle++;
-    }
-    return samples_into_this_cycle;
-}
-
-
 
 void logSpec(SDL_AudioSpec *as) {
     char log[1024];
@@ -608,17 +492,6 @@ void logSpec(SDL_AudioSpec *as) {
 
 SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
 {
-    // int16 sin
-    // SDL_AudioSpec wanted_spec, spec;
-    // wanted_spec.freq = samples_per_second;//acc->sample_rate;
-    // wanted_spec.format = AUDIO_S16SYS;//AUDIO_F32;//AUDIO_S16SYS;
-    // wanted_spec.channels = 1;//acc->channels;
-    // wanted_spec.silence = 0;
-    // wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE
-    // wanted_spec.callback = 0;  // none to set samples ourself
-    // wanted_spec.userdata = 0;
-
-    // float sin
     SDL_AudioSpec wanted_spec, spec;
     wanted_spec.freq = samples_per_second;//acc->sample_rate;
     wanted_spec.format = AUDIO_F32;//AUDIO_F32;//AUDIO_S16SYS;
@@ -683,28 +556,9 @@ void InitOpenGL(HWND window)
 
 
 
-void RenderToScreen()
-{
-	// GLuint tex;
-	// glGenTextures(1, &tex); // not actually needed?
- //    glBindTexture(GL_TEXTURE_2D, tex);
 
-
-	// GLuint readFboId = 0;
-	// glGenFramebuffers(1, &readFboId);
-	// glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
-
-	// glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-	//                        GL_TEXTURE_2D, tex, 0);
-
-	// glBlitFramebuffer(0, 0, texWidth, texHeight,
-	//                   0, 0, winWidth, winHeight,
-	//                   GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-	// glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	// glDeleteFramebuffers(1, &readFboId);
-}
-
+// for modern api try glBlitFramebuffer & glFramebufferTexture2D
+// tho you'll need to install glew or pull with wglGetProcAddress
 void RenderToScreen(void *memory, int width, int height, HWND window)
 {
 
@@ -870,22 +724,6 @@ int CALLBACK WinMain(
 
 	// SET FPS BASED ON LOADED VIDEO
 
-	// todo: check ticks_per_frame ??
-	// .vfc->streams[]->time_base ? or some other time_base?
-
-	// char vidfps[123];
-	// sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
-	// 	video_file.vfc->streams[video_file.video.index]->time_base.num,
-	// 	video_file.vfc->streams[video_file.video.index]->time_base.den,
-	// 	video_file.video.codecContext->ticks_per_frame
-	// );
-	// OutputDebugString(vidfps);
-
-	// double targetFPS = (video_file.vfc->streams[video_file.video.index]->time_base.den /
-	// 				   video_file.vfc->streams[video_file.video.index]->time_base.num) /
-	// 				   video_file.video.codecContext->ticks_per_frame;
-	// double targetMsPerFrame = 1000 / targetFPS;
-
 	char vidfps[123];
 	sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
 		video_file.video.codecContext->time_base.num,
@@ -958,22 +796,6 @@ int CALLBACK WinMain(
     InitOpenGL(window);
 
 
-    // temp gfx
-    u32 *buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
-    u8 r = 0;
-    u8 g = 0;
-    u8 b = 0;
-    for (int y = 0; y < HEI; y++)
-    {
-    	r = sin(y*M_PI / HEI) * 255;
-	    for (int x = 0; x < WID; x++)
-	    {
-	    	b = sin(x*M_PI / WID) * 255;
-	    	buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-	    }
-    }
-
-
 
     // SDL, for sound atm
 
@@ -1004,46 +826,10 @@ int CALLBACK WinMain(
     int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
     int desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
 
-
-    // int16 sin
-    // int samples_into_last_cycle = FillBufferWithSoundWave(
-    //     440,
-    //     1,
-    //     (i16*)sound_buffer,
-    //     samples_in_buffer,
-    //     samples_per_second,
-    //     0);
-
-    // // float sin
-    // int samples_into_last_cycle = FillBufferWithSoundWave2(
-    //     440,
-    //     1,
-    //     (float*)sound_buffer,
-    //     samples_in_buffer,
-    //     samples_per_second,
-    //     0);
-
- //    // queue up a big chunk to start with (no more than our max buffer size, thoguh)
- //    // (or not really needed if we queue more than we need every frame right?)
-	// int bytes_queued_up = GetNextAudioFrame(
-	// 	video_file.afc,
-	// 	video_file.audio.codecContext,
-	// 	video_file.audio.index,
-	// 	(u8*)sound_buffer,
-	// 	bytes_in_buffer);
- //    if (SDL_QueueAudio(
- //                       audio_device,
- //                       sound_buffer,
- //                       bytes_in_buffer) < 0)
- //    {
- //        char audioerr[256];
- //        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
- //        OutputDebugString(audioerr);
- //    }
-
+    // track how long we've been playing audio?
+    // better way to sync??
     Timer audioTimer;
-    // audioTimer.Start(); // todo: need to add latency of sdl buffer?
- //    SDL_PauseAudioDevice(audio_device, 0);
+
 
 
     // MORE FFMPEG
@@ -1158,30 +944,6 @@ int CALLBACK WinMain(
 		        // OutputDebugString(msg2);
 			}
 		}
-
-
-
-	    // continuous tone
-	    // u32 bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-	    // u32 bytes_per_sample = sizeof(i16) * audio_channels;
-	    // u32 samples_left_in_queue = bytes_left_in_queue / bytes_per_sample;
-	    // assert (bytes_left_in_queue % bytes_per_sample == 0);
-	    // u32 desired_samples_ahead = buffer_seconds * samples_in_buffer;
-	    // u32 needed_extra_samples = desired_samples_ahead - samples_left_in_queue;
-	    // u32 samples_to_add = needed_extra_samples;
-	    // samples_into_last_cycle = FillBufferWithSoundWave(
-	    //     440,
-	    //     1,
-	    //     sound_buffer,
-	    //     samples_to_add,
-	    //     samples_per_second,
-	    //     samples_into_last_cycle);
-	    // if (SDL_QueueAudio(audio_device, sound_buffer, samples_to_add*sizeof(i16)) < 0)
-	    // {
-	    //     char audioerr[256];
-	    //     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-	    //     OutputDebugString(audioerr);
-	    // }
 
 
 
