@@ -98,26 +98,26 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
     u8 b = 0;
     for (int x = 0; x < wid; x++)
     {
-    	float audioSample = audio[x*5];
-    	float audioScaled = audioSample * hei/2;
-    	audioScaled += hei/2;
-	    for (int y = 0; y < hei; y++)
-	    {
-	    	if (y < hei/2) {
-		    	if (y < audioScaled) r = 0;
-		    	else r = 255;
-		    } else {
-		    	if (y > audioScaled) r = 0;
-		    	else r = 255;
-		    }
-	    	buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-	    }
+        float audioSample = audio[x*5];
+        float audioScaled = audioSample * hei/2;
+        audioScaled += hei/2;
+        for (int y = 0; y < hei; y++)
+        {
+            if (y < hei/2) {
+                if (y < audioScaled) r = 0;
+                else r = 255;
+            } else {
+                if (y > audioScaled) r = 0;
+                else r = 255;
+            }
+            buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+        }
     }
     // for (int i = 0; i < 20; i++)
     // {
-	   //  char temp[256];
-	   //  sprintf(temp, "value: %f\n", (float)audio[i]);
-	   //  OutputDebugString(temp);
+       //  char temp[256];
+       //  sprintf(temp, "value: %f\n", (float)audio[i]);
+       //  OutputDebugString(temp);
     // }
 }
 
@@ -125,12 +125,12 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 // return bytes (not samples) written to outBuffer
 int GetNextAudioFrame(
-	AVFormatContext *fc,
-	AVCodecContext *cc,
-	int streamIndex,
-	u8 *outBuffer,
-	int outBufferSize,
-	double msSinceStart)
+    AVFormatContext *fc,
+    AVCodecContext *cc,
+    int streamIndex,
+    u8 *outBuffer,
+    int outBufferSize,
+    double msSinceStart)
 {
 
   //   // may need a resampler if we ever get a non-float format?
@@ -149,8 +149,8 @@ int GetNextAudioFrame(
   //       return -1;
   //   }
 
-		// // to actually resample...
-		// // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
+        // // to actually resample...
+        // // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
   //       // // resample frames
   //       // double* buffer;
   //       // av_samples_alloc((uint8_t**) &buffer, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
@@ -170,13 +170,13 @@ int GetNextAudioFrame(
     AVFrame* frame = av_frame_alloc();
     if (!frame)
     {
-    	OutputDebugString("Error allocating the frame\n");
+        OutputDebugString("Error allocating the frame\n");
         return 1;
     }
 
-	int bytes_written = 0;
+    int bytes_written = 0;
 
-	// https://stackoverflow.com/questions/20545767/decode-audio-from-memory-c
+    // https://stackoverflow.com/questions/20545767/decode-audio-from-memory-c
 
     // Read the packets in a loop
     while (av_read_frame(fc, &readingPacket) == 0)
@@ -190,7 +190,7 @@ int GetNextAudioFrame(
             {
                 // Try to decode the packet into a frame
                 // Some frames rely on multiple packets,
-			    // so we have to make sure the frame is finished before
+                // so we have to make sure the frame is finished before
                 // we can use it
                 int gotFrame = 0;
                 int packet_bytes_decoded = avcodec_decode_audio4(cc, frame, &gotFrame, &decodingPacket);
@@ -198,7 +198,7 @@ int GetNextAudioFrame(
                 if (packet_bytes_decoded >= 0 && gotFrame)
                 {
 
-                	// shift packet over to get next frame (if there is one)
+                    // shift packet over to get next frame (if there is one)
                     decodingPacket.size -= packet_bytes_decoded;
                     decodingPacket.data += packet_bytes_decoded;
 
@@ -208,56 +208,56 @@ int GetNextAudioFrame(
                     // keep a check here so we don't overflow outBuffer??
               //       // keep filling until we hit outBufferSize
               //       // don't we drop a packet here??? (the last we pull)
-		            // if (bytes_written+additional_bytes > outBufferSize)
-		            // {
-		            // 	return bytes_written;
-		            // }
+                    // if (bytes_written+additional_bytes > outBufferSize)
+                    // {
+                    //  return bytes_written;
+                    // }
 
 
-	            	double msToPlayFrame = 1000 * frame->pts *
-	            		fc->streams[streamIndex]->time_base.num /
-	            		fc->streams[streamIndex]->time_base.den;
+                    double msToPlayFrame = 1000 * frame->pts *
+                        fc->streams[streamIndex]->time_base.num /
+                        fc->streams[streamIndex]->time_base.den;
 
-	            	// char zxcv[123];
-	            	// sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
-	            	//         msToPlayFrame,
-	            	//         msSinceStart
-	            	//         );
-	            	// OutputDebugString(zxcv);
+                    // char zxcv[123];
+                    // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+                    //         msToPlayFrame,
+                    //         msSinceStart
+                    //         );
+                    // OutputDebugString(zxcv);
 
                     // todo: stretch or shrink this buffer
                     // to external clock? but tough w/ audio latency right?
-		            double msDelayAllowed = 20;  // feels janky
-		            // console yourself with the thought that this should only happen if
-		            // our sound library or driver is playing audio out of sync w/ the system clock???
-		            if (msToPlayFrame + msDelayAllowed < msSinceStart)
-		            {
-		            	OutputDebugString("skipping some audio bytes.. tempy\n");
-		            	//continue;
+                    double msDelayAllowed = 20;  // feels janky
+                    // console yourself with the thought that this should only happen if
+                    // our sound library or driver is playing audio out of sync w/ the system clock???
+                    if (msToPlayFrame + msDelayAllowed < msSinceStart)
+                    {
+                        OutputDebugString("skipping some audio bytes.. tempy\n");
+                        //continue;
 
-		            	// todo: replace this with better
-		            	int samples_to_skip = 10;
-		            	additional_bytes -= samples_to_skip *
-		            		av_get_bytes_per_sample(cc->sample_fmt);
-		            }
+                        // todo: replace this with better
+                        int samples_to_skip = 10;
+                        additional_bytes -= samples_to_skip *
+                            av_get_bytes_per_sample(cc->sample_fmt);
+                    }
 
-					memcpy(outBuffer, frame->data[0], additional_bytes);
+                    memcpy(outBuffer, frame->data[0], additional_bytes);
 
 
-		            outBuffer+=additional_bytes;
-		            bytes_written+=additional_bytes;
+                    outBuffer+=additional_bytes;
+                    bytes_written+=additional_bytes;
 
 
                     // now try to guess when we're done based on the size of the last frame
-		            if (bytes_written+additional_bytes > outBufferSize)
-		            {
-		            	// av_free_packet(&readingPacket);
-		            	return bytes_written;
-		            }
+                    if (bytes_written+additional_bytes > outBufferSize)
+                    {
+                        // av_free_packet(&readingPacket);
+                        return bytes_written;
+                    }
 
 
-		            // // just one frame;
-		            // return bytes_written;
+                    // // just one frame;
+                    // return bytes_written;
                 }
                 else
                 {
@@ -266,7 +266,7 @@ int GetNextAudioFrame(
                 }
                 av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
             }
-        	// av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
+            // av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
         }
         av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
     }
@@ -275,7 +275,7 @@ int GetNextAudioFrame(
     // is set, there can be buffered up frames that need to be flushed, so we'll do that
     if (cc->codec->capabilities & CODEC_CAP_DELAY)
     {
-    	assert(false);
+        assert(false);
         av_init_packet(&readingPacket);
         // Decode all the remaining frames in the buffer, until the end is reached
         int gotFrame = 0;
@@ -286,35 +286,35 @@ int GetNextAudioFrame(
         }
     }
 
-	return bytes_written; // ever get here?
+    return bytes_written; // ever get here?
 }
 
 bool GetNextVideoFrame(
-	AVFormatContext *fc,
-	AVCodecContext *cc,
-	SwsContext *sws_context,
-	int streamIndex,
-	AVFrame *outFrame,
-	double msSinceStart)
+    AVFormatContext *fc,
+    AVCodecContext *cc,
+    SwsContext *sws_context,
+    int streamIndex,
+    AVFrame *outFrame,
+    double msSinceStart)
 {
-	AVPacket packet;
+    AVPacket packet;
 
-	AVFrame *frame = av_frame_alloc();  // just metadata
+    AVFrame *frame = av_frame_alloc();  // just metadata
 
-	if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
+    if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
 
-            	// char temp2[123];
-            	// sprintf(temp2, "time_base %i / %i\n",
-            	//         fc->streams[streamIndex]->time_base.num,
-            	//         fc->streams[streamIndex]->time_base.den
-            	//         );
-            	// OutputDebugString(temp2);
+                // char temp2[123];
+                // sprintf(temp2, "time_base %i / %i\n",
+                //         fc->streams[streamIndex]->time_base.num,
+                //         fc->streams[streamIndex]->time_base.den
+                //         );
+                // OutputDebugString(temp2);
 
 
-	bool skipped_a_frame_already = false;
+    bool skipped_a_frame_already = false;
 
-	while(av_read_frame(fc, &packet) >= 0)
-	{
+    while(av_read_frame(fc, &packet) >= 0)
+    {
         if (packet.stream_index == streamIndex)
         {
             int frame_finished;
@@ -323,63 +323,74 @@ bool GetNextVideoFrame(
             if (frame_finished)
             {
 
-				// todo: is variable frame rate possible? (eg some frames shown twice?)
-				// todo: is it possible to get these not in pts order?
+                // todo: is variable frame rate possible? (eg some frames shown twice?)
+                // todo: is it possible to get these not in pts order?
 
-            	// char temp[123];
-            	// sprintf(temp, "frame->pts %lli\n", inFrame->pts);
-            	// OutputDebugString(temp);
+                // char temp[123];
+                // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
+                // OutputDebugString(temp);
 
-            	double msToPlayFrame = 1000 * frame->pts /
-            		fc->streams[streamIndex]->time_base.den;
+                double msToPlayFrame = 1000 * frame->pts /
+                    fc->streams[streamIndex]->time_base.den;
 
-            	// char zxcv[123];
-            	// sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f\n",
-            	//         msToPlayFrame,
-            	//         msSinceStart
-            	//         );
-            	// OutputDebugString(zxcv);
+                // char zxcv[123];
+                // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f\n",
+                //         msToPlayFrame,
+                //         msSinceStart
+                //         );
+                // OutputDebugString(zxcv);
 
-            	// todo: this should be somewhere else, also how to estimate?
-            	// and is there any video latency? just research how to properly sync
-            	//asdfasdf
-            	// double msAudioLatencyEstimate = 50;
+                // todo: this should be somewhere else, also how to estimate?
+                // and is there any video latency? just research how to properly sync
+                //asdfasdf
+                // double msAudioLatencyEstimate = 50;
 
-            	// this feels just a bit early? maybe we should double it? or more?
-            	double msAudioLatencyEstimate = 1024.0 / samples_per_second * 1000.0;
-            	msAudioLatencyEstimate *= 2; // feels just right
+                // this feels just a bit early? maybe we should double it? or more?
+                double msAudioLatencyEstimate = 1024.0 / samples_per_second * 1000.0;
+                msAudioLatencyEstimate *= 2; // feels just about right
 
 
-	            // skip frame if too far off
-	            double msDelayAllowed = 20;
-	            if (msToPlayFrame +
-	                msAudioLatencyEstimate +
-	                msDelayAllowed <
-	                msSinceStart &&
-	                !skipped_a_frame_already)
-	            {
-	            	OutputDebugString("skipped a frame\n");
-	            	skipped_a_frame_already = true;
-	            	continue;
-	            }
+                // skip frame if too far off
+                double msDelayAllowed = 20;
+                if (msToPlayFrame +
+                    msAudioLatencyEstimate +
+                    msDelayAllowed <
+                    msSinceStart &&
+                    !skipped_a_frame_already)
+                {
+                    OutputDebugString("skipped a frame\n");
+                    skipped_a_frame_already = true;
 
-            	sws_scale(
-	          		sws_context,
-	          		(u8**)frame->data,
-	          		frame->linesize,
-	          		0,
-	          		frame->height,
-	          		outFrame->data,
-	          		outFrame->linesize);
+                    // seems like we'd want this here right?
+                    av_packet_unref(&packet);
+                    av_frame_unref(frame);
+
+                    continue;
+                }
+
+                sws_scale(
+                    sws_context,
+                    (u8**)frame->data,
+                    frame->linesize,
+                    0,
+                    frame->height,
+                    outFrame->data,
+                    outFrame->linesize);
             }
+
+            // as far as i can tell, these need to be freed before leaving
+            // AND they need to be unref'd before every use below
+            av_free_packet(&packet);
+            av_frame_free(&frame);
+
             return true; // or only when frame_finished??
         }
-        // call these before avcodec_decode_video2 again or we'll mem leak i think
+        // call these before reuse in avcodec_decode_video2 or av_read_frame
         av_packet_unref(&packet);
         av_frame_unref(frame);
-	}
+    }
 
-	return false;
+    return false;
 }
 
 
@@ -389,17 +400,17 @@ bool GetNextVideoFrame(
 
 struct StreamAV
 {
-	int index;
-	AVCodecContext *codecContext;
-	// AVCodec *codec;
+    int index;
+    AVCodecContext *codecContext;
+    // AVCodec *codec;
 };
 
 struct VideoFile
 {
-	AVFormatContext *vfc;
-	AVFormatContext *afc;  // kind of a hack? to read audio and video in sep loops
-	StreamAV video;
-	StreamAV audio;
+    AVFormatContext *vfc;
+    AVFormatContext *afc;  // kind of a hack? to read audio and video in sep loops
+    StreamAV video;
+    StreamAV audio;
 };
 
 void InitAV()
@@ -409,21 +420,21 @@ void InitAV()
 
 AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 {
-	AVCodecContext *orig = fc->streams[streamIndex]->codec;
-	AVCodec *codec = avcodec_find_decoder(orig->codec_id);
+    AVCodecContext *orig = fc->streams[streamIndex]->codec;
+    AVCodec *codec = avcodec_find_decoder(orig->codec_id);
     AVCodecContext *result = avcodec_alloc_context3(codec);
     if (!codec)
-    	{ MsgBox("ffmpeg: Unsupported codec. Yipes."); return false; }
+        { MsgBox("ffmpeg: Unsupported codec. Yipes."); return false; }
     if (avcodec_copy_context(result, orig) != 0)
-    	{ MsgBox("ffmpeg: Codec context copy failed."); return false; }
+        { MsgBox("ffmpeg: Codec context copy failed."); return false; }
     if (avcodec_open2(result, codec, 0) < 0)
-    	{ MsgBox("ffmpeg: Couldn't open codec."); return false; }
+        { MsgBox("ffmpeg: Couldn't open codec."); return false; }
     return result;
 }
 
 VideoFile OpenVideoFileAV(char *filepath)
 {
-	VideoFile file;
+    VideoFile file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
     file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -494,21 +505,21 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 void logSpec(SDL_AudioSpec *as) {
     char log[1024];
-	sprintf(log,
-		" freq______%5d\n"
-		" format____%5d\n"
-		" channels__%5d\n"
-		" silence___%5d\n"
-		" samples___%5d\n"
-		" size______%5d\n\n",
-		(int) as->freq,
-		(int) as->format,
-		(int) as->channels,
-		(int) as->silence,
-		(int) as->samples,
-		(int) as->size
-	);
-	OutputDebugString(log);
+    sprintf(log,
+        " freq______%5d\n"
+        " format____%5d\n"
+        " channels__%5d\n"
+        " silence___%5d\n"
+        " samples___%5d\n"
+        " size______%5d\n\n",
+        (int) as->freq,
+        (int) as->format,
+        (int) as->channels,
+        (int) as->silence,
+        (int) as->samples,
+        (int) as->size
+    );
+    OutputDebugString(log);
 }
 
 SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
@@ -536,17 +547,17 @@ SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
 
     if (wanted_spec.format != spec.format)
     {
-    	// try another one instead of failing?
+        // try another one instead of failing?
         char audioerr[256];
         sprintf(audioerr, "SDL: Couldn't find desired format: %s\n", SDL_GetError());
         OutputDebugString(audioerr);
         return 0;
     }
 
-	OutputDebugString("SDL: audio spec wanted:\n");
-	logSpec(&wanted_spec);
-	OutputDebugString("SDL: audio spec got:\n");
-	logSpec(&spec);
+    OutputDebugString("SDL: audio spec wanted:\n");
+    logSpec(&wanted_spec);
+    OutputDebugString("SDL: audio spec got:\n");
+    logSpec(&spec);
 
     return audio_device;
 }
@@ -576,19 +587,19 @@ void InitOpenGL(HWND window)
 
 
     // seem to be context dependent? so load after it?
-	glGenFramebuffers = (PFGL_GEN_FBO)wglGetProcAddress("glGenFramebuffers");
-	glBindFramebuffer = (PFGL_BIND_FBO)wglGetProcAddress("glBindFramebuffer");
-	glFramebufferTexture2D = (PFGL_FBO_TEX2D)wglGetProcAddress("glFramebufferTexture2D");
-	glBlitFramebuffer = (PFGL_BLIT_FBO)wglGetProcAddress("glBlitFramebuffer");
-	glDeleteFramebuffers = (PFGL_DEL_FBO)wglGetProcAddress("glDeleteFramebuffers");
+    glGenFramebuffers = (PFGL_GEN_FBO)wglGetProcAddress("glGenFramebuffers");
+    glBindFramebuffer = (PFGL_BIND_FBO)wglGetProcAddress("glBindFramebuffer");
+    glFramebufferTexture2D = (PFGL_FBO_TEX2D)wglGetProcAddress("glFramebufferTexture2D");
+    glBlitFramebuffer = (PFGL_BLIT_FBO)wglGetProcAddress("glBlitFramebuffer");
+    glDeleteFramebuffers = (PFGL_DEL_FBO)wglGetProcAddress("glDeleteFramebuffers");
 
 
-	// create our texture and FBO just once right?
-	glGenTextures(1, &tex);
+    // create our texture and FBO just once right?
+    glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-	// could create and delete each frame maybe?
-	glGenFramebuffers(1, &readFboId);
+    // could create and delete each frame maybe?
+    glGenFramebuffers(1, &readFboId);
 
 
 }
@@ -609,7 +620,7 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
     // PatBlt(hdc, width, 0, winWidth-width, winHeight, BLACKNESS);
     // PatBlt(hdc, 0, height, width, winHeight-height, BLACKNESS);
 
-	BITMAPINFO info;
+    BITMAPINFO info;
     info.bmiHeader.biSize = sizeof(info);
     info.bmiHeader.biWidth = width;
     info.bmiHeader.biHeight = -height;  // negative to set origin in top left
@@ -646,7 +657,7 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
 
     if (!result)
     {
-    	OutputDebugString("DER");
+        OutputDebugString("DER");
         // DWORD msg = GetLastError();
         // MessageBox(0, (char*)msg, "error with StretchDIBits", MB_OK);
     }
@@ -662,36 +673,36 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
 
 void RenderToScreenGL(void *memory, int width, int height, HWND window)
 {
-	HDC hdc = GetDC(window);
+    HDC hdc = GetDC(window);
 
-//asdfasdf
-	// update our texture with new data
+    // update our texture with new data
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, memory);
 
 
-    // read from this buffer (could we bind just once?)
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
 
-	// should this only be needed once?
-	// (note texture needs to be bound at least once before calling this though??)
-	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-	                       GL_TEXTURE_2D, tex, 0);
+    // should this only be needed once?
+    // (note texture needs to be bound at least once before calling this though??)
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, tex, 0);
 
-	glBlitFramebuffer(0, 0, width, height,
-	                  0, 0, width, height,
-	                  GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    // still not quite sure how this gets the memory bytes to the screen...
+    // i guess TexImage puts mem into tex2D
+    // then framebufferTex ties readfbo to that tex2d
+    // then this blit writes the readfbo to the screen (our bound hdc)
+    glBlitFramebuffer(0, 0, width, height,
+                      0, 0, width, height,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
-	// reset to default
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
-	// glDeleteFramebuffers(1, &readFboId);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
+    // glDeleteFramebuffers(1, &readFboId);
 
 
-	SwapBuffers(hdc);
+    SwapBuffers(hdc);
     // glFinish();  // should never need this?
 
     ReleaseDC(window, hdc);
-
 }
 
 
@@ -700,48 +711,48 @@ void RenderToScreenGL(void *memory, int width, int height, HWND window)
 
 struct Timer
 {
-	LARGE_INTEGER starting_ticks;    // .QuadPart to get number as int64
-	LARGE_INTEGER ticks_per_second;  // via QueryPerformanceFrequency
-	LARGE_INTEGER ticks_last_frame;
-	bool started = false;
-	void Start()
-	{
-		started = true;
-	    QueryPerformanceFrequency(&ticks_per_second);
-	    QueryPerformanceCounter(&starting_ticks);
-	}
-	double MsElapsedBetween(LARGE_INTEGER old_ticks, LARGE_INTEGER ticks_now)
-	{
-    	int64_t ticks_elapsed = ticks_now.QuadPart - old_ticks.QuadPart;
-    	ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
-    	double delta_ms = (double)ticks_elapsed / (double)ticks_per_second.QuadPart;
-    	return delta_ms;
-	}
-	double MsElapsedSince(LARGE_INTEGER old_ticks)
-	{
-		LARGE_INTEGER ticks_now;
-		QueryPerformanceCounter(&ticks_now);
-    	return MsElapsedBetween(old_ticks, ticks_now);;
-	}
-	double MsSinceStart()
-	{
-		if (!started) {
-	        OutputDebugString("Timer: Tried to get time without starting first.");
-			// Start();  // actually, don't do this
-			return 0;
-		}
-    	return MsElapsedSince(starting_ticks);
-	}
+    LARGE_INTEGER starting_ticks;    // .QuadPart to get number as int64
+    LARGE_INTEGER ticks_per_second;  // via QueryPerformanceFrequency
+    LARGE_INTEGER ticks_last_frame;
+    bool started = false;
+    void Start()
+    {
+        started = true;
+        QueryPerformanceFrequency(&ticks_per_second);
+        QueryPerformanceCounter(&starting_ticks);
+    }
+    double MsElapsedBetween(LARGE_INTEGER old_ticks, LARGE_INTEGER ticks_now)
+    {
+        int64_t ticks_elapsed = ticks_now.QuadPart - old_ticks.QuadPart;
+        ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
+        double delta_ms = (double)ticks_elapsed / (double)ticks_per_second.QuadPart;
+        return delta_ms;
+    }
+    double MsElapsedSince(LARGE_INTEGER old_ticks)
+    {
+        LARGE_INTEGER ticks_now;
+        QueryPerformanceCounter(&ticks_now);
+        return MsElapsedBetween(old_ticks, ticks_now);;
+    }
+    double MsSinceStart()
+    {
+        if (!started) {
+            OutputDebugString("Timer: Tried to get time without starting first.\n");
+            // Start();  // actually, don't do this
+            return 0;
+        }
+        return MsElapsedSince(starting_ticks);
+    }
 
-	// these feel a little state-y
-	double MsSinceLastFrame()
-	{
-    	return MsElapsedSince(ticks_last_frame);
-	}
-	void EndFrame()
-	{
-		QueryPerformanceCounter(&ticks_last_frame);
-	}
+    // these feel a little state-y
+    double MsSinceLastFrame()
+    {
+        return MsElapsedSince(ticks_last_frame);
+    }
+    void EndFrame()
+    {
+        QueryPerformanceCounter(&ticks_last_frame);
+    }
 
 };
 
@@ -759,15 +770,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             appRunning = false;
         } break;
 
-		case WM_NCHITTEST: {
-	        LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
-	        if (hit == HTCLIENT) hit = HTCAPTION;
-	        	return hit;
-	    } break;
+        case WM_NCHITTEST: {
+            LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
+            if (hit == HTCLIENT) hit = HTCAPTION;
+                return hit;
+        } break;
 
-	    default: {
-	    	return DefWindowProc(hwnd, message, wParam, lParam);
-	    } break;
+        default: {
+            return DefWindowProc(hwnd, message, wParam, lParam);
+        } break;
     }
     return 0;
 }
@@ -781,12 +792,12 @@ void RenderWeird(u32* buf, int WID, int HEI, int t)
     u8 b = 0;
     for (int y = 0; y < HEI; y++)
     {
-    	r = sin(y*M_PI / HEI) * 255;
-	    for (int x = 0; x < WID; x++)
-	    {
-	    	b = sin(x*M_PI / WID) * 255;
-	    	buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-	    }
+        r = sin(y*M_PI / HEI) * 255;
+        for (int x = 0; x < WID; x++)
+        {
+            b = sin(x*M_PI / WID) * 255;
+            buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+        }
     }
 }
 
@@ -801,12 +812,12 @@ int CALLBACK WinMain(
 {
 
 
-	// TIMER
+    // TIMER
 
     if (timeBeginPeriod(1) != TIMERR_NOERROR) {
-    	char err[256];
-    	sprintf(err, "Unable to set resolution of Sleep to 1ms");
-    	OutputDebugString(err);
+        char err[256];
+        sprintf(err, "Unable to set resolution of Sleep to 1ms");
+        OutputDebugString(err);
     }
 
     Timer timer;
@@ -819,25 +830,25 @@ int CALLBACK WinMain(
 
     InitAV();
 
-	VideoFile video_file = OpenVideoFileAV(INPUT_FILE);
+    VideoFile video_file = OpenVideoFileAV(INPUT_FILE);
 
 
 
 
-	// SET FPS BASED ON LOADED VIDEO
+    // SET FPS BASED ON LOADED VIDEO
 
-	char vidfps[123];
-	sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
-		video_file.video.codecContext->time_base.num,
-		video_file.video.codecContext->time_base.den,
-		video_file.video.codecContext->ticks_per_frame
-	);
-	OutputDebugString(vidfps);
+    char vidfps[123];
+    sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
+        video_file.video.codecContext->time_base.num,
+        video_file.video.codecContext->time_base.den,
+        video_file.video.codecContext->ticks_per_frame
+    );
+    OutputDebugString(vidfps);
 
-	double targetFPS = (video_file.video.codecContext->time_base.den /
-					    video_file.video.codecContext->time_base.num) /
-					    video_file.video.codecContext->ticks_per_frame;
-	double targetMsPerFrame = 1000 / targetFPS;
+    double targetFPS = (video_file.video.codecContext->time_base.den /
+                        video_file.video.codecContext->time_base.num) /
+                        video_file.video.codecContext->ticks_per_frame;
+    double targetMsPerFrame = 1000 / targetFPS;
 
 
 
@@ -918,11 +929,11 @@ int CALLBACK WinMain(
     AVCodecContext *acc = video_file.audio.codecContext;
 
     // try to keep this full
-	int audio_channels = acc->channels;
+    int audio_channels = acc->channels;
 
-	// how big of chunks do we want to decode and queue up at a time
-	int buffer_seconds = 2; // no reason not to just keep this big, right?
-	// int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
+    // how big of chunks do we want to decode and queue up at a time
+    int buffer_seconds = 2; // no reason not to just keep this big, right?
+    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
     int samples_in_buffer = acc->sample_rate * buffer_seconds;
     int bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
     void *sound_buffer = (void*)malloc(bytes_in_buffer);
@@ -940,30 +951,30 @@ int CALLBACK WinMain(
 
     // MORE FFMPEG
 
-	AVFrame *frame_output = av_frame_alloc();  // just metadata
+    AVFrame *frame_output = av_frame_alloc();  // just metadata
 
-	if (!frame_output)
-		{ MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
+    if (!frame_output)
+        { MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
 
 
     // actual mem for frame
     int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
-		// video_file.video.codecContext->width,
-		// video_file.video.codecContext->height);
-		WID,
-		HEI);
+        // video_file.video.codecContext->width,
+        // video_file.video.codecContext->height);
+        WID,
+        HEI);
     u8 *buffer = (u8 *)av_malloc(numBytes * sizeof(u8));
 
     // frame is now using buffer memory
     avpicture_fill((AVPicture *)frame_output, buffer, AV_PIX_FMT_RGB32,
-		WID,
-		HEI);
+        WID,
+        HEI);
 
     // for converting between frames i think
     struct SwsContext *sws_context = 0;
     sws_context = sws_getContext(
-		video_file.video.codecContext->width,
-		video_file.video.codecContext->height,
+        video_file.video.codecContext->width,
+        video_file.video.codecContext->height,
         video_file.video.codecContext->pix_fmt,
         WID,
         HEI,
@@ -974,7 +985,7 @@ int CALLBACK WinMain(
 
 
 
-	// av_frame_unref() //reset for next frame
+    // av_frame_unref() //reset for next frame
 
 
 
@@ -982,12 +993,11 @@ int CALLBACK WinMain(
     // MAIN LOOP
 
     // seed our first frame dt
-	timer.EndFrame();
+    timer.EndFrame();
 
     while (appRunning)
     {
         MSG Message;
-        // if we never create a window, do we never get any messages?
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&Message);
@@ -997,117 +1007,113 @@ int CALLBACK WinMain(
 
 
 
-		// SOUND
+        // SOUND
 
-		// static bool playingAudio = false;
-		// if (!playingAudio)
-		// {
-		// 	SDL_PauseAudioDevice(audio_device, 0);
-		// 	audioTimer.Start();
-		// 	playingAudio = true;
-		// }
+        // static bool playingAudio = false;
+        // if (!playingAudio)
+        // {
+        //  SDL_PauseAudioDevice(audio_device, 0);
+        //  audioTimer.Start();
+        //  playingAudio = true;
+        // }
 
-	 //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-	 //        // char msg[256];
-	 //        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-	 //        // OutputDebugString(msg);
-
-
-	 //    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-	 //        // char msg3[256];
-	 //        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-	 //        // OutputDebugString(msg3);
-
-	 //    if (wanted_bytes >= 0)
-	 //    {
-	 //    	if (wanted_bytes > bytes_in_buffer) {
-		//         // char errq[256];
-		//         // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-		//         // OutputDebugString(errq);
-
-	 //    		wanted_bytes = bytes_in_buffer;
-	 //    	}
-
-	 //    	// ideally a little bite of sound, every frame
-	 //    	// todo: how to sync this right, pts dts?
-		// 	int bytes_queued_up = GetNextAudioFrame(
-		// 		video_file.afc,
-		// 		video_file.audio.codecContext,
-		// 		video_file.audio.index,
-		// 		(u8*)sound_buffer,
-		// 		wanted_bytes,
-		// 		audioTimer.MsSinceStart());
-
-		// 	if (bytes_queued_up > 0)
-		// 	{
-		// 	    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
-		// 	    {
-		// 	        char audioerr[256];
-		// 	        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-		// 	        OutputDebugString(audioerr);
-		// 	    }
-		//         // char msg2[256];
-		//         // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-		//         // OutputDebugString(msg2);
-		// 	}
-		// }
+     //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+     //        // char msg[256];
+     //        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+     //        // OutputDebugString(msg);
 
 
+     //    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+     //        // char msg3[256];
+     //        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+     //        // OutputDebugString(msg3);
 
+     //    if (wanted_bytes >= 0)
+     //    {
+     //     if (wanted_bytes > bytes_in_buffer) {
+        //         // char errq[256];
+        //         // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+        //         // OutputDebugString(errq);
 
+     //         wanted_bytes = bytes_in_buffer;
+     //     }
 
-		// VIDEO
+     //     // ideally a little bite of sound, every frame
+     //     // todo: how to sync this right, pts dts?
+        //  int bytes_queued_up = GetNextAudioFrame(
+        //      video_file.afc,
+        //      video_file.audio.codecContext,
+        //      video_file.audio.index,
+        //      (u8*)sound_buffer,
+        //      wanted_bytes,
+        //      audioTimer.MsSinceStart());
 
-// 		double msSinceAudioStart = audioTimer.MsSinceStart();
-
-// static bool flag = false;
-// if (!flag) {
-// 		GetNextVideoFrame(
-// 			video_file.vfc,
-// 			video_file.video.codecContext,
-// 			sws_context,
-// 			video_file.video.index,
-// 			frame_output,
-// 			msSinceAudioStart);
-// flag = true;
-// }
-
-// 		RenderToScreen((void*)buffer, WID, HEI, window);
-
-
-		// DisplayAudioBuffer_FLOAT(buf, WID, HEI,
-		//                    (float*)sound_buffer, bytes_in_buffer);
-	static int increm = 0;
-    RenderWeird(buf, WID, HEI, increm++);
-		RenderToScreenGL((void*)buf, WID, HEI, window);
-		// RenderToScreenGDI((void*)buf, WID, HEI, window);
+        //  if (bytes_queued_up > 0)
+        //  {
+        //      if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+        //      {
+        //          char audioerr[256];
+        //          sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+        //          OutputDebugString(audioerr);
+        //      }
+        //         // char msg2[256];
+        //         // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+        //         // OutputDebugString(msg2);
+        //  }
+        // }
 
 
 
 
-	    // TIMER
 
-		double dt = timer.MsSinceLastFrame();
-		if (dt < targetMsPerFrame)
-		{
-			double msToSleep = targetMsPerFrame - dt;
-			Sleep(msToSleep);
+        // VIDEO
+
+        double msSinceAudioStart = audioTimer.MsSinceStart();
+
+        GetNextVideoFrame(
+            video_file.vfc,
+            video_file.video.codecContext,
+            sws_context,
+            video_file.video.index,
+            frame_output,
+            msSinceAudioStart);
+
+        RenderToScreenGL((void*)buffer, WID, HEI, window);
+
+
+        // // DisplayAudioBuffer_FLOAT(buf, WID, HEI,
+        // //                    (float*)sound_buffer, bytes_in_buffer);
+        // static int increm = 0;
+        // RenderWeird(buf, WID, HEI, increm++);
+        // RenderToScreenGL((void*)buf, WID, HEI, window);
+        // RenderToScreenGDI((void*)buf, WID, HEI, window);
+
+
+
+
+        // TIMER
+
+        double dt = timer.MsSinceLastFrame();
+        if (dt < targetMsPerFrame)
+        {
+            double msToSleep = targetMsPerFrame - dt;
+            Sleep(msToSleep);
             while (dt < targetMsPerFrame)  // is this weird?
             {
                 dt = timer.MsSinceLastFrame();
             }
             // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
             // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
-		}
-		else
-		{
-			// missed fps target
+        }
+        else
+        {
+            // missed fps target
             char msg[256];
             sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-			        targetMsPerFrame, dt);
+                    targetMsPerFrame, dt);
             OutputDebugString(msg);
-		}
-		timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+        }
+        timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
 
 
