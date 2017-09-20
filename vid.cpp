@@ -704,7 +704,7 @@ void RenderToScreenGL(void *memory, int width, int height, HWND window)
     // then framebufferTex ties readfbo to that tex2d
     // then this blit writes the readfbo to the screen (our bound hdc)
     glBlitFramebuffer(0, 0, width, height,
-                      0, 0, width, height,
+                      0, height, width, 0,   // flip vertically
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
