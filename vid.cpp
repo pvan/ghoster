@@ -183,6 +183,7 @@ int GetNextAudioFrame(
     {
         if (readingPacket.stream_index == streamIndex)
         {
+            // if this is just a copy, if we free and unref readingP do we free decodingP?
             AVPacket decodingPacket = readingPacket;
 
             // Audio packets can have multiple audio frames in a single packet
@@ -252,6 +253,9 @@ int GetNextAudioFrame(
                     if (bytes_written+additional_bytes > outBufferSize)
                     {
                         // av_free_packet(&readingPacket);
+                        // av_free_packet(&decodingPacket);
+                        av_free_packet(&readingPacket);
+                        av_frame_free(&frame);
                         return bytes_written;
                     }
 
@@ -265,7 +269,13 @@ int GetNextAudioFrame(
                     decodingPacket.data = nullptr;
                 }
                 av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
+
+                // don't this right, because we may be pulling a second frame from it?
+                // av_packet_unref(&decodingPacket);
             }
+
+            // don't need because it's just a shallow copy of readingP??
+            // av_free_packet(&decodingPacket);
             // av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
         }
         av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
@@ -286,6 +296,8 @@ int GetNextAudioFrame(
         }
     }
 
+    av_free_packet(&readingPacket);
+    av_frame_free(&frame);
     return bytes_written; // ever get here?
 }
 
@@ -1009,58 +1021,59 @@ int CALLBACK WinMain(
 
         // SOUND
 
-        // static bool playingAudio = false;
-        // if (!playingAudio)
-        // {
-        //  SDL_PauseAudioDevice(audio_device, 0);
-        //  audioTimer.Start();
-        //  playingAudio = true;
-        // }
+        static bool playingAudio = false;
+        if (!playingAudio)
+        {
+            SDL_PauseAudioDevice(audio_device, 0);
+            audioTimer.Start();
+            playingAudio = true;
+        }
 
-     //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-     //        // char msg[256];
-     //        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-     //        // OutputDebugString(msg);
+        int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+            // char msg[256];
+            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+            // OutputDebugString(msg);
 
 
-     //    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-     //        // char msg3[256];
-     //        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-     //        // OutputDebugString(msg3);
+        int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+            // char msg3[256];
+            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+            // OutputDebugString(msg3);
 
-     //    if (wanted_bytes >= 0)
-     //    {
-     //     if (wanted_bytes > bytes_in_buffer) {
-        //         // char errq[256];
-        //         // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-        //         // OutputDebugString(errq);
+        if (wanted_bytes >= 0)
+        {
+            if (wanted_bytes > bytes_in_buffer)
+            {
+                // char errq[256];
+                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                // OutputDebugString(errq);
 
-     //         wanted_bytes = bytes_in_buffer;
-     //     }
+                wanted_bytes = bytes_in_buffer;
+            }
 
-     //     // ideally a little bite of sound, every frame
-     //     // todo: how to sync this right, pts dts?
-        //  int bytes_queued_up = GetNextAudioFrame(
-        //      video_file.afc,
-        //      video_file.audio.codecContext,
-        //      video_file.audio.index,
-        //      (u8*)sound_buffer,
-        //      wanted_bytes,
-        //      audioTimer.MsSinceStart());
+            // ideally a little bite of sound, every frame
+            // todo: how to sync this right, pts dts?
+            int bytes_queued_up = GetNextAudioFrame(
+                video_file.afc,
+                video_file.audio.codecContext,
+                video_file.audio.index,
+                (u8*)sound_buffer,
+                wanted_bytes,
+                audioTimer.MsSinceStart());
 
-        //  if (bytes_queued_up > 0)
-        //  {
-        //      if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
-        //      {
-        //          char audioerr[256];
-        //          sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-        //          OutputDebugString(audioerr);
-        //      }
-        //         // char msg2[256];
-        //         // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-        //         // OutputDebugString(msg2);
-        //  }
-        // }
+            if (bytes_queued_up > 0)
+            {
+                if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+                {
+                    char audioerr[256];
+                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                    OutputDebugString(audioerr);
+                }
+                   // char msg2[256];
+                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                   // OutputDebugString(msg2);
+            }
+        }
 
 
 
@@ -1079,6 +1092,7 @@ int CALLBACK WinMain(
             msSinceAudioStart);
 
         RenderToScreenGL((void*)buffer, WID, HEI, window);
+        // RenderToScreenGDI((void*)buffer, WID, HEI, window);
 
 
         // // DisplayAudioBuffer_FLOAT(buf, WID, HEI,
