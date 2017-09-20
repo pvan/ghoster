@@ -33,6 +33,8 @@ extern "C"
 
 
 
+
+
 const int samples_per_second = 44100;
 
 
@@ -57,6 +59,29 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 #define i32 int32_t
 
 
+
+#define GL_READ_FRAMEBUFFER               0x8CA8
+#define GL_COLOR_ATTACHMENT0              0x8CE0
+
+// there's probably established names for these but w/e for now
+typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
+typedef void (APIENTRY * PFGL_BIND_FBO) (GLenum target, GLuint framebuffer);
+typedef void (APIENTRY * PFGL_FBO_TEX2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
+typedef void (APIENTRY * PFGL_BLIT_FBO) (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
+                                         GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
+typedef void (APIENTRY * PFGL_DEL_FBO) (GLsizei n, const GLuint * framebuffers);
+
+static PFGL_GEN_FBO glGenFramebuffers;
+static PFGL_BIND_FBO glBindFramebuffer;
+static PFGL_FBO_TEX2D glFramebufferTexture2D;
+static PFGL_BLIT_FBO glBlitFramebuffer;
+static PFGL_DEL_FBO glDeleteFramebuffers;
+
+
+
+// ok place for these??
+static GLuint tex;
+static GLuint readFboId = 0;
 
 
 
@@ -239,17 +264,11 @@ int GetNextAudioFrame(
                     decodingPacket.size = 0;
                     decodingPacket.data = nullptr;
                 }
-                // av_frame_unref(frame);
+                av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
             }
-            // av_packet_unref(&decodingPacket);
+        	// av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
         }
-
-        // todo: shouldn't we free frame and decodingPacket
-        // from use in avcodec_decode_audio4 ?
-
-        // You *must* call av_free_packet() after each call to av_read_frame() or else you'll leak memory
-        // todo: free or unref?
-        av_free_packet(&readingPacket);
+        av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
     }
 
     // Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
@@ -267,7 +286,6 @@ int GetNextAudioFrame(
         }
     }
 
-
 	return bytes_written; // ever get here?
 }
 
@@ -276,12 +294,14 @@ bool GetNextVideoFrame(
 	AVCodecContext *cc,
 	SwsContext *sws_context,
 	int streamIndex,
-	AVFrame *inFrame,  // todo: don't really need this outside this func?
 	AVFrame *outFrame,
 	double msSinceStart)
 {
 	AVPacket packet;
 
+	AVFrame *frame = av_frame_alloc();  // just metadata
+
+	if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
 
             	// char temp2[123];
             	// sprintf(temp2, "time_base %i / %i\n",
@@ -298,19 +318,20 @@ bool GetNextVideoFrame(
         if (packet.stream_index == streamIndex)
         {
             int frame_finished;
-            avcodec_decode_video2(cc, inFrame, &frame_finished, &packet);
+            avcodec_decode_video2(cc, frame, &frame_finished, &packet);
 
             if (frame_finished)
             {
 
 				// todo: is variable frame rate possible? (eg some frames shown twice?)
-				// todo: is it possible to get these out of pts order?
+				// todo: is it possible to get these not in pts order?
 
             	// char temp[123];
             	// sprintf(temp, "frame->pts %lli\n", inFrame->pts);
             	// OutputDebugString(temp);
 
-            	double msToPlayFrame = 1000 * inFrame->pts / fc->streams[streamIndex]->time_base.den;
+            	double msToPlayFrame = 1000 * frame->pts /
+            		fc->streams[streamIndex]->time_base.den;
 
             	// char zxcv[123];
             	// sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f\n",
@@ -344,18 +365,18 @@ bool GetNextVideoFrame(
 
             	sws_scale(
 	          		sws_context,
-	          		(u8**)inFrame->data,
-	          		inFrame->linesize,
+	          		(u8**)frame->data,
+	          		frame->linesize,
 	          		0,
-	          		inFrame->height,
+	          		frame->height,
 	          		outFrame->data,
 	          		outFrame->linesize);
             }
             return true; // or only when frame_finished??
         }
-        // call these before returning or avcodec_decode_video2 will mem leak i think
-        // av_packet_unref(&packet); // needed??
-        // av_frame_unref(inFrame);  // note dont unref outFrame or we'll lose its memory
+        // call these before avcodec_decode_video2 again or we'll mem leak i think
+        av_packet_unref(&packet);
+        av_frame_unref(frame);
 	}
 
 	return false;
@@ -552,60 +573,124 @@ void InitOpenGL(HWND window)
     wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
 
     ReleaseDC(window, hdc);
+
+
+    // seem to be context dependent? so load after it?
+	glGenFramebuffers = (PFGL_GEN_FBO)wglGetProcAddress("glGenFramebuffers");
+	glBindFramebuffer = (PFGL_BIND_FBO)wglGetProcAddress("glBindFramebuffer");
+	glFramebufferTexture2D = (PFGL_FBO_TEX2D)wglGetProcAddress("glFramebufferTexture2D");
+	glBlitFramebuffer = (PFGL_BLIT_FBO)wglGetProcAddress("glBlitFramebuffer");
+	glDeleteFramebuffers = (PFGL_DEL_FBO)wglGetProcAddress("glDeleteFramebuffers");
+
+
+	// create our texture and FBO just once right?
+	glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+	// could create and delete each frame maybe?
+	glGenFramebuffers(1, &readFboId);
+
+
+}
+
+
+
+void RenderToScreenGDI(void *memory, int width, int height, HWND window)
+{
+
+    HDC hdc = GetDC(window);
+
+    RECT clientRect;
+    GetClientRect(window, &clientRect);
+    int winWidth = clientRect.right - clientRect.left;
+    int winHeight = clientRect.bottom - clientRect.top;
+
+    // here we clear out the edges
+    // PatBlt(hdc, width, 0, winWidth-width, winHeight, BLACKNESS);
+    // PatBlt(hdc, 0, height, width, winHeight-height, BLACKNESS);
+
+	BITMAPINFO info;
+    info.bmiHeader.biSize = sizeof(info);
+    info.bmiHeader.biWidth = width;
+    info.bmiHeader.biHeight = -height;  // negative to set origin in top left
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+
+
+    float zoomFactor = 1;
+
+    // this is what actually puts the buffer on the screen
+    int result = StretchDIBits(
+                  hdc,
+                  // 0,
+                  // 0,
+                  // WindowWidth,
+                  // WindowHeight,
+                  0,
+                  0,
+                  width,
+                  height,
+                  // 0 + Buffer->Width /(zoomFactor*2),
+                  // 0 + Buffer->Height/(zoomFactor*2),
+                  // Buffer->Width /zoomFactor,
+                  // Buffer->Height/zoomFactor,
+                  (zoomFactor-1.0f)/2.0f * (width /zoomFactor),
+                  (zoomFactor-1.0f)/2.0f * (height/zoomFactor),
+                  width /zoomFactor,
+                  height/zoomFactor,
+                  memory,
+                  &info,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
+
+    if (!result)
+    {
+    	OutputDebugString("DER");
+        // DWORD msg = GetLastError();
+        // MessageBox(0, (char*)msg, "error with StretchDIBits", MB_OK);
+    }
+
+    ReleaseDC(window, hdc);
+    // were using BitBlt on another buffer for font rendering; i don't think that was quite right tho
 }
 
 
 
 
-// for modern api try glBlitFramebuffer & glFramebufferTexture2D
-// tho you'll need to install glew or pull with wglGetProcAddress
-void RenderToScreen(void *memory, int width, int height, HWND window)
+
+
+void RenderToScreenGL(void *memory, int width, int height, HWND window)
 {
+	HDC hdc = GetDC(window);
 
-	HDC deviceContext = GetDC(window);
-
-
-    glViewport(0,0, width, height);
-
-	GLuint tex;
-	glGenTextures(1, &tex); // not actually needed?
-    glBindTexture(GL_TEXTURE_2D, tex);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0,
-                 GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-
-    glEnable(GL_TEXTURE_2D);
-
-    glClearColor(0.5f, 0.8f, 1.0f, 0.0f);
-    // glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    glMatrixMode(GL_MODELVIEW);  glLoadIdentity();
-    glMatrixMode(GL_PROJECTION); glLoadIdentity();
-
-    glBegin(GL_TRIANGLES);
-
-    // note the texture coords are upside down
-    // to get our texture right side up
-    glTexCoord2f(0, 1); glVertex2f(-1, -1);
-    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-    glTexCoord2f(1, 1); glVertex2f(1, -1);
-
-    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-    glTexCoord2f(1, 0); glVertex2f(1, 1);
-    glTexCoord2f(1, 1); glVertex2f(1, -1);
-    glEnd();
+//asdfasdf
+	// update our texture with new data
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+                 0, GL_RGBA, GL_UNSIGNED_BYTE, memory);
 
 
-    SwapBuffers(deviceContext);
+    // read from this buffer (could we bind just once?)
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
 
-    ReleaseDC(window, deviceContext);
+	// should this only be needed once?
+	// (note texture needs to be bound at least once before calling this though??)
+	glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+	                       GL_TEXTURE_2D, tex, 0);
+
+	glBlitFramebuffer(0, 0, width, height,
+	                  0, 0, width, height,
+	                  GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+	// reset to default
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
+	// glDeleteFramebuffers(1, &readFboId);
+
+
+	SwapBuffers(hdc);
+    // glFinish();  // should never need this?
+
+    ReleaseDC(window, hdc);
 
 }
 
@@ -687,6 +772,23 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+
+
+void RenderWeird(u32* buf, int WID, int HEI, int t)
+{
+    u8 r = 0;
+    u8 g = (sin((float)t/25.f)/2 + 0.5) * 256;
+    u8 b = 0;
+    for (int y = 0; y < HEI; y++)
+    {
+    	r = sin(y*M_PI / HEI) * 255;
+	    for (int x = 0; x < WID; x++)
+	    {
+	    	b = sin(x*M_PI / WID) * 255;
+	    	buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+	    }
+    }
+}
 
 
 
@@ -796,6 +898,10 @@ int CALLBACK WinMain(
     InitOpenGL(window);
 
 
+    // temp gfx
+    u32 *buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
+    RenderWeird(buf, WID, HEI, 0);
+
 
     // SDL, for sound atm
 
@@ -834,11 +940,10 @@ int CALLBACK WinMain(
 
     // MORE FFMPEG
 
-	AVFrame *frame_source = av_frame_alloc();
 	AVFrame *frame_output = av_frame_alloc();  // just metadata
 
-	if (!frame_source || !frame_output)
-		{ MsgBox("ffmpeg: Couldn't alloc frames."); return -1; }
+	if (!frame_output)
+		{ MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
 
 
     // actual mem for frame
@@ -867,6 +972,8 @@ int CALLBACK WinMain(
         0, 0, 0);
 
 
+
+
 	// av_frame_unref() //reset for next frame
 
 
@@ -892,58 +999,58 @@ int CALLBACK WinMain(
 
 		// SOUND
 
-		static bool playingAudio = false;
-		if (!playingAudio)
-		{
-			SDL_PauseAudioDevice(audio_device, 0);
-			audioTimer.Start();
-			playingAudio = true;
-		}
+		// static bool playingAudio = false;
+		// if (!playingAudio)
+		// {
+		// 	SDL_PauseAudioDevice(audio_device, 0);
+		// 	audioTimer.Start();
+		// 	playingAudio = true;
+		// }
 
-	    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-	        // char msg[256];
-	        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-	        // OutputDebugString(msg);
+	 //    int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+	 //        // char msg[256];
+	 //        // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+	 //        // OutputDebugString(msg);
 
 
-	    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-	        // char msg3[256];
-	        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-	        // OutputDebugString(msg3);
+	 //    int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+	 //        // char msg3[256];
+	 //        // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+	 //        // OutputDebugString(msg3);
 
-	    if (wanted_bytes >= 0)
-	    {
-	    	if (wanted_bytes > bytes_in_buffer) {
-		        // char errq[256];
-		        // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-		        // OutputDebugString(errq);
+	 //    if (wanted_bytes >= 0)
+	 //    {
+	 //    	if (wanted_bytes > bytes_in_buffer) {
+		//         // char errq[256];
+		//         // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+		//         // OutputDebugString(errq);
 
-	    		wanted_bytes = bytes_in_buffer;
-	    	}
+	 //    		wanted_bytes = bytes_in_buffer;
+	 //    	}
 
-	    	// ideally a little bite of sound, every frame
-	    	// todo: how to sync this right, pts dts?
-			int bytes_queued_up = GetNextAudioFrame(
-				video_file.afc,
-				video_file.audio.codecContext,
-				video_file.audio.index,
-				(u8*)sound_buffer,
-				wanted_bytes,
-				audioTimer.MsSinceStart());
+	 //    	// ideally a little bite of sound, every frame
+	 //    	// todo: how to sync this right, pts dts?
+		// 	int bytes_queued_up = GetNextAudioFrame(
+		// 		video_file.afc,
+		// 		video_file.audio.codecContext,
+		// 		video_file.audio.index,
+		// 		(u8*)sound_buffer,
+		// 		wanted_bytes,
+		// 		audioTimer.MsSinceStart());
 
-			if (bytes_queued_up > 0)
-			{
-			    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
-			    {
-			        char audioerr[256];
-			        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-			        OutputDebugString(audioerr);
-			    }
-		        // char msg2[256];
-		        // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-		        // OutputDebugString(msg2);
-			}
-		}
+		// 	if (bytes_queued_up > 0)
+		// 	{
+		// 	    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+		// 	    {
+		// 	        char audioerr[256];
+		// 	        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+		// 	        OutputDebugString(audioerr);
+		// 	    }
+		//         // char msg2[256];
+		//         // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+		//         // OutputDebugString(msg2);
+		// 	}
+		// }
 
 
 
@@ -951,24 +1058,29 @@ int CALLBACK WinMain(
 
 		// VIDEO
 
-		double msSinceAudioStart = audioTimer.MsSinceStart();
+// 		double msSinceAudioStart = audioTimer.MsSinceStart();
 
-		GetNextVideoFrame(
-			video_file.vfc,
-			video_file.video.codecContext,
-			sws_context,
-			video_file.video.index,
-			frame_source,
-			frame_output,
-			msSinceAudioStart);
+// static bool flag = false;
+// if (!flag) {
+// 		GetNextVideoFrame(
+// 			video_file.vfc,
+// 			video_file.video.codecContext,
+// 			sws_context,
+// 			video_file.video.index,
+// 			frame_output,
+// 			msSinceAudioStart);
+// flag = true;
+// }
 
-		RenderToScreen((void*)buffer, WID, HEI, window);
+// 		RenderToScreen((void*)buffer, WID, HEI, window);
 
 
 		// DisplayAudioBuffer_FLOAT(buf, WID, HEI,
 		//                    (float*)sound_buffer, bytes_in_buffer);
-		// RenderToScreen((void*)buf, WID, HEI, window);
-
+	static int increm = 0;
+    RenderWeird(buf, WID, HEI, increm++);
+		RenderToScreenGL((void*)buf, WID, HEI, window);
+		// RenderToScreenGDI((void*)buf, WID, HEI, window);
 
 
 
