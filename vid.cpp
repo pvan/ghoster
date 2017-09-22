@@ -219,12 +219,12 @@ int GetNextAudioFrame(
                         fc->streams[streamIndex]->time_base.num /
                         fc->streams[streamIndex]->time_base.den;
 
-                    // char zxcv[123];
-                    // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
-                    //         msToPlayFrame,
-                    //         msSinceStart
-                    //         );
-                    // OutputDebugString(zxcv);
+                    char zxcv[123];
+                    sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+                            msToPlayFrame,
+                            msSinceStart
+                            );
+                    OutputDebugString(zxcv);
 
                     // todo: stretch or shrink this buffer
                     // to external clock? but tough w/ audio latency right?
@@ -772,29 +772,6 @@ struct Timer
 
 
 
-static bool appRunning = true;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch(message)
-    {
-        case WM_CLOSE: {
-            appRunning = false;
-        } break;
-
-        case WM_NCHITTEST: {
-            LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
-            if (hit == HTCLIENT) hit = HTCAPTION;
-                return hit;
-        } break;
-
-        default: {
-            return DefWindowProc(hwnd, message, wParam, lParam);
-        } break;
-    }
-    return 0;
-}
-
 
 
 void RenderWeird(u32* buf, int WID, int HEI, int t)
@@ -814,209 +791,31 @@ void RenderWeird(u32* buf, int WID, int HEI, int t)
 }
 
 
+//fdsa
+static Timer timer;
+static Timer audioTimer;
+static SDL_AudioDeviceID audio_device;
+static int desired_bytes_in_queue;
+static int bytes_in_buffer;
+static VideoFile video_file;
+static void *sound_buffer;
+static struct SwsContext *sws_context;
+static AVFrame *frame_output;
+static HWND window;
+static u8 *buffer;
+static int WID;
+static int HEI;
+static double targetMsPerFrame;
+static u32 *buf;
 
-int CALLBACK WinMain(
-    HINSTANCE hInstance,
-    HINSTANCE hPrevInstance,
-    LPSTR lpCmdLine,
-    int nCmdShow
-)
+// seems like we need to keep this sep if we want to
+// use HTCAPTION to drag the window around
+void Update()
 {
 
-
-    // TIMER
-
-    if (timeBeginPeriod(1) != TIMERR_NOERROR) {
-        char err[256];
-        sprintf(err, "Unable to set resolution of Sleep to 1ms");
-        OutputDebugString(err);
-    }
-
-    Timer timer;
-    timer.Start();
-
-
-
-
-    // FFMPEG - load file right away to make window the same size
-
-    InitAV();
-
-    VideoFile video_file = OpenVideoFileAV(INPUT_FILE);
-
-
-
-
-    // SET FPS BASED ON LOADED VIDEO
-
-    char vidfps[123];
-    sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
-        video_file.video.codecContext->time_base.num,
-        video_file.video.codecContext->time_base.den,
-        video_file.video.codecContext->ticks_per_frame
-    );
-    OutputDebugString(vidfps);
-
-    double targetFPS = (video_file.video.codecContext->time_base.den /
-                        video_file.video.codecContext->time_base.num) /
-                        video_file.video.codecContext->ticks_per_frame;
-    double targetMsPerFrame = 1000 / targetFPS;
-
-
-
-
-
-
-    // WINDOW
-
-    // register wndproc
-    WNDCLASS wc = {};
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInstance;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = "best class";
-    if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
-
-    const int WID = video_file.video.codecContext->width;
-    const int HEI = video_file.video.codecContext->height;
-    RECT neededRect = {};
-    neededRect.right = WID; //960;
-    neededRect.bottom = HEI; //720;
-    // adjust window size based on desired client size
-    // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
-
-    // transparency options
-    bool SEE_THROUGH   = false;
-    bool CLICK_THROUGH = false;
-    // bool SEE_THROUGH   = true;
-    // bool CLICK_THROUGH = true;
-
-    DWORD exStyles = 0;
-    if (SEE_THROUGH)                  exStyles  = WS_EX_LAYERED;
-    if (CLICK_THROUGH)                exStyles |= WS_EX_TRANSPARENT;
-    if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
-
-    HWND window = CreateWindowEx(
-        exStyles,
-        wc.lpszClassName, "vid player",
-        WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
-        0, 0, hInstance, 0);
-
-    if (!window)
-    {
-        MsgBox("Couldn't open window.");
-    }
-
-    // set window transparent (if styles above are right)
-    if (SEE_THROUGH || CLICK_THROUGH)
-        SetLayeredWindowAttributes(window, 0, 122, LWA_ALPHA);
-
-
-
-    // OPENGL
-
-    InitOpenGL(window);
-
-
-    // temp gfx
-    u32 *buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
-    RenderWeird(buf, WID, HEI, 0);
-
-
-    // SDL, for sound atm
-
-    // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
-    if (SDL_Init(SDL_INIT_AUDIO))
-    {
-        char err[256];
-        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-        MsgBox(err);
-        return -1;
-    }
-    SDL_AudioDeviceID audio_device = SetupAudioSDL(video_file.audio.codecContext);
-
-    AVCodecContext *acc = video_file.audio.codecContext;
-
-    // try to keep this full
-    int audio_channels = acc->channels;
-
-    // how big of chunks do we want to decode and queue up at a time
-    int buffer_seconds = 2; // no reason not to just keep this big, right?
-    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int samples_in_buffer = acc->sample_rate * buffer_seconds;
-    int bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
-    void *sound_buffer = (void*)malloc(bytes_in_buffer);
-
-    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    int desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
-
-    // track how long we've been playing audio?
-    // better way to sync??
-    Timer audioTimer;
-
-
-
-    // MORE FFMPEG
-
-    AVFrame *frame_output = av_frame_alloc();  // just metadata
-
-    if (!frame_output)
-        { MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
-
-
-    // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
-        // video_file.video.codecContext->width,
-        // video_file.video.codecContext->height);
-        WID,
-        HEI);
-    u8 *buffer = (u8 *)av_malloc(numBytes * sizeof(u8));
-
-    // frame is now using buffer memory
-    avpicture_fill((AVPicture *)frame_output, buffer, AV_PIX_FMT_RGB32,
-        WID,
-        HEI);
-
-    // for converting between frames i think
-    struct SwsContext *sws_context = 0;
-    sws_context = sws_getContext(
-        video_file.video.codecContext->width,
-        video_file.video.codecContext->height,
-        video_file.video.codecContext->pix_fmt,
-        WID,
-        HEI,
-        AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
-        SWS_BILINEAR,
-        0, 0, 0);
-
-
-
-
-    // av_frame_unref() //reset for next frame
-
-
-
-
-    // MAIN LOOP
-
-    // seed our first frame dt
-    timer.EndFrame();
-
-    while (appRunning)
-    {
-        MSG Message;
-        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&Message);
-            DispatchMessage(&Message);
-        }
-
-
+        // double dt = timer.MsSinceLastFrame();
+        // if (dt > targetMsPerFrame)
+        // {
 
 
         // SOUND
@@ -1090,7 +889,7 @@ int CALLBACK WinMain(
             video_file.video.index,
             frame_output,
             msSinceAudioStart);
-
+// }
         RenderToScreenGL((void*)buffer, WID, HEI, window);
         // RenderToScreenGDI((void*)buffer, WID, HEI, window);
 
@@ -1129,7 +928,290 @@ int CALLBACK WinMain(
         }
         timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
+}
 
+
+
+RECT MainRect;
+POINT point;
+POINT curpoint;
+
+
+static bool appRunning = true;
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch(message)
+    {
+        case WM_CLOSE: {
+            appRunning = false;
+        } break;
+
+        case WM_NCHITTEST: {
+            LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
+
+        	// Update();
+            if (hit == HTCLIENT) hit = HTCAPTION;
+                return hit;
+        } break;
+
+        case WM_PAINT: {
+        	Update();
+        	// RenderToScreenGL((void*)buffer, WID, HEI, window);
+        	// PAINTSTRUCT ps;
+        	// BeginPaint(hwnd, &ps);
+        	// EndPaint(hwnd, &ps);
+        	// return DefWindowProc(hwnd, message, wParam, lParam);
+        	return 0;
+        } break;
+
+
+		// case WM_LBUTTONDOWN: {
+		//         SetCapture( hwnd );
+		//         GetWindowRect(hwnd, &MainRect);
+		//         //save current cursor coordinate
+		//         GetCursorPos(&point);
+		//         ScreenToClient(hwnd, &point);
+  //       } break;
+
+	 //    case WM_LBUTTONUP: {
+	 //        ReleaseCapture();
+	 //    } break;
+
+	 //    case WM_MOUSEMOVE: {
+	 //        GetCursorPos(&curpoint);
+	 //        if(wParam==MK_LBUTTON)
+	 //        {
+	 //            MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
+	 //                       MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
+	 //                       TRUE);
+	 //        }
+	 //    } break;
+
+
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+
+
+int CALLBACK WinMain(
+    HINSTANCE hInstance,
+    HINSTANCE hPrevInstance,
+    LPSTR lpCmdLine,
+    int nCmdShow
+)
+{
+
+
+    // TIMER
+
+    if (timeBeginPeriod(1) != TIMERR_NOERROR) {
+        char err[256];
+        sprintf(err, "Unable to set resolution of Sleep to 1ms");
+        OutputDebugString(err);
+    }
+
+    // Timer timer;
+    timer.Start();
+
+
+
+
+    // FFMPEG - load file right away to make window the same size
+
+    InitAV();
+
+    // VideoFile
+    video_file = OpenVideoFileAV(INPUT_FILE);
+
+
+
+
+    // SET FPS BASED ON LOADED VIDEO
+
+    char vidfps[123];
+    sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
+        video_file.video.codecContext->time_base.num,
+        video_file.video.codecContext->time_base.den,
+        video_file.video.codecContext->ticks_per_frame
+    );
+    OutputDebugString(vidfps);
+
+    double targetFPS = (video_file.video.codecContext->time_base.den /
+                        video_file.video.codecContext->time_base.num) /
+                        video_file.video.codecContext->ticks_per_frame;
+    // double
+    targetMsPerFrame = 1000 / targetFPS;
+
+
+
+
+
+
+    // WINDOW
+
+    // register wndproc
+    WNDCLASS wc = {};
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.lpszClassName = "best class";
+    if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
+
+    // const int
+    WID = video_file.video.codecContext->width;
+    // const int
+    HEI = video_file.video.codecContext->height;
+    RECT neededRect = {};
+    neededRect.right = WID; //960;
+    neededRect.bottom = HEI; //720;
+    // adjust window size based on desired client size
+    // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
+
+    // transparency options
+    bool SEE_THROUGH   = false;
+    bool CLICK_THROUGH = false;
+    // bool SEE_THROUGH   = true;
+    // bool CLICK_THROUGH = true;
+
+    DWORD exStyles = 0;
+    if (SEE_THROUGH)                  exStyles  = WS_EX_LAYERED;
+    if (CLICK_THROUGH)                exStyles |= WS_EX_TRANSPARENT;
+    if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
+
+    // HWND
+    window = CreateWindowEx(
+        exStyles,
+        wc.lpszClassName, "vid player",
+        WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
+        CW_USEDEFAULT, CW_USEDEFAULT,
+        neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
+        0, 0, hInstance, 0);
+
+    if (!window)
+    {
+        MsgBox("Couldn't open window.");
+    }
+
+    // set window transparent (if styles above are right)
+    if (SEE_THROUGH || CLICK_THROUGH)
+        SetLayeredWindowAttributes(window, 0, 122, LWA_ALPHA);
+
+
+
+    // OPENGL
+
+    InitOpenGL(window);
+
+
+    // temp gfx
+    // u32 *
+    buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
+    RenderWeird(buf, WID, HEI, 0);
+
+
+    // SDL, for sound atm
+
+    // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
+    if (SDL_Init(SDL_INIT_AUDIO))
+    {
+        char err[256];
+        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
+        MsgBox(err);
+        return -1;
+    }
+    // SDL_AudioDeviceID
+    audio_device = SetupAudioSDL(video_file.audio.codecContext);
+
+    AVCodecContext *acc = video_file.audio.codecContext;
+
+    // try to keep this full
+    int audio_channels = acc->channels;
+
+    // how big of chunks do we want to decode and queue up at a time
+    int buffer_seconds = 2; // no reason not to just keep this big, right?
+    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
+    int samples_in_buffer = acc->sample_rate * buffer_seconds;
+    // int
+    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
+    // void *
+    sound_buffer = (void*)malloc(bytes_in_buffer);
+
+    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    // int
+    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
+
+    // track how long we've been playing audio?
+    // better way to sync??
+    // Timer
+    audioTimer;
+
+
+
+    // MORE FFMPEG
+
+    // AVFrame *
+    frame_output = av_frame_alloc();  // just metadata
+
+    if (!frame_output)
+        { MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
+
+
+    // actual mem for frame
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
+        // video_file.video.codecContext->width,
+        // video_file.video.codecContext->height);
+        WID,
+        HEI);
+    // u8 *
+    buffer = (u8 *)av_malloc(numBytes * sizeof(u8));
+
+    // frame is now using buffer memory
+    avpicture_fill((AVPicture *)frame_output, buffer, AV_PIX_FMT_RGB32,
+        WID,
+        HEI);
+
+    // for converting between frames i think
+    // struct SwsContext *
+    sws_context = 0;
+    sws_context = sws_getContext(
+        video_file.video.codecContext->width,
+        video_file.video.codecContext->height,
+        video_file.video.codecContext->pix_fmt,
+        WID,
+        HEI,
+        AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
+        SWS_BILINEAR,
+        0, 0, 0);
+
+
+
+
+    // av_frame_unref() //reset for next frame
+
+
+
+
+    // MAIN LOOP
+
+    // seed our first frame dt
+    timer.EndFrame();
+
+    while (appRunning)
+    {
+        MSG Message;
+        if (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&Message);
+            DispatchMessage(&Message);
+        }
+
+        OutputDebugString("UPDATE");
+        Update();
 
     }
 
