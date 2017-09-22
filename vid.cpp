@@ -646,21 +646,13 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
     // this is what actually puts the buffer on the screen
     int result = StretchDIBits(
                   hdc,
-                  // 0,
-                  // 0,
-                  // WindowWidth,
-                  // WindowHeight,
                   0,
                   0,
                   width,
                   height,
-                  // 0 + Buffer->Width /(zoomFactor*2),
-                  // 0 + Buffer->Height/(zoomFactor*2),
-                  // Buffer->Width /zoomFactor,
-                  // Buffer->Height/zoomFactor,
-                  (zoomFactor-1.0f)/2.0f * (width /zoomFactor),
+                  (zoomFactor-1.0f)/2.0f * (width/zoomFactor),
                   (zoomFactor-1.0f)/2.0f * (height/zoomFactor),
-                  width /zoomFactor,
+                  width/zoomFactor,
                   height/zoomFactor,
                   memory,
                   &info,
@@ -675,20 +667,19 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
     }
 
     ReleaseDC(window, hdc);
-    // were using BitBlt on another buffer for font rendering; i don't think that was quite right tho
 }
 
 
 
 
 
-
-void RenderToScreenGL(void *memory, int width, int height, int dWID, int dHEI, HWND window)
+// todo: resizing here or resize with ffmpeg?
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window)
 {
     HDC hdc = GetDC(window);
 
     // update our texture with new data
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, memory);
 
 
@@ -703,7 +694,7 @@ void RenderToScreenGL(void *memory, int width, int height, int dWID, int dHEI, H
     // i guess TexImage puts mem into tex2D
     // then framebufferTex ties readfbo to that tex2d
     // then this blit writes the readfbo to the screen (our bound hdc)
-    glBlitFramebuffer(0, 0, width, height,
+    glBlitFramebuffer(0, 0, sWID, sHEI,
                       0, dHEI, dWID, 0,   // flip vertically
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
@@ -750,7 +741,6 @@ struct Timer
     {
         if (!started) {
             OutputDebugString("Timer: Tried to get time without starting first.\n");
-            // Start();  // actually, don't do this
             return 0;
         }
         return MsElapsedSince(starting_ticks);
@@ -774,18 +764,18 @@ struct Timer
 
 
 
-void RenderWeird(u32* buf, int WID, int HEI, int t)
+void RenderWeird(u32* buf, int width, int height, int t)
 {
     u8 r = 0;
     u8 g = (sin((float)t/25.f)/2 + 0.5) * 256;
     u8 b = 0;
-    for (int y = 0; y < HEI; y++)
+    for (int y = 0; y < height; y++)
     {
-        r = sin(y*M_PI / HEI) * 255;
-        for (int x = 0; x < WID; x++)
+        r = sin(y*M_PI / height) * 255;
+        for (int x = 0; x < width; x++)
         {
-            b = sin(x*M_PI / WID) * 255;
-            buf[x + y*WID] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+            b = sin(x*M_PI / width) * 255;
+            buf[x + y*width] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
         }
     }
 }
@@ -803,10 +793,10 @@ static struct SwsContext *sws_context;
 static AVFrame *frame_output;
 static HWND window;
 static u8 *buffer;
-static int WID;
-static int HEI;
-static int wWID;
-static int wHEI;
+static int vidWID;
+static int vidHEI;
+static int winWID;
+static int winHEI;
 static double targetMsPerFrame;
 static u32 *buf;
 
@@ -892,16 +882,15 @@ void Update()
             frame_output,
             msSinceAudioStart);
 // }
-        RenderToScreenGL((void*)buffer, WID, HEI, wWID, wHEI, window);
-        // RenderToScreenGDI((void*)buffer, WID, HEI, window);
+        RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 // }
 
-        // // DisplayAudioBuffer_FLOAT(buf, WID, HEI,
+        // // DisplayAudioBuffer_FLOAT(buf, vidWID, vidHEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
         // static int increm = 0;
-        // RenderWeird(buf, WID, HEI, increm++);
-        // RenderToScreenGL((void*)buf, WID, HEI, window);
-        // RenderToScreenGDI((void*)buf, WID, HEI, window);
+        // RenderWeird(buf, vidWID, vidHEI, increm++);
+        // RenderToScreenGL((void*)buf, vidWID, vidHEI, winWID, winHEI, window);
+        // RenderToScreenGDI((void*)buf, vidWID, vidHEI, window);
 
 
 
@@ -950,8 +939,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_SIZE: {
-        	wWID = LOWORD(lParam);
-        	wHEI = HIWORD(lParam);
+        	winWID = LOWORD(lParam);
+        	winHEI = HIWORD(lParam);
         	return 0;
     	}
 
@@ -968,11 +957,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         	POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
             bool left   = pos.x < win.left   + pad.x;
-            bool right  = pos.x > win.right  - pad.x -1;  // isn't win.right is 1 pixel beyond window?
+            bool right  = pos.x > win.right  - pad.x -1;  // isn't win.right 1 pixel beyond window?
             bool top    = pos.y < win.top    + pad.y;
             bool bottom = pos.y > win.bottom - pad.y -1;
 
-            // RenderToScreenGL((void*)buffer, WID, HEI, wWID, wHEI, window);
+            // RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 
             if (top && left)     return HTTOPLEFT;
             if (top && right)    return HTTOPRIGHT;
@@ -988,7 +977,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_PAINT: {
         	Update();
-        	// RenderToScreenGL((void*)buffer, WID, HEI, window);
         	// PAINTSTRUCT ps;
         	// BeginPaint(hwnd, &ps);
         	// EndPaint(hwnd, &ps);
@@ -1102,14 +1090,14 @@ int CALLBACK WinMain(
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
     // const int
-    WID = video_file.video.codecContext->width;
+    vidWID = video_file.video.codecContext->width;
     // const int
-    HEI = video_file.video.codecContext->height;
+    vidHEI = video_file.video.codecContext->height;
     RECT neededRect = {};
-    wWID = 960;
-    wHEI = 720;
-    neededRect.right = wWID;//WID; //960;
-    neededRect.bottom = wHEI;//HEI; //720;
+    winWID = 960;
+    winHEI = 720;
+    neededRect.right = winWID;//WID; //960;
+    neededRect.bottom = winHEI;//HEI; //720;
     // adjust window size based on desired client size
     // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
 
@@ -1151,8 +1139,8 @@ int CALLBACK WinMain(
 
     // temp gfx
     // u32 *
-    buf = (u32*)malloc(WID * HEI * sizeof(u32)*sizeof(u32));
-    RenderWeird(buf, WID, HEI, 0);
+    buf = (u32*)malloc(vidWID * vidHEI * sizeof(u32)*sizeof(u32));
+    RenderWeird(buf, vidWID, vidHEI, 0);
 
 
     // SDL, for sound atm
@@ -1208,15 +1196,15 @@ int CALLBACK WinMain(
     int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
         // video_file.video.codecContext->width,
         // video_file.video.codecContext->height);
-        WID,
-        HEI);
+        vidWID,
+        vidHEI);
     // u8 *
     buffer = (u8 *)av_malloc(numBytes * sizeof(u8));
 
     // frame is now using buffer memory
     avpicture_fill((AVPicture *)frame_output, buffer, AV_PIX_FMT_RGB32,
-        WID,
-        HEI);
+        vidWID,
+        vidHEI);
 
     // for converting between frames i think
     // struct SwsContext *
@@ -1225,8 +1213,8 @@ int CALLBACK WinMain(
         video_file.video.codecContext->width,
         video_file.video.codecContext->height,
         video_file.video.codecContext->pix_fmt,
-        WID,
-        HEI,
+        vidWID,
+        vidHEI,
         AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
         SWS_BILINEAR,
         0, 0, 0);
