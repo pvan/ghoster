@@ -219,12 +219,12 @@ int GetNextAudioFrame(
                         fc->streams[streamIndex]->time_base.num /
                         fc->streams[streamIndex]->time_base.den;
 
-                    char zxcv[123];
-                    sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
-                            msToPlayFrame,
-                            msSinceStart
-                            );
-                    OutputDebugString(zxcv);
+                    // char zxcv[123];
+                    // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+                    //         msToPlayFrame,
+                    //         msSinceStart
+                    //         );
+                    // OutputDebugString(zxcv);
 
                     // todo: stretch or shrink this buffer
                     // to external clock? but tough w/ audio latency right?
@@ -683,7 +683,7 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
 
 
 
-void RenderToScreenGL(void *memory, int width, int height, HWND window)
+void RenderToScreenGL(void *memory, int width, int height, int dWID, int dHEI, HWND window)
 {
     HDC hdc = GetDC(window);
 
@@ -704,7 +704,7 @@ void RenderToScreenGL(void *memory, int width, int height, HWND window)
     // then framebufferTex ties readfbo to that tex2d
     // then this blit writes the readfbo to the screen (our bound hdc)
     glBlitFramebuffer(0, 0, width, height,
-                      0, height, width, 0,   // flip vertically
+                      0, dHEI, dWID, 0,   // flip vertically
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
@@ -805,6 +805,8 @@ static HWND window;
 static u8 *buffer;
 static int WID;
 static int HEI;
+static int wWID;
+static int wHEI;
 static double targetMsPerFrame;
 static u32 *buf;
 
@@ -890,9 +892,9 @@ void Update()
             frame_output,
             msSinceAudioStart);
 // }
-        RenderToScreenGL((void*)buffer, WID, HEI, window);
+        RenderToScreenGL((void*)buffer, WID, HEI, wWID, wHEI, window);
         // RenderToScreenGDI((void*)buffer, WID, HEI, window);
-
+// }
 
         // // DisplayAudioBuffer_FLOAT(buf, WID, HEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
@@ -947,12 +949,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             appRunning = false;
         } break;
 
-        case WM_NCHITTEST: {
-            LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
+        case WM_SIZE: {
+        	wWID = LOWORD(lParam);
+        	wHEI = HIWORD(lParam);
+        	return 0;
+    	}
 
-        	// Update();
-            if (hit == HTCLIENT) hit = HTCAPTION;
-                return hit;
+        case WM_NCHITTEST: {
+            // LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
+            // if (hit == HTCLIENT) hit = HTCAPTION;
+            //     return hit;
+
+        	RECT win;
+        	if (!GetWindowRect(hwnd, &win))
+        		return HTNOWHERE;
+
+        	POINT pos = { LOWORD(lParam), HIWORD(lParam) };
+        	POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
+
+            bool left   = pos.x < win.left   + pad.x;
+            bool right  = pos.x > win.right  - pad.x -1;  // isn't win.right is 1 pixel beyond window?
+            bool top    = pos.y < win.top    + pad.y;
+            bool bottom = pos.y > win.bottom - pad.y -1;
+
+            // RenderToScreenGL((void*)buffer, WID, HEI, wWID, wHEI, window);
+
+            if (top && left)     return HTTOPLEFT;
+            if (top && right)    return HTTOPRIGHT;
+            if (bottom && left)  return HTBOTTOMLEFT;
+            if (bottom && right) return HTBOTTOMRIGHT;
+            if (left)            return HTLEFT;
+            if (right)           return HTRIGHT;
+            if (top)             return HTTOP;
+            if (bottom)          return HTBOTTOM;
+
+            return HTCAPTION;
         } break;
 
         case WM_PAINT: {
@@ -982,9 +1013,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 	 //        GetCursorPos(&curpoint);
 	 //        if(wParam==MK_LBUTTON)
 	 //        {
-	 //            MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
-	 //                       MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
-	 //                       TRUE);
+	 //            // MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
+	 //            //            MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
+	 //            //            TRUE);
+	 //            SetWindowPos(
+		// 			  hwnd,
+		// 			  HWND_TOP,
+		// 			  curpoint.x - point.x,
+		// 			  curpoint.y - point.y,
+		// 			  MainRect.right - MainRect.left,
+		// 			  MainRect.bottom - MainRect.top,
+		// 			  SWP_NOOWNERZORDER
+		// 			);
+
 	 //        }
 	 //    } break;
 
@@ -1065,8 +1106,10 @@ int CALLBACK WinMain(
     // const int
     HEI = video_file.video.codecContext->height;
     RECT neededRect = {};
-    neededRect.right = WID; //960;
-    neededRect.bottom = HEI; //720;
+    wWID = 960;
+    wHEI = 720;
+    neededRect.right = wWID;//WID; //960;
+    neededRect.bottom = wHEI;//HEI; //720;
     // adjust window size based on desired client size
     // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
 
@@ -1210,7 +1253,7 @@ int CALLBACK WinMain(
             DispatchMessage(&Message);
         }
 
-        OutputDebugString("UPDATE");
+        // OutputDebugString("UPDATE\n");
         Update();
 
     }
