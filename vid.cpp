@@ -652,7 +652,7 @@ void InitOpenGL(HWND window)
 
 
 
-void RenderToScreenGDI(void *memory, int width, int height, HWND window)
+void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWND window)
 {
 
     HDC hdc = GetDC(window);
@@ -668,8 +668,8 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
 
     BITMAPINFO info;
     info.bmiHeader.biSize = sizeof(info);
-    info.bmiHeader.biWidth = width;
-    info.bmiHeader.biHeight = -height;  // negative to set origin in top left
+    info.bmiHeader.biWidth = sWid;
+    info.bmiHeader.biHeight = -sHei;  // negative to set origin in top left
     info.bmiHeader.biPlanes = 1;
     info.bmiHeader.biBitCount = 32;
     info.bmiHeader.biCompression = BI_RGB;
@@ -680,14 +680,8 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
     // this is what actually puts the buffer on the screen
     int result = StretchDIBits(
                   hdc,
-                  0,
-                  0,
-                  width,
-                  height,
-                  (zoomFactor-1.0f)/2.0f * (width/zoomFactor),
-                  (zoomFactor-1.0f)/2.0f * (height/zoomFactor),
-                  width/zoomFactor,
-                  height/zoomFactor,
+                  0, 0, dWid, dHei,
+                  0, 0, sWid, sHei,
                   memory,
                   &info,
                   DIB_RGB_COLORS,
@@ -695,9 +689,8 @@ void RenderToScreenGDI(void *memory, int width, int height, HWND window)
 
     if (!result)
     {
-        OutputDebugString("DER");
+        OutputDebugString("StretchDIBits failed!");
         // DWORD msg = GetLastError();
-        // MessageBox(0, (char*)msg, "error with StretchDIBits", MB_OK);
     }
 
     ReleaseDC(window, hdc);
@@ -917,6 +910,7 @@ void Update()
             msSinceAudioStart);
 // }
         RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
+        // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 // }
 
         // // DisplayAudioBuffer_FLOAT(buf, vidWID, vidHEI,
@@ -1128,8 +1122,8 @@ int CALLBACK WinMain(
     // const int
     vidHEI = video_file.video.codecContext->height;
     RECT neededRect = {};
-    winWID = 960;
-    winHEI = 720;
+    winWID = vidWID;//960;
+    winHEI = vidHEI;//720;
     neededRect.right = winWID;//WID; //960;
     neededRect.bottom = winHEI;//HEI; //720;
     // adjust window size based on desired client size
