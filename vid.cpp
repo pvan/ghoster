@@ -123,6 +123,11 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 
 
+// todo: decode with newest api?
+// avcodec_send_packet / avcodec_receive_frame
+// (for video too)
+// avcodec_decode_audio4 is deprecated
+
 // return bytes (not samples) written to outBuffer
 int GetNextAudioFrame(
     AVFormatContext *fc,
@@ -207,8 +212,7 @@ int GetNextAudioFrame(
 
 
                     // keep a check here so we don't overflow outBuffer??
-              //       // keep filling until we hit outBufferSize
-              //       // don't we drop a packet here??? (the last we pull)
+                    // (ie, in case we guessed when to quit wrong below)
                     // if (bytes_written+additional_bytes > outBufferSize)
                     // {
                     //  return bytes_written;
@@ -259,12 +263,8 @@ int GetNextAudioFrame(
         // *size += frame_count;
 
 
-                        // char rtrt[123];
-                        // sprintf(rtrt, "nb_samples: %i\n", frame->nb_samples);
-                        // OutputDebugString(rtrt);
-                        // char rtrt2[123];
-                        // sprintf(rtrt2, "nb_samples: %i\n", frame->nb_samples);
-                        // OutputDebugString(rtrt2);
+                    // todo: this will only work with 2 channel planar float -> 2 chan interleaved float
+                    // better would be a resampler?
                     float *out = (float*)outBuffer;
                     float *inL = (float*)frame->data[0];
                     float *inR = (float*)frame->data[1];
@@ -275,8 +275,8 @@ int GetNextAudioFrame(
                         out[j++] = inR[i];
                     }
 
+                    // old method with no resampling.. (dropped R channel)
                     // memcpy(outBuffer, frame->data[0], additional_bytes);
-                    // memcpy(outBuffer, frame->extended_data, additional_bytes);
 
                     additional_bytes = j*sizeof(float);
                     outBuffer+=additional_bytes;
@@ -1014,38 +1014,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
-        // case WM_LBUTTONDOWN: {
-        //         SetCapture( hwnd );
-        //         GetWindowRect(hwnd, &MainRect);
-        //         //save current cursor coordinate
-        //         GetCursorPos(&point);
-        //         ScreenToClient(hwnd, &point);
-  //       } break;
-
-     //    case WM_LBUTTONUP: {
-     //        ReleaseCapture();
-     //    } break;
-
-     //    case WM_MOUSEMOVE: {
-     //        GetCursorPos(&curpoint);
-     //        if(wParam==MK_LBUTTON)
-     //        {
-     //            // MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
-     //            //            MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
-     //            //            TRUE);
-     //            SetWindowPos(
-        //            hwnd,
-        //            HWND_TOP,
-        //            curpoint.x - point.x,
-        //            curpoint.y - point.y,
-        //            MainRect.right - MainRect.left,
-        //            MainRect.bottom - MainRect.top,
-        //            SWP_NOOWNERZORDER
-        //          );
-
-     //        }
-     //    } break;
-        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT) doubt this'll ever fire
+        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
 		case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
 			OutputDebugString("HERE");
 			HMENU hPopupMenu = CreatePopupMenu();
