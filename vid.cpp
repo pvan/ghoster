@@ -64,6 +64,7 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_COLOR_ATTACHMENT0              0x8CE0
+//#define GL_SRC_ALPHA
 
 // there's probably established names for these but w/e for now
 typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
@@ -730,26 +731,26 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 
-    // progress bar
-    int pos = (int)(proportion * (double)dWID);
-    u32 red = 0xffff0000;
-    glBindTexture(GL_TEXTURE_2D, tex2);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, tex2, 0);
-    glBlitFramebuffer(0, 0, 1, 1,
-                      0, 12, pos, 37,
-                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
-    u32 gray = 0x99999999;
-    glBindTexture(GL_TEXTURE_2D, tex2);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
-    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, tex2, 0);
-    glBlitFramebuffer(0, 0, 1, 1,
-                      pos, 12, dWID, 37,
-                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    // // progress bar
+    // int pos = (int)(proportion * (double)dWID);
+    // u32 red = 0xffff0000;
+    // glBindTexture(GL_TEXTURE_2D, tex2);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
+    //              0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+    // glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+    //                        GL_TEXTURE_2D, tex2, 0);
+    // glBlitFramebuffer(0, 0, 1, 1,
+    //                   0, 12, pos, 37,
+    //                   GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    // u32 gray = 0x99999999;
+    // glBindTexture(GL_TEXTURE_2D, tex2);
+    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
+    //              0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
+    // glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+    //                        GL_TEXTURE_2D, tex2, 0);
+    // glBlitFramebuffer(0, 0, 1, 1,
+    //                   pos, 12, dWID, 37,
+                      // GL_COLOR_BUFFER_BIT, GL_LINEAR);
 
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
@@ -763,6 +764,18 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 }
 
 
+void BlendProgressBar(u32 *pixels, int width, int height, double proportion)
+{
+    int pos = (int)(proportion * (double)width);
+    for (int x = 0; x < width; x++)
+    {
+        for (int y = height-37; y < height-12; y++)
+        {
+            if (x < pos) pixels[x + y*width] = 0xffff0000;
+            else         pixels[x + y*width] = 0x99999999;
+        }
+    }
+}
 
 
 
@@ -955,9 +968,13 @@ void Update()
             video_file.video.index,
             frame_output,
             msSinceAudioStart);
+
+        BlendProgressBar((u32*)buffer, winWID, winHEI, percent);
 // }
         RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
         // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
+
+
 // }
 
         // // DisplayAudioBuffer_FLOAT(buf, vidWID, vidHEI,
