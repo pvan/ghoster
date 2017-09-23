@@ -133,32 +133,32 @@ int GetNextAudioFrame(
     double msSinceStart)
 {
 
-  //   // may need a resampler if we ever get a non-float format?
-  //   SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
-  //                     AV_CH_LAYOUT_MONO,    // out_ch_layout
-  //                     AV_SAMPLE_FMT_FLT,    // out_sample_fmt
-  //                     cc->sample_rate,      // out_sample_rate
-  //                     cc->channel_layout,   // in_ch_layout
-  //                     cc->sample_fmt,       // in_sample_fmt
-  //                     cc->sample_rate,      // in_sample_rate
-  //                     0,                    // log_offset
-  //                     NULL);                // log_ctx
-  //   swr_init(swr);
-  //   if (!swr_is_initialized(swr)) {
-  //       OutputDebugString("Resampler has not been properly initialized\n");
-  //       return -1;
-  //   }
+    // todo: support non-float format source? qwer
+    SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
+                      AV_CH_LAYOUT_STEREO,  // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+                      AV_SAMPLE_FMT_FLT,    // out_sample_fmt
+                      samples_per_second,   // out_sample_rate
+                      cc->channel_layout,   // in_ch_layout
+                      cc->sample_fmt,       // in_sample_fmt
+                      cc->sample_rate,      // in_sample_rate
+                      0,                    // log_offset
+                      NULL);                // log_ctx
+    swr_init(swr);
+    if (!swr_is_initialized(swr)) {
+        OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
+        return -1;
+    }
 
-        // // to actually resample...
-        // // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
-  //       // // resample frames
-  //       // double* buffer;
-  //       // av_samples_alloc((uint8_t**) &buffer, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
-  //       // int frame_count = swr_convert(swr, (uint8_t**) &buffer, frame->nb_samples, (const uint8_t**) frame->data, frame->nb_samples);
-  //       // // append resampled frames to data
-  //       // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
-  //       // memcpy(*data + *size, buffer, frame_count * sizeof(double));
-  //       // *size += frame_count;
+        // to actually resample...
+        // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
+        // // resample frames
+        // double* buffer;
+        // av_samples_alloc((uint8_t**) &buffer, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
+        // int frame_count = swr_convert(swr, (uint8_t**) &buffer, frame->nb_samples, (const uint8_t**) frame->data, frame->nb_samples);
+        // // append resampled frames to data
+        // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
+        // memcpy(*data + *size, buffer, frame_count * sizeof(double));
+        // *size += frame_count;
 
 
 
@@ -226,25 +226,59 @@ int GetNextAudioFrame(
                     //         );
                     // OutputDebugString(zxcv);
 
-                    // todo: stretch or shrink this buffer
-                    // to external clock? but tough w/ audio latency right?
-                    double msDelayAllowed = 20;  // feels janky
-                    // console yourself with the thought that this should only happen if
-                    // our sound library or driver is playing audio out of sync w/ the system clock???
-                    if (msToPlayFrame + msDelayAllowed < msSinceStart)
-                    {
-                        OutputDebugString("skipping some audio bytes.. tempy\n");
-                        //continue;
+                    // // todo: stretch or shrink this buffer
+                    // // to external clock? but tough w/ audio latency right?
+                    // double msDelayAllowed = 20;  // feels janky
+                    // // console yourself with the thought that this should only happen if
+                    // // our sound library or driver is playing audio out of sync w/ the system clock???
+                    // if (msToPlayFrame + msDelayAllowed < msSinceStart)
+                    // {
+                    //     OutputDebugString("skipping some audio bytes.. tempy\n");
+                    //     //continue;
 
-                        // todo: replace this with better
-                        int samples_to_skip = 10;
-                        additional_bytes -= samples_to_skip *
-                            av_get_bytes_per_sample(cc->sample_fmt);
+                    //     // todo: replace this with better
+                    //     int samples_to_skip = 10;
+                    //     additional_bytes -= samples_to_skip *
+                    //         av_get_bytes_per_sample(cc->sample_fmt);
+                    // }
+
+
+        // // resample frames
+        // // double* raw_channels;
+        // // av_samples_alloc((u8**) &raw_channels, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
+        // int frame_count = swr_convert(
+        //     swr,
+        //     (u8**)&outBuffer,
+        //     frame->nb_samples,
+        //     (const u8**)&frame->extended_data,
+        //     frame->nb_samples);
+
+        // // append resampled frames to data
+        // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
+        // memcpy(*data + *size, buffer, frame_count * sizeof(double));
+        // *size += frame_count;
+
+
+                        // char rtrt[123];
+                        // sprintf(rtrt, "nb_samples: %i\n", frame->nb_samples);
+                        // OutputDebugString(rtrt);
+                        // char rtrt2[123];
+                        // sprintf(rtrt2, "nb_samples: %i\n", frame->nb_samples);
+                        // OutputDebugString(rtrt2);
+                    float *out = (float*)outBuffer;
+                    float *inL = (float*)frame->data[0];
+                    float *inR = (float*)frame->data[1];
+                    int j = 0;
+                    for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
+                    {
+                        out[j++] = inL[i];
+                        out[j++] = inR[i];
                     }
 
-                    memcpy(outBuffer, frame->data[0], additional_bytes);
+                    // memcpy(outBuffer, frame->data[0], additional_bytes);
+                    // memcpy(outBuffer, frame->extended_data, additional_bytes);
 
-
+                    additional_bytes = j*sizeof(float);
                     outBuffer+=additional_bytes;
                     bytes_written+=additional_bytes;
 
@@ -359,7 +393,7 @@ bool GetNextVideoFrame(
 
                 // this feels just a bit early? maybe we should double it? or more?
                 double msAudioLatencyEstimate = 1024.0 / samples_per_second * 1000.0;
-                msAudioLatencyEstimate *= 2; // feels just about right
+                msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
 
                 // skip frame if too far off
@@ -395,7 +429,7 @@ bool GetNextVideoFrame(
             av_free_packet(&packet);
             av_frame_free(&frame);
 
-            return true; // or only when frame_finished??
+            return true; // todo: or only when frame_finished??
         }
         // call these before reuse in avcodec_decode_video2 or av_read_frame
         av_packet_unref(&packet);
@@ -539,7 +573,7 @@ SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
     SDL_AudioSpec wanted_spec, spec;
     wanted_spec.freq = samples_per_second;//acc->sample_rate;
     wanted_spec.format = AUDIO_F32;//AUDIO_F32;//AUDIO_S16SYS;
-    wanted_spec.channels = 1;//acc->channels;
+    wanted_spec.channels = 2; //acc->channels; qwer
     wanted_spec.silence = 0;
     wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
     wanted_spec.callback = 0;  // none to set samples ourself
@@ -939,22 +973,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_SIZE: {
-        	winWID = LOWORD(lParam);
-        	winHEI = HIWORD(lParam);
-        	return 0;
-    	}
+            winWID = LOWORD(lParam);
+            winHEI = HIWORD(lParam);
+            return 0;
+        }
 
         case WM_NCHITTEST: {
             // LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
             // if (hit == HTCLIENT) hit = HTCAPTION;
             //     return hit;
 
-        	RECT win;
-        	if (!GetWindowRect(hwnd, &win))
-        		return HTNOWHERE;
+            RECT win;
+            if (!GetWindowRect(hwnd, &win))
+                return HTNOWHERE;
 
-        	POINT pos = { LOWORD(lParam), HIWORD(lParam) };
-        	POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
+            POINT pos = { LOWORD(lParam), HIWORD(lParam) };
+            POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
             bool left   = pos.x < win.left   + pad.x;
             bool right  = pos.x > win.right  - pad.x -1;  // isn't win.right 1 pixel beyond window?
@@ -976,46 +1010,46 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_PAINT: {
-        	Update();
-        	// PAINTSTRUCT ps;
-        	// BeginPaint(hwnd, &ps);
-        	// EndPaint(hwnd, &ps);
-        	// return DefWindowProc(hwnd, message, wParam, lParam);
-        	return 0;
+            Update();
+            // PAINTSTRUCT ps;
+            // BeginPaint(hwnd, &ps);
+            // EndPaint(hwnd, &ps);
+            // return DefWindowProc(hwnd, message, wParam, lParam);
+            return 0;
         } break;
 
 
-		// case WM_LBUTTONDOWN: {
-		//         SetCapture( hwnd );
-		//         GetWindowRect(hwnd, &MainRect);
-		//         //save current cursor coordinate
-		//         GetCursorPos(&point);
-		//         ScreenToClient(hwnd, &point);
+        // case WM_LBUTTONDOWN: {
+        //         SetCapture( hwnd );
+        //         GetWindowRect(hwnd, &MainRect);
+        //         //save current cursor coordinate
+        //         GetCursorPos(&point);
+        //         ScreenToClient(hwnd, &point);
   //       } break;
 
-	 //    case WM_LBUTTONUP: {
-	 //        ReleaseCapture();
-	 //    } break;
+     //    case WM_LBUTTONUP: {
+     //        ReleaseCapture();
+     //    } break;
 
-	 //    case WM_MOUSEMOVE: {
-	 //        GetCursorPos(&curpoint);
-	 //        if(wParam==MK_LBUTTON)
-	 //        {
-	 //            // MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
-	 //            //            MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
-	 //            //            TRUE);
-	 //            SetWindowPos(
-		// 			  hwnd,
-		// 			  HWND_TOP,
-		// 			  curpoint.x - point.x,
-		// 			  curpoint.y - point.y,
-		// 			  MainRect.right - MainRect.left,
-		// 			  MainRect.bottom - MainRect.top,
-		// 			  SWP_NOOWNERZORDER
-		// 			);
+     //    case WM_MOUSEMOVE: {
+     //        GetCursorPos(&curpoint);
+     //        if(wParam==MK_LBUTTON)
+     //        {
+     //            // MoveWindow(hwnd, curpoint.x - point.x, curpoint.y - point.y,
+     //            //            MainRect.right - MainRect.left, MainRect.bottom - MainRect.top,
+     //            //            TRUE);
+     //            SetWindowPos(
+        //            hwnd,
+        //            HWND_TOP,
+        //            curpoint.x - point.x,
+        //            curpoint.y - point.y,
+        //            MainRect.right - MainRect.left,
+        //            MainRect.bottom - MainRect.top,
+        //            SWP_NOOWNERZORDER
+        //          );
 
-	 //        }
-	 //    } break;
+     //        }
+     //    } break;
 
 
     }
