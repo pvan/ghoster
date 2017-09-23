@@ -951,6 +951,10 @@ void Update()
 
 
 
+#define ID_EXIT 1001
+#define ID_PAUSE 1002
+
+
 RECT MainRect;
 POINT point;
 POINT curpoint;
@@ -973,15 +977,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         case WM_NCHITTEST: {
-            // LRESULT hit = DefWindowProc(hwnd, message, wParam, lParam);
-            // if (hit == HTCLIENT) hit = HTCAPTION;
-            //     return hit;
 
             RECT win;
             if (!GetWindowRect(hwnd, &win))
                 return HTNOWHERE;
 
-            POINT pos = { LOWORD(lParam), HIWORD(lParam) };
+            POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
             POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
             bool left   = pos.x < win.left   + pad.x;
@@ -1044,7 +1045,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
      //        }
      //    } break;
-
+        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT) doubt this'll ever fire
+		case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
+			OutputDebugString("HERE");
+			HMENU hPopupMenu = CreatePopupMenu();
+			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
+			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
+			SetForegroundWindow(hwnd);
+			// TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, 0, 0, 0, hwnd, NULL);
+			TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
+		} break;
+		case WM_COMMAND: {
+			switch (wParam)
+			{
+				case ID_EXIT: {
+            		appRunning = false;
+            	} break;
+			}
+		} break;
 
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
