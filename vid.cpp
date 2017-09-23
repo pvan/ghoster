@@ -707,7 +707,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
     // update our texture with new data
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
-                 0, GL_RGBA, GL_UNSIGNED_BYTE, memory);
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
 
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
