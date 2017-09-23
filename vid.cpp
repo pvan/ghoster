@@ -53,10 +53,12 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 #define u8  uint8_t
 #define u16 uint16_t
 #define u32 uint32_t
+#define u64 uint64_t
 
 #define i8  int8_t
 #define i16 int16_t
 #define i32 int32_t
+#define i64 int64_t
 
 
 
@@ -81,6 +83,7 @@ static PFGL_DEL_FBO glDeleteFramebuffers;
 
 // ok place for these??
 static GLuint tex;
+static GLuint tex2;
 static GLuint readFboId = 0;
 
 
@@ -642,7 +645,7 @@ void InitOpenGL(HWND window)
 
     // create our texture and FBO just once right?
     glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
+    glGenTextures(1, &tex2);
 
     // could create and delete each frame maybe?
     glGenFramebuffers(1, &readFboId);
@@ -699,11 +702,12 @@ void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWN
 
 
 
-
 // todo: resizing here or resize with ffmpeg?
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window)
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
 {
     HDC hdc = GetDC(window);
+
+    glBindTexture(GL_TEXTURE_2D, tex);
 
     // update our texture with new data
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
@@ -724,6 +728,29 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     glBlitFramebuffer(0, 0, sWID, sHEI,
                       0, dHEI, dWID, 0,   // flip vertically
                       GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+
+    // progress bar
+    int pos = (int)(proportion * (double)dWID);
+    u32 red = 0xffff0000;
+    glBindTexture(GL_TEXTURE_2D, tex2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, tex2, 0);
+    glBlitFramebuffer(0, 0, 1, 1,
+                      0, 12, pos, 37,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
+    u32 gray = 0x99999999;
+    glBindTexture(GL_TEXTURE_2D, tex2);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
+    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                           GL_TEXTURE_2D, tex2, 0);
+    glBlitFramebuffer(0, 0, 1, 1,
+                      pos, 12, dWID, 37,
+                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
 
     glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
     // glDeleteFramebuffers(1, &readFboId);
@@ -809,6 +836,9 @@ void RenderWeird(u32* buf, int width, int height, int t)
 
 
 //fdsa
+static double duration;
+static double elapsed;
+static double percent;
 static Timer timer;
 static Timer audioTimer;
 static SDL_AudioDeviceID audio_device;
@@ -827,14 +857,31 @@ static int winHEI;
 static double targetMsPerFrame;
 static u32 *buf;
 
+
+
+
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
 void Update()
 {
 
-        // double dt = timer.MsSinceLastFrame();
-        // if (dt > targetMsPerFrame)
-        // {
+
+        // WHY NOT TIME FIRST
+
+        // if (dt < targetMsPerFrame)
+        //     return;
+
+
+
+
+        elapsed = audioTimer.MsSinceStart() / 1000.0;
+        percent = elapsed/duration;
+
+        char durbuf[123];
+        sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+        OutputDebugString(durbuf);
+
+
 
 
         // SOUND
@@ -909,7 +956,7 @@ void Update()
             frame_output,
             msSinceAudioStart);
 // }
-        RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
+        RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
         // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 // }
 
@@ -923,9 +970,11 @@ void Update()
 
 
 
-        // TIMER
+        // HIT FPS
 
+        // something seems off with this... ?
         double dt = timer.MsSinceLastFrame();
+
         if (dt < targetMsPerFrame)
         {
             double msToSleep = targetMsPerFrame - dt;
@@ -1015,24 +1064,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
-		case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
-			OutputDebugString("HERE");
-			HMENU hPopupMenu = CreatePopupMenu();
-			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
-			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-			InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
-			SetForegroundWindow(hwnd);
-			// TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, 0, 0, 0, hwnd, NULL);
-			TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
-		} break;
-		case WM_COMMAND: {
-			switch (wParam)
-			{
-				case ID_EXIT: {
-            		appRunning = false;
-            	} break;
-			}
-		} break;
+        case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
+            OutputDebugString("HERE");
+            HMENU hPopupMenu = CreatePopupMenu();
+            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
+            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
+            SetForegroundWindow(hwnd);
+            // TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, 0, 0, 0, hwnd, NULL);
+            TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
+        } break;
+        case WM_COMMAND: {
+            switch (wParam)
+            {
+                case ID_EXIT: {
+                    appRunning = false;
+                } break;
+            }
+        } break;
 
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
@@ -1070,6 +1119,21 @@ int CALLBACK WinMain(
     // VideoFile
     video_file = OpenVideoFileAV(INPUT_FILE);
 
+
+
+    // MAKE NOTE OF VIDEO LENGTH
+
+    // use this?
+    assert(video_file.vfc->start_time==0);
+    // char qwer2[123];
+    // sprintf(qwer2, "start: %lli\n", start_time);
+    // OutputDebugString(qwer2);
+
+    duration = (double)video_file.vfc->duration / (double)AV_TIME_BASE; // not quite accurate??
+    char qwer[123];
+    sprintf(qwer, "duration: %f\n", duration);
+    OutputDebugString(qwer);
+    elapsed = 0;
 
 
 
