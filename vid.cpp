@@ -67,8 +67,11 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 #define GL_VERTEX_SHADER                  0x8B31
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_ARRAY_BUFFER                   0x8892
+#define GL_DYNAMIC_DRAW                   0x88E8
+#define GL_COMPILE_STATUS                 0x8B81
+#define GL_LINK_STATUS                    0x8B82
 
-// there's probably established names for these but w/e for now
+// or just dl glext.h
 typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
 typedef void (APIENTRY * PFGL_BIND_FBO) (GLenum target, GLuint framebuffer);
 typedef void (APIENTRY * PFGL_FBO_TEX2D) (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
@@ -84,6 +87,13 @@ typedef void (APIENTRY * PFGL_VA) (GLsizei n, GLuint *arrays);
 typedef void (APIENTRY * PFGL_GB) (GLsizei n, GLuint *buffers);
 typedef void (APIENTRY * PFGL_UP) (GLuint program);
 typedef void (APIENTRY * PFGL_BB) (GLenum target, GLuint buffer);
+typedef void (APIENTRY * PFGL_BD) (GLenum target, ptrdiff_t size, const GLvoid *data, GLenum usage);
+typedef void (APIENTRY * PFGL_BS) (GLenum target, int* offset, ptrdiff_t size, const GLvoid * data);
+typedef void (APIENTRY * PFGL_CMS) (GLuint shader);
+typedef void (APIENTRY * PFGL_SL) (GLuint shader, GLsizei maxLength, GLsizei *length, char *infoLog);
+typedef void (APIENTRY * PFGL_GS) (GLuint shader, GLenum pname, GLint *params);
+typedef void (APIENTRY * PFGL_PL) (GLuint program, GLsizei maxLength, GLsizei *length, char *infoLog);
+typedef void (APIENTRY * PFGL_GP) (GLuint shader, GLenum pname, GLint *params);
 
 static PFGL_GEN_FBO glGenFramebuffers;
 static PFGL_BIND_FBO glBindFramebuffer;
@@ -99,6 +109,13 @@ static PFGL_VA glGenVertexArrays;
 static PFGL_GB glGenBuffers;
 static PFGL_UP glUseProgram;
 static PFGL_BB glBindBuffer;
+static PFGL_BD glBufferData;
+static PFGL_BS glBufferSubData;
+static PFGL_CMS glCompileShader;
+static PFGL_SL glGetShaderInfoLog;
+static PFGL_GS glGetShaderiv;
+static PFGL_PL glGetProgramInfoLog;
+static PFGL_GP glGetProgramiv;
 
 
 
@@ -634,6 +651,36 @@ SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
 
 
 
+typedef void (*GetLogFunc)(GLuint, GLsizei, GLsizei *, char *);
+typedef void (*GetParamFunc)(GLuint, GLenum, GLint *);
+void shader_error_check(GLuint object, const char *kind, GetLogFunc getLog, GetParamFunc getParam, GLenum param)
+{
+    char log[1024];
+    GLsizei length;
+    getLog(object, 1024, &length, log);
+
+    GLint status;
+    getParam(object, param, &status);
+
+
+    if (length || status == GL_FALSE)
+    {
+        if (length == 0)
+        {
+            sprintf(log, "No error log: forgot to compile?");
+        }
+        char err[1024];
+        sprintf(err, "\n\n%s log:\n%s\n\n", kind, log);
+        OutputDebugString(err);
+    }
+
+
+    if (status == GL_FALSE)
+    {
+        exit(1);
+    }
+}
+
 
 static GLuint vao;
 static GLuint vbo;
@@ -670,65 +717,82 @@ void InitOpenGL(HWND window)
     glFramebufferTexture2D = (PFGL_FBO_TEX2D)wglGetProcAddress("glFramebufferTexture2D");
     glBlitFramebuffer = (PFGL_BLIT_FBO)wglGetProcAddress("glBlitFramebuffer");
     glDeleteFramebuffers = (PFGL_DEL_FBO)wglGetProcAddress("glDeleteFramebuffers");
-	glCreateShader = (PFGL_CS)wglGetProcAddress("glCreateShader");
-	glShaderSource = (PFGL_SS)wglGetProcAddress("glShaderSource");
-	glCreateProgram = (PFGL_CP)wglGetProcAddress("glCreateProgram");
-	glAttachShader = (PFGL_AS)wglGetProcAddress("glAttachShader");
-	glLinkProgram = (PFGL_LP)wglGetProcAddress("glLinkProgram");
-	glGenVertexArrays = (PFGL_VA)wglGetProcAddress("glGenVertexArrays");
-	glGenBuffers = (PFGL_GB)wglGetProcAddress("glGenBuffers");
-	glUseProgram = (PFGL_UP)wglGetProcAddress("glUseProgram");
-	glBindBuffer = (PFGL_BB)wglGetProcAddress("glBindBuffer");
+    glCreateShader = (PFGL_CS)wglGetProcAddress("glCreateShader");
+    glShaderSource = (PFGL_SS)wglGetProcAddress("glShaderSource");
+    glCreateProgram = (PFGL_CP)wglGetProcAddress("glCreateProgram");
+    glAttachShader = (PFGL_AS)wglGetProcAddress("glAttachShader");
+    glLinkProgram = (PFGL_LP)wglGetProcAddress("glLinkProgram");
+    glGenVertexArrays = (PFGL_VA)wglGetProcAddress("glGenVertexArrays");
+    glGenBuffers = (PFGL_GB)wglGetProcAddress("glGenBuffers");
+    glUseProgram = (PFGL_UP)wglGetProcAddress("glUseProgram");
+    glBindBuffer = (PFGL_BB)wglGetProcAddress("glBindBuffer");
+    glBufferData = (PFGL_BD)wglGetProcAddress("glBufferData");
+    glBufferSubData = (PFGL_BS)wglGetProcAddress("glBufferSubData");
+    glCompileShader = (PFGL_CMS)wglGetProcAddress("glCompileShader");
+    glGetShaderInfoLog = (PFGL_SL)wglGetProcAddress("glGetShaderInfoLog");
+    glGetShaderiv = (PFGL_GS)wglGetProcAddress("glGetShaderiv");
+    glGetProgramInfoLog = (PFGL_PL)wglGetProcAddress("glGetProgramInfoLog");
+    glGetProgramiv = (PFGL_GP)wglGetProcAddress("glGetProgramiv");
 
 
 
 
-	const char *vertex_shader = MULTILINE_STRING(
-		in vec4 position;
-		out vec4 myPos;
-		void main() {
-		  myPos = position;
-		  gl_Position = position;
-		}
-	);
+    const char *vertex_shader = MULTILINE_STRING(
+        in vec4 position;
+        //out vec4 myPos;
+        void main() {
+          //myPos = position;
+          gl_Position = position;
+        }
+    );
 
-	const char *fragment_shader = MULTILINE_STRING(
-		uniform float phase;
-		in vec4 myPos;
-		void main() {
-		  gl_FragColor = ...;
-		}
-	);
-
-
-	// compile shaders
-	GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vshader, 1, &vertex_shader, 0);
-
-	GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fshader, 1, &fragment_shader, 0);
-
-	// create program that sitches shaders together
-	shader_program = glCreateProgram();
-	glAttachShader(shader_program, vshader);
-	glAttachShader(shader_program, fshader);
-	glLinkProgram(shader_program);
+    const char *fragment_shader = MULTILINE_STRING(
+        uniform float phase;
+        in vec4 myPos;
+        void main() {
+          gl_FragColor = vec4(1,1,0,0);
+        }
+    );
 
 
-	glGenVertexArrays(1, &vao);
-	glGenBuffers(1, &vbo);
+    // compile shaders
+    GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vshader, 1, &vertex_shader, 0);
+    glCompileShader(vshader);
+    shader_error_check(vshader, "vertex shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
 
-	// glGenBuffers(GL_ARRAY_BUFFER, &vbo);
+    GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fshader, 1, &fragment_shader, 0);
+    glCompileShader(fshader);
+    shader_error_check(fshader, "fragment shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
+
+    // create program that sitches shaders together
+    shader_program = glCreateProgram();
+    glAttachShader(shader_program, vshader);
+    glAttachShader(shader_program, fshader);
+    glLinkProgram(shader_program);
+    shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
 
-	// glVertexAttribPointer(loc_position, NDIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+    // GLuint loc_phase = glGetUniformLocation(program, "phase");
+    // assert(loc_phase != -1 && "could not find `phase` variable");
+
+    // GLuint loc_position = glGetAttribLocation(program, "position");
+    // assert(loc_position != -1 && "could not find `position` variable");
 
 
-	// glEnableVertexAttribArray(loc_position);
-	// glBindVertexArray(0);  // Unbind.
+    glGenVertexArrays(1, &vao);
+    glGenBuffers(1, &vbo);
 
-	// glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
-
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        // alloc space for our points
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*4, NULL, GL_DYNAMIC_DRAW);
+        // glBindVertexArray(vao);
+        //  // tie the "in" variable
+        //  glVertexAttribPointer(loc_position, NDIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+        //  glEnableVertexAttribArray(loc_position);
+        // glBindVertexArray(0);  // Unbind.
+    glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
 
 
 
@@ -795,10 +859,14 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     HDC hdc = GetDC(window);
 
 
+    float points[4*4] = {-1,-1,0, -1,1,0, 1,-1,0, 1,1,0};
+
     glUseProgram(shader_program);
     // glUniform1f(loc_phase, sin(4*t));
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
 
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
     SwapBuffers(hdc);
 
