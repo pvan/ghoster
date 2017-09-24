@@ -820,7 +820,7 @@ void InitOpenGL(HWND window)
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // alloc space for our points
-        float points[2*4] = {-.9f,.9f, -.9f,-.9f, .9f,-.9f, .9f,.9f,};
+        float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
         glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
             check_gl_error();
         glBindVertexArray(vao);
@@ -907,9 +907,12 @@ void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWN
 
 
 //dfdf
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window)
 {
     HDC hdc = GetDC(window);
+
+
+    glViewport(0, 0, dWID, dHEI);
 
 
     glActiveTexture(GL_TEXTURE0);
@@ -1227,9 +1230,9 @@ void Update()
             frame_output,
             msSinceAudioStart);
 
-        BlendProgressBar((u32*)vid_buffer, vidWID, vidHEI, percent);
+        // BlendProgressBar((u32*)vid_buffer, vidWID, vidHEI, percent);
 // }
-        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
+        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window);
         // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 
 
