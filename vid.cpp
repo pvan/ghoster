@@ -70,6 +70,7 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 #define GL_DYNAMIC_DRAW                   0x88E8
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
+#define GL_TEXTURE0                       0x84C0
 
 // or just dl glext.h
 typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
@@ -98,6 +99,8 @@ typedef void (APIENTRY * PFGL_GP) (GLuint shader, GLenum pname, GLint *params);
 typedef GLint (APIENTRY * PFGL_GUL) (GLuint program, const char *name);
 typedef void (APIENTRY * PFGL_VAP) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
 typedef void (APIENTRY * PFGL_EVA) (GLuint index);
+typedef void (APIENTRY * PFGL_UNI) (GLint location, GLint v0);
+typedef void (APIENTRY * PFGL_TEX) (GLenum texture);
 
 static PFGL_GEN_FBO glGenFramebuffers;
 static PFGL_BIND_FBO glBindFramebuffer;
@@ -124,6 +127,8 @@ static PFGL_GP glGetProgramiv;
 static PFGL_GUL glGetUniformLocation;
 static PFGL_VAP glVertexAttribPointer;
 static PFGL_EVA glEnableVertexAttribArray;
+static PFGL_UNI glUniform1i;
+static PFGL_TEX glActiveTexture;
 
 
 
@@ -756,18 +761,20 @@ void InitOpenGL(HWND window)
     glGetUniformLocation = (PFGL_GUL)wglGetProcAddress("glGetUniformLocation");
     glVertexAttribPointer = (PFGL_VAP)wglGetProcAddress("glVertexAttribPointer");
     glEnableVertexAttribArray = (PFGL_EVA)wglGetProcAddress("glEnableVertexAttribArray");
-
-
+    glUniform1i = (PFGL_UNI)wglGetProcAddress("glUniform1i");
+    glActiveTexture = (PFGL_TEX)wglGetProcAddress("glActiveTexture");
 
 
     const char *vertex_shader = MULTILINE_STRING
     (
         #version 330 core \n
         layout(location = 0) in vec2 position;
+        out vec2 texCoord;
         //out vec4 myPos;
         void main() {
           //myPos = position;
-          gl_Position = vec4(position, 0, 1);
+            texCoord = position.xy*vec2(0.5,0.5)+vec2(0.5,0.5);
+            gl_Position = vec4(position, 0, 1);
         }
     );
     OutputDebugString(vertex_shader);
@@ -777,9 +784,12 @@ void InitOpenGL(HWND window)
     (
         #version 330 core \n
         out vec3 color;
+        in vec2 texCoord;
+        uniform sampler2D tex;
         void main()
         {
-            color = vec3(1,0,0);
+            // color = texture2D(tex, texCoord).xyz;
+            color = vec3(texCoord, 0);
         }
         // // uniform float phase;
         // // in vec4 myPos;
@@ -844,8 +854,8 @@ void InitOpenGL(HWND window)
     // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 
-    // // create our texture and FBO just once right?
-    // glGenTextures(1, &tex);
+    // create our texture
+    glGenTextures(1, &tex);
     // glGenTextures(1, &tex2);
 
     // // could create and delete each frame maybe?
@@ -911,6 +921,19 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     // float points[4*3] = {-1,-1,-10, 1,-1,-10, -1,-1,-10, 1,1,-10};
     // float points[4*3] = {-1,-1,0, 1,-1,0, -1,-1,0, 1,1,0};
     // float points[4*3] = {-1,-1, 1,-1, -1,-1, 1,1};
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    // glBindTexture(GL_TEXTURE_2D, tex);
+
+    // update our texture with new data
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+
+    GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
+            char aaa[123]; sprintf(aaa, "tex %i\n", tex_loc); OutputDebugString(aaa);
+    glUniform1i(tex_loc, 0);   // texture id of 0
 
     // glUniform1f(loc_phase, sin(4*t));
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
