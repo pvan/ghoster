@@ -87,6 +87,7 @@ typedef void (APIENTRY * PFGL_VA) (GLsizei n, GLuint *arrays);
 typedef void (APIENTRY * PFGL_GB) (GLsizei n, GLuint *buffers);
 typedef void (APIENTRY * PFGL_UP) (GLuint program);
 typedef void (APIENTRY * PFGL_BB) (GLenum target, GLuint buffer);
+typedef void (APIENTRY * PFGL_BA) (GLuint array);
 typedef void (APIENTRY * PFGL_BD) (GLenum target, ptrdiff_t size, const GLvoid *data, GLenum usage);
 typedef void (APIENTRY * PFGL_BS) (GLenum target, int* offset, ptrdiff_t size, const GLvoid * data);
 typedef void (APIENTRY * PFGL_CMS) (GLuint shader);
@@ -94,6 +95,9 @@ typedef void (APIENTRY * PFGL_SL) (GLuint shader, GLsizei maxLength, GLsizei *le
 typedef void (APIENTRY * PFGL_GS) (GLuint shader, GLenum pname, GLint *params);
 typedef void (APIENTRY * PFGL_PL) (GLuint program, GLsizei maxLength, GLsizei *length, char *infoLog);
 typedef void (APIENTRY * PFGL_GP) (GLuint shader, GLenum pname, GLint *params);
+typedef GLint (APIENTRY * PFGL_GUL) (GLuint program, const char *name);
+typedef void (APIENTRY * PFGL_VAP) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
+typedef void (APIENTRY * PFGL_EVA) (GLuint index);
 
 static PFGL_GEN_FBO glGenFramebuffers;
 static PFGL_BIND_FBO glBindFramebuffer;
@@ -109,6 +113,7 @@ static PFGL_VA glGenVertexArrays;
 static PFGL_GB glGenBuffers;
 static PFGL_UP glUseProgram;
 static PFGL_BB glBindBuffer;
+static PFGL_BA glBindVertexArray;
 static PFGL_BD glBufferData;
 static PFGL_BS glBufferSubData;
 static PFGL_CMS glCompileShader;
@@ -116,6 +121,9 @@ static PFGL_SL glGetShaderInfoLog;
 static PFGL_GS glGetShaderiv;
 static PFGL_PL glGetProgramInfoLog;
 static PFGL_GP glGetProgramiv;
+static PFGL_GUL glGetUniformLocation;
+static PFGL_VAP glVertexAttribPointer;
+static PFGL_EVA glEnableVertexAttribArray;
 
 
 
@@ -682,6 +690,17 @@ void shader_error_check(GLuint object, const char *kind, GetLogFunc getLog, GetP
 }
 
 
+void check_gl_error()
+{
+    GLenum err = glGetError();
+    if (err != GL_NO_ERROR)
+    {
+        char errbuf[123];
+        sprintf(errbuf,"GL ERR: 0x%x\n", err);
+        OutputDebugString(errbuf);
+    }
+}
+
 static GLuint vao;
 static GLuint vbo;
 static GLuint shader_program;
@@ -726,6 +745,7 @@ void InitOpenGL(HWND window)
     glGenBuffers = (PFGL_GB)wglGetProcAddress("glGenBuffers");
     glUseProgram = (PFGL_UP)wglGetProcAddress("glUseProgram");
     glBindBuffer = (PFGL_BB)wglGetProcAddress("glBindBuffer");
+    glBindVertexArray = (PFGL_BA)wglGetProcAddress("glBindVertexArray");
     glBufferData = (PFGL_BD)wglGetProcAddress("glBufferData");
     glBufferSubData = (PFGL_BS)wglGetProcAddress("glBufferSubData");
     glCompileShader = (PFGL_CMS)wglGetProcAddress("glCompileShader");
@@ -733,22 +753,27 @@ void InitOpenGL(HWND window)
     glGetShaderiv = (PFGL_GS)wglGetProcAddress("glGetShaderiv");
     glGetProgramInfoLog = (PFGL_PL)wglGetProcAddress("glGetProgramInfoLog");
     glGetProgramiv = (PFGL_GP)wglGetProcAddress("glGetProgramiv");
+    glGetUniformLocation = (PFGL_GUL)wglGetProcAddress("glGetUniformLocation");
+    glVertexAttribPointer = (PFGL_VAP)wglGetProcAddress("glVertexAttribPointer");
+    glEnableVertexAttribArray = (PFGL_EVA)wglGetProcAddress("glEnableVertexAttribArray");
 
 
 
 
     const char *vertex_shader = MULTILINE_STRING(
-        in vec4 position;
+        in vec3 position;
         //out vec4 myPos;
         void main() {
           //myPos = position;
-          gl_Position = position;
+          gl_Position = vec4(position, 1);
         }
     );
+    OutputDebugString(vertex_shader);
+    OutputDebugString("\n");
 
     const char *fragment_shader = MULTILINE_STRING(
-        uniform float phase;
-        in vec4 myPos;
+        // uniform float phase;
+        // in vec4 myPos;
         void main() {
           gl_FragColor = vec4(1,1,0,0);
         }
@@ -774,26 +799,26 @@ void InitOpenGL(HWND window)
     shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
 
-    // GLuint loc_phase = glGetUniformLocation(program, "phase");
-    // assert(loc_phase != -1 && "could not find `phase` variable");
-
-    // GLuint loc_position = glGetAttribLocation(program, "position");
-    // assert(loc_position != -1 && "could not find `position` variable");
-
 
     glGenVertexArrays(1, &vao);
     glGenBuffers(1, &vbo);
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // alloc space for our points
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*4, NULL, GL_DYNAMIC_DRAW);
-        // glBindVertexArray(vao);
-        //  // tie the "in" variable
-        //  glVertexAttribPointer(loc_position, NDIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
-        //  glEnableVertexAttribArray(loc_position);
-        // glBindVertexArray(0);  // Unbind.
+        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*3, NULL, GL_DYNAMIC_DRAW);
+        glBindVertexArray(vao);
+        // tie the "in" variable
+            GLuint loc_position = glGetUniformLocation(shader_program, "position");
+            check_gl_error();
+            glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            check_gl_error();
+            glEnableVertexAttribArray(loc_position);
+            check_gl_error();
+        glBindVertexArray(0);  // Unbind.
     glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
 
+
+    // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 
     // // create our texture and FBO just once right?
@@ -858,15 +883,23 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 {
     HDC hdc = GetDC(window);
 
+    glDisable(GL_CULL_FACE);
 
-    float points[4*4] = {-1,-1,0, -1,1,0, 1,-1,0, 1,1,0};
+    // float points[4*3] = {-1,-1,-10, 1,-1,-10, -1,-1,-10, 1,1,-10};
+    float points[4*3] = {-1,-1,0, 1,-1,0, -1,-1,0, 1,1,0};
 
-    glUseProgram(shader_program);
     // glUniform1f(loc_phase, sin(4*t));
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+    glClear(GL_COLOR_BUFFER_BIT);
+    // glClearColor(0, 1, 1, 1);
+    glUseProgram(shader_program);
+
+    glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glBindVertexArray(0);
 
     SwapBuffers(hdc);
 
