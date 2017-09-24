@@ -138,6 +138,9 @@ static PFGL_TEX glActiveTexture;
 
 
 
+static bool appRunning = true;
+static bool vid_paused = false;
+static bool vid_was_paused = false;
 
 
 void MsgBox(char* s) {
@@ -916,28 +919,41 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 struct Timer
 {
-    LARGE_INTEGER starting_ticks;    // .QuadPart to get number as int64
-    LARGE_INTEGER ticks_per_second;  // via QueryPerformanceFrequency
-    LARGE_INTEGER ticks_last_frame;
+    i64 starting_ticks;
+    i64 ticks_per_second;  // set via QueryPerformanceFrequency on Start()
+    i64 ticks_last_frame;
     bool started = false;
     void Start()
     {
         started = true;
-        QueryPerformanceFrequency(&ticks_per_second);
-        QueryPerformanceCounter(&starting_ticks);
+        LARGE_INTEGER now;    // .QuadPart to get number as int64
+        LARGE_INTEGER freq;
+        QueryPerformanceCounter(&now);
+        QueryPerformanceFrequency(&freq);
+        starting_ticks = now.QuadPart;
+        ticks_per_second = freq.QuadPart;
     }
-    double MsElapsedBetween(LARGE_INTEGER old_ticks, LARGE_INTEGER ticks_now)
-    {
-        int64_t ticks_elapsed = ticks_now.QuadPart - old_ticks.QuadPart;
-        ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
-        double delta_ms = (double)ticks_elapsed / (double)ticks_per_second.QuadPart;
-        return delta_ms;
-    }
-    double MsElapsedSince(LARGE_INTEGER old_ticks)
+    i64 TicksNow()
     {
         LARGE_INTEGER ticks_now;
         QueryPerformanceCounter(&ticks_now);
-        return MsElapsedBetween(old_ticks, ticks_now);;
+        return ticks_now.QuadPart;
+    }
+    i64 TicksElapsedSinceStart()
+    {
+        if (!started) return 0;
+        return TicksNow() - starting_ticks;
+    }
+    double MsElapsedBetween(i64 old_ticks, i64 ticks_now)
+    {
+        int64_t ticks_elapsed = ticks_now - old_ticks;
+        ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
+        double delta_ms = (double)ticks_elapsed / (double)ticks_per_second;
+        return delta_ms;
+    }
+    double MsElapsedSince(i64 old_ticks)
+    {
+        return MsElapsedBetween(old_ticks, TicksNow());
     }
     double MsSinceStart()
     {
@@ -955,12 +971,55 @@ struct Timer
     }
     void EndFrame()
     {
-        QueryPerformanceCounter(&ticks_last_frame);
+        ticks_last_frame = TicksNow();
     }
 
 };
 
 
+struct Stopwatch
+{
+    Timer timer;
+    bool paused = false;
+    i64 ticks_elpased_at_pause;
+    i64 TicksElapsed()
+    {
+        if (!timer.started)
+            return 0;
+        if (paused)
+            return ticks_elpased_at_pause;
+        return timer.TicksElapsedSinceStart();
+    }
+    void Start()
+    {
+        if (paused)
+        {
+            if (timer.started)
+            {
+                // restart and subtract our already elapsed time
+                timer.Start();
+                timer.starting_ticks -= ticks_elpased_at_pause;
+            }
+            else
+            {
+                timer.Start();
+            }
+        }
+        else
+        {
+            OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
+        }
+    }
+    void Pause()
+    {
+        paused = true;
+        ticks_elpased_at_pause = TicksElapsed();
+    }
+    double MsElapsed()
+    {
+        return (double)(TicksElapsed()*1000) / (double)timer.ticks_per_second;
+    }
+};
 
 
 
@@ -1013,7 +1072,15 @@ void Update()
         OutputDebugString(durbuf);
 
 
-
+        if (vid_paused)
+        {
+            if (!vid_was_paused)
+                SDL_PauseAudioDevice(audio_device, 1);
+        }
+        else
+        {
+            if (vid_was_paused)
+                SDL_PauseAudioDevice(audio_device, 0);
 
         // SOUND
 
@@ -1090,6 +1157,8 @@ void Update()
         RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
 
 
+        }
+        vid_was_paused = vid_paused;
 
         // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
@@ -1142,7 +1211,6 @@ POINT point;
 POINT curpoint;
 
 
-static bool appRunning = true;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1209,6 +1277,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 case ID_EXIT: {
                     appRunning = false;
+                } break;
+                case ID_PAUSE: {
+                    vid_paused = !vid_paused;
                 } break;
             }
         } break;
