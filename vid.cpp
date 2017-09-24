@@ -763,11 +763,11 @@ void InitOpenGL(HWND window)
     const char *vertex_shader = MULTILINE_STRING
     (
         #version 330 core \n
-        layout(location = 0) in vec3 position;
+        layout(location = 0) in vec2 position;
         //out vec4 myPos;
         void main() {
           //myPos = position;
-          gl_Position = vec4(position, 1);
+          gl_Position = vec4(position, 0, 1);
         }
     );
     OutputDebugString(vertex_shader);
@@ -818,7 +818,7 @@ void InitOpenGL(HWND window)
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // alloc space for our points
-        float points[3*3] = {-1,-1,0, 1,-1,0, -1,-1,0};
+        float points[2*3] = {-.9f,-.9f, .9f,.9f, -.9f,.9f};
         glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
         // glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*2, NULL, GL_DYNAMIC_DRAW);
             check_gl_error();
@@ -832,7 +832,7 @@ void InitOpenGL(HWND window)
             // glEnableVertexAttribArray(loc_position);
             // check_gl_error();
 
-            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
             check_gl_error();
             glEnableVertexAttribArray(0);
             check_gl_error();
