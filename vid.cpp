@@ -981,39 +981,50 @@ struct Stopwatch
 {
     Timer timer;
     bool paused = false;
-    i64 ticks_elpased_at_pause;
+    i64 ticks_elapsed_at_pause;
     i64 TicksElapsed()
     {
         if (!timer.started)
             return 0;
         if (paused)
-            return ticks_elpased_at_pause;
+            return ticks_elapsed_at_pause;
         return timer.TicksElapsedSinceStart();
     }
     void Start()
     {
         if (paused)
         {
+            paused = false;
             if (timer.started)
             {
+                // OutputDebugString("Stopwatch: Starting from pause.");
                 // restart and subtract our already elapsed time
                 timer.Start();
-                timer.starting_ticks -= ticks_elpased_at_pause;
+                timer.starting_ticks -= ticks_elapsed_at_pause;
             }
             else
             {
+                // OutputDebugString("Stopwatch: Starting for the first time, from pause.");
                 timer.Start();
             }
         }
         else
         {
-            OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
+            if (timer.started)
+            {
+                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
+            }
+            else
+            {
+                // OutputDebugString("Stopwatch: Starting for the first time, from unpause.");
+                timer.Start();
+            }
         }
     }
     void Pause()
     {
-        paused = true;
-        ticks_elpased_at_pause = TicksElapsed();
+        ticks_elapsed_at_pause = TicksElapsed();
+        paused = true; // set after getting ticks or we'll get old ticks_elap value
     }
     double MsElapsed()
     {
@@ -1029,8 +1040,7 @@ struct Stopwatch
 static double duration;
 static double elapsed;
 static double percent;
-static Timer timer;
-static Timer audioTimer;
+static Timer app_timer;
 static SDL_AudioDeviceID audio_device;
 static int desired_bytes_in_queue;
 static int bytes_in_buffer;
@@ -1047,7 +1057,7 @@ static int winHEI;
 static double targetMsPerFrame;
 static u32 *secondary_buf;
 
-
+static Stopwatch audio_stopwatch;
 
 
 // seems like we need to keep this sep if we want to
@@ -1064,101 +1074,109 @@ void Update()
 
 
 
-        elapsed = audioTimer.MsSinceStart() / 1000.0;
-        percent = elapsed/duration;
-
-        char durbuf[123];
-        sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-        OutputDebugString(durbuf);
-
 
         if (vid_paused)
         {
             if (!vid_was_paused)
+            {
+                audio_stopwatch.Pause();
                 SDL_PauseAudioDevice(audio_device, 1);
+            }
         }
         else
         {
-            if (vid_was_paused)
+            if (vid_was_paused || !audio_stopwatch.timer.started)
+            {
+                audio_stopwatch.Start();
                 SDL_PauseAudioDevice(audio_device, 0);
-
-        // SOUND
-
-        static bool playingAudio = false;
-        if (!playingAudio)
-        {
-            SDL_PauseAudioDevice(audio_device, 0);
-            audioTimer.Start();
-            playingAudio = true;
-        }
-
-        int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-            // char msg[256];
-            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-            // OutputDebugString(msg);
-
-
-        int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-            // char msg3[256];
-            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-            // OutputDebugString(msg3);
-
-        if (wanted_bytes >= 0)
-        {
-            if (wanted_bytes > bytes_in_buffer)
-            {
-                // char errq[256];
-                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-                // OutputDebugString(errq);
-
-                wanted_bytes = bytes_in_buffer;
             }
 
-            // ideally a little bite of sound, every frame
-            // todo: how to sync this right, pts dts?
-            int bytes_queued_up = GetNextAudioFrame(
-                video_file.afc,
-                video_file.audio.codecContext,
-                video_file.audio.index,
-                (u8*)sound_buffer,
-                wanted_bytes,
-                audioTimer.MsSinceStart());
 
-            if (bytes_queued_up > 0)
+            elapsed = audio_stopwatch.MsElapsed() / 1000.0;
+            percent = elapsed/duration;
+
+            char durbuf[123];
+            sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+            OutputDebugString(durbuf);
+
+
+            // SOUND
+
+            // static bool playingAudio = false;
+            // if (!playingAudio)
+            // {
+            //     SDL_PauseAudioDevice(audio_device, 0);
+            //     audio_stopwatch.Start();
+            //     playingAudio = true;
+            // }
+
+            int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+                // char msg[256];
+                // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+                // OutputDebugString(msg);
+
+
+            int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+                // char msg3[256];
+                // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+                // OutputDebugString(msg3);
+
+            if (wanted_bytes >= 0)
             {
-                if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+                if (wanted_bytes > bytes_in_buffer)
                 {
-                    char audioerr[256];
-                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-                    OutputDebugString(audioerr);
+                    // char errq[256];
+                    // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                    // OutputDebugString(errq);
+
+                    wanted_bytes = bytes_in_buffer;
                 }
-                   // char msg2[256];
-                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-                   // OutputDebugString(msg2);
+
+                // ideally a little bite of sound, every frame
+                // todo: how to sync this right, pts dts?
+                int bytes_queued_up = GetNextAudioFrame(
+                    video_file.afc,
+                    video_file.audio.codecContext,
+                    video_file.audio.index,
+                    (u8*)sound_buffer,
+                    wanted_bytes,
+                    audio_stopwatch.MsElapsed());
+
+                if (bytes_queued_up > 0)
+                {
+                    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+                    {
+                        char audioerr[256];
+                        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                        OutputDebugString(audioerr);
+                    }
+                       // char msg2[256];
+                       // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                       // OutputDebugString(msg2);
+                }
             }
-        }
 
 
 
 
 
-        // VIDEO
+            // VIDEO
 
-        double msSinceAudioStart = audioTimer.MsSinceStart();
+            double msSinceAudioStart = audio_stopwatch.MsElapsed();
 
-        GetNextVideoFrame(
-            video_file.vfc,
-            video_file.video.codecContext,
-            sws_context,
-            video_file.video.index,
-            frame_output,
-            msSinceAudioStart);
-
-        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
-
+            GetNextVideoFrame(
+                video_file.vfc,
+                video_file.video.codecContext,
+                sws_context,
+                video_file.video.index,
+                frame_output,
+                msSinceAudioStart);
 
         }
         vid_was_paused = vid_paused;
+
+
+        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
 
         // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
@@ -1173,7 +1191,7 @@ void Update()
         // HIT FPS
 
         // something seems off with this... ?
-        double dt = timer.MsSinceLastFrame();
+        double dt = app_timer.MsSinceLastFrame();
 
         if (dt < targetMsPerFrame)
         {
@@ -1181,7 +1199,7 @@ void Update()
             Sleep(msToSleep);
             while (dt < targetMsPerFrame)  // is this weird?
             {
-                dt = timer.MsSinceLastFrame();
+                dt = app_timer.MsSinceLastFrame();
             }
             // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
             // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
@@ -1194,7 +1212,7 @@ void Update()
                     targetMsPerFrame, dt);
             OutputDebugString(msg);
         }
-        timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+        app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
 }
 
@@ -1260,10 +1278,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
-
         case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
         case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
-            OutputDebugString("HERE");
             HMENU hPopupMenu = CreatePopupMenu();
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -1308,7 +1324,7 @@ int CALLBACK WinMain(
     }
 
     // Timer timer;
-    timer.Start();
+    app_timer.Start();
 
 
 
@@ -1453,10 +1469,6 @@ int CALLBACK WinMain(
     // int
     desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
 
-    // track how long we've been playing audio?
-    // better way to sync??
-    // Timer
-    audioTimer;
 
 
 
@@ -1507,7 +1519,7 @@ int CALLBACK WinMain(
     // MAIN LOOP
 
     // seed our first frame dt
-    timer.EndFrame();
+    app_timer.EndFrame();
 
     while (appRunning)
     {
