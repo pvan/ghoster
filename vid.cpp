@@ -699,13 +699,13 @@ void shader_error_check(GLuint object, const char *kind, GetLogFunc getLog, GetP
 }
 
 
-void check_gl_error()
+void check_gl_error(char *lastCall)
 {
     GLenum err = glGetError();
     if (err != GL_NO_ERROR)
     {
         char errbuf[123];
-        sprintf(errbuf,"GL ERR: 0x%x\n", err);
+        sprintf(errbuf,"GL ERR: 0x%x (%s)\n", err, lastCall);
         OutputDebugString(errbuf);
     }
 }
@@ -820,9 +820,9 @@ void InitOpenGL(HWND window)
 
     // dfdf
     glGenVertexArrays(1, &vao);
-            check_gl_error();
+            check_gl_error("glGenVertexArrays");
     glGenBuffers(1, &vbo);
-            check_gl_error();
+            check_gl_error("glGenBuffers");
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
@@ -868,7 +868,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
                  0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
-        check_gl_error();
+        check_gl_error("glTexImage2D");
 
     GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
     glUniform1i(tex_loc, 0);   // texture id of 0
@@ -992,34 +992,26 @@ struct Stopwatch
     }
     void Start()
     {
-        if (paused)
+        if (timer.started)
         {
-            paused = false;
-            if (timer.started)
+            if (paused)
             {
-                // OutputDebugString("Stopwatch: Starting from pause.");
+                // OutputDebugString("Stopwatch: Unpausing.");
                 // restart and subtract our already elapsed time
                 timer.Start();
                 timer.starting_ticks -= ticks_elapsed_at_pause;
             }
             else
             {
-                // OutputDebugString("Stopwatch: Starting for the first time, from pause.");
-                timer.Start();
+                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
             }
         }
         else
         {
-            if (timer.started)
-            {
-                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
-            }
-            else
-            {
-                // OutputDebugString("Stopwatch: Starting for the first time, from unpause.");
-                timer.Start();
-            }
+            // OutputDebugString("Stopwatch: Starting for the first time.");
+            timer.Start();
         }
+        paused = false;
     }
     void Pause()
     {
@@ -1094,21 +1086,12 @@ void Update()
 
             elapsed = audio_stopwatch.MsElapsed() / 1000.0;
             percent = elapsed/duration;
-
-            char durbuf[123];
-            sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-            OutputDebugString(durbuf);
+                // char durbuf[123];
+                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+                // OutputDebugString(durbuf);
 
 
             // SOUND
-
-            // static bool playingAudio = false;
-            // if (!playingAudio)
-            // {
-            //     SDL_PauseAudioDevice(audio_device, 0);
-            //     audio_stopwatch.Start();
-            //     playingAudio = true;
-            // }
 
             int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
                 // char msg[256];
@@ -1347,26 +1330,28 @@ int CALLBACK WinMain(
     // OutputDebugString(qwer2);
 
     duration = (double)video_file.vfc->duration / (double)AV_TIME_BASE; // not quite accurate??
-    char qwer[123];
-    sprintf(qwer, "duration: %f\n", duration);
-    OutputDebugString(qwer);
+    char durbuf[123];
+    sprintf(durbuf, "duration: %f\n", duration);
+    OutputDebugString(durbuf);
     elapsed = 0;
 
 
 
     // SET FPS BASED ON LOADED VIDEO
 
+    double targetFPS = (video_file.video.codecContext->time_base.den /
+                        video_file.video.codecContext->time_base.num) /
+                        video_file.video.codecContext->ticks_per_frame;
+
     char vidfps[123];
-    sprintf(vidfps, "video frame rate: %i / %i\nticks_per_frame: %i\n",
+    sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
         video_file.video.codecContext->time_base.num,
         video_file.video.codecContext->time_base.den,
+        targetFPS,
         video_file.video.codecContext->ticks_per_frame
     );
     OutputDebugString(vidfps);
 
-    double targetFPS = (video_file.video.codecContext->time_base.den /
-                        video_file.video.codecContext->time_base.num) /
-                        video_file.video.codecContext->ticks_per_frame;
     // double
     targetMsPerFrame = 1000 / targetFPS;
 
