@@ -100,7 +100,9 @@ typedef GLint (APIENTRY * PFGL_GUL) (GLuint program, const char *name);
 typedef void (APIENTRY * PFGL_VAP) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
 typedef void (APIENTRY * PFGL_EVA) (GLuint index);
 typedef void (APIENTRY * PFGL_UNI) (GLint location, GLint v0);
+typedef void (APIENTRY * PFGL_UNIF) (GLint location, GLfloat v0);
 typedef void (APIENTRY * PFGL_TEX) (GLenum texture);
+
 
 static PFGL_GEN_FBO glGenFramebuffers;
 static PFGL_BIND_FBO glBindFramebuffer;
@@ -128,6 +130,7 @@ static PFGL_GUL glGetUniformLocation;
 static PFGL_VAP glVertexAttribPointer;
 static PFGL_EVA glEnableVertexAttribArray;
 static PFGL_UNI glUniform1i;
+static PFGL_UNIF glUniform1f;
 static PFGL_TEX glActiveTexture;
 
 
@@ -762,8 +765,8 @@ void InitOpenGL(HWND window)
     glVertexAttribPointer = (PFGL_VAP)wglGetProcAddress("glVertexAttribPointer");
     glEnableVertexAttribArray = (PFGL_EVA)wglGetProcAddress("glEnableVertexAttribArray");
     glUniform1i = (PFGL_UNI)wglGetProcAddress("glUniform1i");
+    glUniform1f = (PFGL_UNIF)wglGetProcAddress("glUniform1f");
     glActiveTexture = (PFGL_TEX)wglGetProcAddress("glActiveTexture");
-
 
     const char *vertex_shader = MULTILINE_STRING
     (
@@ -781,12 +784,14 @@ void InitOpenGL(HWND window)
     const char *fragment_shader = MULTILINE_STRING
     (
         #version 330 core \n
-        out vec3 color;
+        out vec4 color;
         in vec2 texCoord;
         uniform sampler2D tex;
+        uniform float alpha;
         void main()
         {
-            color = texture2D(tex, texCoord).xyz;
+            color = texture2D(tex, texCoord);
+            color.a = alpha;
         }
     );
 
@@ -856,6 +861,8 @@ void InitOpenGL(HWND window)
     // // could create and delete each frame maybe?
     // glGenFramebuffers(1, &readFboId);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 }
 
@@ -907,9 +914,10 @@ void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWN
 
 
 //dfdf
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window)
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
 {
     HDC hdc = GetDC(window);
+
 
 
     glViewport(0, 0, dWID, dHEI);
@@ -925,10 +933,11 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
     glUniform1i(tex_loc, 0);   // texture id of 0
 
+    GLuint alpha_loc = glGetUniformLocation(shader_program, "alpha");
+    glUniform1f(alpha_loc, 1);
+
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    // glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(0, 1, 1, 1);
@@ -937,6 +946,25 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
+
+
+    // fakey way to draw rects
+    int pos = (int)(proportion * (double)dWID);
+
+    glViewport(pos, 12, dWID, 22);
+    glUniform1f(alpha_loc, 0.5);
+    u32 gray = 0xaaaaaaaa;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    glViewport(0, 12, pos, 22);
+    glUniform1f(alpha_loc, 0.6);
+    u32 red = 0xffff0000;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+
+    // unbind and cleanup
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
@@ -1232,7 +1260,7 @@ void Update()
 
         // BlendProgressBar((u32*)vid_buffer, vidWID, vidHEI, percent);
 // }
-        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window);
+        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
         // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 
 
