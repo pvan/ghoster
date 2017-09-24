@@ -64,7 +64,9 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_COLOR_ATTACHMENT0              0x8CE0
-//#define GL_SRC_ALPHA
+#define GL_VERTEX_SHADER                  0x8B31
+#define GL_FRAGMENT_SHADER                0x8B30
+#define GL_ARRAY_BUFFER                   0x8892
 
 // there's probably established names for these but w/e for now
 typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
@@ -73,12 +75,30 @@ typedef void (APIENTRY * PFGL_FBO_TEX2D) (GLenum target, GLenum attachment, GLen
 typedef void (APIENTRY * PFGL_BLIT_FBO) (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1,
                                          GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
 typedef void (APIENTRY * PFGL_DEL_FBO) (GLsizei n, const GLuint * framebuffers);
+typedef GLuint (APIENTRY * PFGL_CS) (GLenum shaderType);
+typedef void (APIENTRY * PFGL_SS) (GLuint shader, GLsizei count, const char **string, const GLint *length);
+typedef GLuint (APIENTRY * PFGL_CP) (void);
+typedef void (APIENTRY * PFGL_AS) (GLuint program, GLuint shader);
+typedef void (APIENTRY * PFGL_LP) (GLuint program);
+typedef void (APIENTRY * PFGL_VA) (GLsizei n, GLuint *arrays);
+typedef void (APIENTRY * PFGL_GB) (GLsizei n, GLuint *buffers);
+typedef void (APIENTRY * PFGL_UP) (GLuint program);
+typedef void (APIENTRY * PFGL_BB) (GLenum target, GLuint buffer);
 
 static PFGL_GEN_FBO glGenFramebuffers;
 static PFGL_BIND_FBO glBindFramebuffer;
 static PFGL_FBO_TEX2D glFramebufferTexture2D;
 static PFGL_BLIT_FBO glBlitFramebuffer;
 static PFGL_DEL_FBO glDeleteFramebuffers;
+static PFGL_CS glCreateShader;
+static PFGL_SS glShaderSource;
+static PFGL_CP glCreateProgram;
+static PFGL_AS glAttachShader;
+static PFGL_LP glLinkProgram;
+static PFGL_VA glGenVertexArrays;
+static PFGL_GB glGenBuffers;
+static PFGL_UP glUseProgram;
+static PFGL_BB glBindBuffer;
 
 
 
@@ -615,6 +635,13 @@ SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
 
 
 
+static GLuint vao;
+static GLuint vbo;
+static GLuint shader_program;
+
+// trick for easy shader strings
+#define MULTILINE_STRING(...) #__VA_ARGS__
+
 void InitOpenGL(HWND window)
 {
     HDC hdc = GetDC(window);
@@ -636,20 +663,81 @@ void InitOpenGL(HWND window)
     ReleaseDC(window, hdc);
 
 
+
     // seem to be context dependent? so load after it?
     glGenFramebuffers = (PFGL_GEN_FBO)wglGetProcAddress("glGenFramebuffers");
     glBindFramebuffer = (PFGL_BIND_FBO)wglGetProcAddress("glBindFramebuffer");
     glFramebufferTexture2D = (PFGL_FBO_TEX2D)wglGetProcAddress("glFramebufferTexture2D");
     glBlitFramebuffer = (PFGL_BLIT_FBO)wglGetProcAddress("glBlitFramebuffer");
     glDeleteFramebuffers = (PFGL_DEL_FBO)wglGetProcAddress("glDeleteFramebuffers");
+	glCreateShader = (PFGL_CS)wglGetProcAddress("glCreateShader");
+	glShaderSource = (PFGL_SS)wglGetProcAddress("glShaderSource");
+	glCreateProgram = (PFGL_CP)wglGetProcAddress("glCreateProgram");
+	glAttachShader = (PFGL_AS)wglGetProcAddress("glAttachShader");
+	glLinkProgram = (PFGL_LP)wglGetProcAddress("glLinkProgram");
+	glGenVertexArrays = (PFGL_VA)wglGetProcAddress("glGenVertexArrays");
+	glGenBuffers = (PFGL_GB)wglGetProcAddress("glGenBuffers");
+	glUseProgram = (PFGL_UP)wglGetProcAddress("glUseProgram");
+	glBindBuffer = (PFGL_BB)wglGetProcAddress("glBindBuffer");
 
 
-    // create our texture and FBO just once right?
-    glGenTextures(1, &tex);
-    glGenTextures(1, &tex2);
 
-    // could create and delete each frame maybe?
-    glGenFramebuffers(1, &readFboId);
+
+	const char *vertex_shader = MULTILINE_STRING(
+		in vec4 position;
+		out vec4 myPos;
+		void main() {
+		  myPos = position;
+		  gl_Position = position;
+		}
+	);
+
+	const char *fragment_shader = MULTILINE_STRING(
+		uniform float phase;
+		in vec4 myPos;
+		void main() {
+		  gl_FragColor = ...;
+		}
+	);
+
+
+	// compile shaders
+	GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vshader, 1, &vertex_shader, 0);
+
+	GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fshader, 1, &fragment_shader, 0);
+
+	// create program that sitches shaders together
+	shader_program = glCreateProgram();
+	glAttachShader(shader_program, vshader);
+	glAttachShader(shader_program, fshader);
+	glLinkProgram(shader_program);
+
+
+	glGenVertexArrays(1, &vao);
+	glGenBuffers(1, &vbo);
+
+	// glGenBuffers(GL_ARRAY_BUFFER, &vbo);
+
+
+	// glVertexAttribPointer(loc_position, NDIMENSIONS, GL_FLOAT, GL_FALSE, 0, 0);
+
+
+	// glEnableVertexAttribArray(loc_position);
+	// glBindVertexArray(0);  // Unbind.
+
+	// glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
+
+
+
+
+    // // create our texture and FBO just once right?
+    // glGenTextures(1, &tex);
+    // glGenTextures(1, &tex2);
+
+    // // could create and delete each frame maybe?
+    // glGenFramebuffers(1, &readFboId);
 
 
 }
@@ -701,10 +789,25 @@ void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWN
 }
 
 
+//dfdf
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
+{
+    HDC hdc = GetDC(window);
+
+
+    glUseProgram(shader_program);
+    // glUniform1f(loc_phase, sin(4*t));
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+
+    SwapBuffers(hdc);
+
+    ReleaseDC(window, hdc);
+}
 
 
 // todo: resizing here or resize with ffmpeg?
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
+void RenderToScreenGL0(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
 {
     HDC hdc = GetDC(window);
 
