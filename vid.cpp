@@ -818,7 +818,7 @@ void InitOpenGL(HWND window)
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // alloc space for our points
-        float points[2*3] = {-.9f,-.9f, .9f,.9f, -.9f,.9f};
+        float points[2*4] = {-.9f,.9f, -.9f,-.9f, .9f,-.9f, .9f,.9f,};
         glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
         // glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*2, NULL, GL_DYNAMIC_DRAW);
             check_gl_error();
@@ -922,8 +922,8 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     glUseProgram(shader_program);
 
     glBindVertexArray(vao);
-    // glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    // glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
 
     SwapBuffers(hdc);
