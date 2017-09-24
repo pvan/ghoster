@@ -770,10 +770,8 @@ void InitOpenGL(HWND window)
         #version 330 core \n
         layout(location = 0) in vec2 position;
         out vec2 texCoord;
-        //out vec4 myPos;
         void main() {
-          //myPos = position;
-            texCoord = position.xy*vec2(0.5,0.5)+vec2(0.5,0.5);
+            texCoord = position.xy*vec2(0.5,-0.5)+vec2(0.5,0.5);
             gl_Position = vec4(position, 0, 1);
         }
     );
@@ -788,14 +786,8 @@ void InitOpenGL(HWND window)
         uniform sampler2D tex;
         void main()
         {
-            // color = texture2D(tex, texCoord).xyz;
-            color = vec3(texCoord, 0);
+            color = texture2D(tex, texCoord).xyz;
         }
-        // // uniform float phase;
-        // // in vec4 myPos;
-        // void main() {
-        //   gl_FragColor = vec4(1,.5,.5,1);
-        // }
     );
 
 
@@ -830,14 +822,13 @@ void InitOpenGL(HWND window)
         // alloc space for our points
         float points[2*4] = {-.9f,.9f, -.9f,-.9f, .9f,-.9f, .9f,.9f,};
         glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
-        // glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*2, NULL, GL_DYNAMIC_DRAW);
             check_gl_error();
         glBindVertexArray(vao);
         // tie the "in" variable
             // GLuint loc_position = glGetUniformLocation(shader_program, "position");
             // char aaa[123]; sprintf(aaa, "loc %i\n", loc_position); OutputDebugString(aaa);
             // check_gl_error();
-            // glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            // glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
             // check_gl_error();
             // glEnableVertexAttribArray(loc_position);
             // check_gl_error();
@@ -857,6 +848,10 @@ void InitOpenGL(HWND window)
     // create our texture
     glGenTextures(1, &tex);
     // glGenTextures(1, &tex2);
+
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 
     // // could create and delete each frame maybe?
     // glGenFramebuffers(1, &readFboId);
@@ -916,26 +911,18 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 {
     HDC hdc = GetDC(window);
 
-    // glDisable(GL_CULL_FACE);
-
-    // float points[4*3] = {-1,-1,-10, 1,-1,-10, -1,-1,-10, 1,1,-10};
-    // float points[4*3] = {-1,-1,0, 1,-1,0, -1,-1,0, 1,1,0};
-    // float points[4*3] = {-1,-1, 1,-1, -1,-1, 1,1};
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-    // glBindTexture(GL_TEXTURE_2D, tex);
-
-    // update our texture with new data
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
                  0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+        check_gl_error();
 
     GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
-            char aaa[123]; sprintf(aaa, "tex %i\n", tex_loc); OutputDebugString(aaa);
     glUniform1i(tex_loc, 0);   // texture id of 0
 
-    // glUniform1f(loc_phase, sin(4*t));
+
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     // glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -946,7 +933,9 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-    // glDrawArrays(GL_TRIANGLES, 0, 3);
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
     glBindVertexArray(0);
 
     SwapBuffers(hdc);
