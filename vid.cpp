@@ -760,8 +760,10 @@ void InitOpenGL(HWND window)
 
 
 
-    const char *vertex_shader = MULTILINE_STRING(
-        in vec3 position;
+    const char *vertex_shader = MULTILINE_STRING
+    (
+        #version 330 core \n
+        layout(location = 0) in vec3 position;
         //out vec4 myPos;
         void main() {
           //myPos = position;
@@ -771,12 +773,19 @@ void InitOpenGL(HWND window)
     OutputDebugString(vertex_shader);
     OutputDebugString("\n");
 
-    const char *fragment_shader = MULTILINE_STRING(
-        // uniform float phase;
-        // in vec4 myPos;
-        void main() {
-          gl_FragColor = vec4(1,1,0,0);
+    const char *fragment_shader = MULTILINE_STRING
+    (
+        #version 330 core \n
+        out vec3 color;
+        void main()
+        {
+            color = vec3(1,0,0);
         }
+        // // uniform float phase;
+        // // in vec4 myPos;
+        // void main() {
+        //   gl_FragColor = vec4(1,.5,.5,1);
+        // }
     );
 
 
@@ -798,22 +807,36 @@ void InitOpenGL(HWND window)
     glLinkProgram(shader_program);
     shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
+    glUseProgram(shader_program);
+            check_gl_error();
 
-
+    // dfdf
     glGenVertexArrays(1, &vao);
+            check_gl_error();
     glGenBuffers(1, &vbo);
+            check_gl_error();
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
         // alloc space for our points
-        glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*3, NULL, GL_DYNAMIC_DRAW);
+        float points[3*3] = {-1,-1,0, 1,-1,0, -1,-1,0};
+        glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
+        // glBufferData(GL_ARRAY_BUFFER, sizeof(float)*4*2, NULL, GL_DYNAMIC_DRAW);
+            check_gl_error();
         glBindVertexArray(vao);
         // tie the "in" variable
-            GLuint loc_position = glGetUniformLocation(shader_program, "position");
+            // GLuint loc_position = glGetUniformLocation(shader_program, "position");
+            // char aaa[123]; sprintf(aaa, "loc %i\n", loc_position); OutputDebugString(aaa);
+            // check_gl_error();
+            // glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            // check_gl_error();
+            // glEnableVertexAttribArray(loc_position);
+            // check_gl_error();
+
+            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
             check_gl_error();
-            glVertexAttribPointer(loc_position, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(0);
             check_gl_error();
-            glEnableVertexAttribArray(loc_position);
-            check_gl_error();
+
         glBindVertexArray(0);  // Unbind.
     glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
 
@@ -883,22 +906,24 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 {
     HDC hdc = GetDC(window);
 
-    glDisable(GL_CULL_FACE);
+    // glDisable(GL_CULL_FACE);
 
     // float points[4*3] = {-1,-1,-10, 1,-1,-10, -1,-1,-10, 1,1,-10};
-    float points[4*3] = {-1,-1,0, 1,-1,0, -1,-1,0, 1,1,0};
+    // float points[4*3] = {-1,-1,0, 1,-1,0, -1,-1,0, 1,1,0};
+    // float points[4*3] = {-1,-1, 1,-1, -1,-1, 1,1};
 
     // glUniform1f(loc_phase, sin(4*t));
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(points), points);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     glClear(GL_COLOR_BUFFER_BIT);
-    // glClearColor(0, 1, 1, 1);
+    glClearColor(0, 1, 1, 1);
     glUseProgram(shader_program);
 
     glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    // glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
     glBindVertexArray(0);
 
     SwapBuffers(hdc);
