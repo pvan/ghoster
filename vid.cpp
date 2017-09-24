@@ -68,6 +68,7 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 #define GL_FRAGMENT_SHADER                0x8B30
 #define GL_ARRAY_BUFFER                   0x8892
 #define GL_DYNAMIC_DRAW                   0x88E8
+#define GL_STATIC_DRAW                    0x88E4
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
 #define GL_TEXTURE0                       0x84C0
@@ -97,6 +98,7 @@ typedef void (APIENTRY * PFGL_GS) (GLuint shader, GLenum pname, GLint *params);
 typedef void (APIENTRY * PFGL_PL) (GLuint program, GLsizei maxLength, GLsizei *length, char *infoLog);
 typedef void (APIENTRY * PFGL_GP) (GLuint shader, GLenum pname, GLint *params);
 typedef GLint (APIENTRY * PFGL_GUL) (GLuint program, const char *name);
+typedef GLint (APIENTRY * PFGL_GAL) (GLuint program, const char *name);
 typedef void (APIENTRY * PFGL_VAP) (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid * pointer);
 typedef void (APIENTRY * PFGL_EVA) (GLuint index);
 typedef void (APIENTRY * PFGL_UNI) (GLint location, GLint v0);
@@ -127,6 +129,7 @@ static PFGL_GS glGetShaderiv;
 static PFGL_PL glGetProgramInfoLog;
 static PFGL_GP glGetProgramiv;
 static PFGL_GUL glGetUniformLocation;
+static PFGL_GAL glGetAttribLocation;
 static PFGL_VAP glVertexAttribPointer;
 static PFGL_EVA glEnableVertexAttribArray;
 static PFGL_UNI glUniform1i;
@@ -134,11 +137,6 @@ static PFGL_UNIF glUniform1f;
 static PFGL_TEX glActiveTexture;
 
 
-
-// ok place for these??
-static GLuint tex;
-static GLuint tex2;
-static GLuint readFboId = 0;
 
 
 
@@ -712,6 +710,7 @@ void check_gl_error()
 static GLuint vao;
 static GLuint vbo;
 static GLuint shader_program;
+static GLuint tex;
 
 // trick for easy shader strings
 #define MULTILINE_STRING(...) #__VA_ARGS__
@@ -735,7 +734,6 @@ void InitOpenGL(HWND window)
     wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
 
     ReleaseDC(window, hdc);
-
 
 
     // seem to be context dependent? so load after it?
@@ -762,11 +760,13 @@ void InitOpenGL(HWND window)
     glGetProgramInfoLog = (PFGL_PL)wglGetProcAddress("glGetProgramInfoLog");
     glGetProgramiv = (PFGL_GP)wglGetProcAddress("glGetProgramiv");
     glGetUniformLocation = (PFGL_GUL)wglGetProcAddress("glGetUniformLocation");
+    glGetAttribLocation = (PFGL_GUL)wglGetProcAddress("glGetAttribLocation");
     glVertexAttribPointer = (PFGL_VAP)wglGetProcAddress("glVertexAttribPointer");
     glEnableVertexAttribArray = (PFGL_EVA)wglGetProcAddress("glEnableVertexAttribArray");
     glUniform1i = (PFGL_UNI)wglGetProcAddress("glUniform1i");
     glUniform1f = (PFGL_UNIF)wglGetProcAddress("glUniform1f");
     glActiveTexture = (PFGL_TEX)wglGetProcAddress("glActiveTexture");
+
 
     const char *vertex_shader = MULTILINE_STRING
     (
@@ -814,8 +814,6 @@ void InitOpenGL(HWND window)
     glLinkProgram(shader_program);
     shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
-    glUseProgram(shader_program);
-            check_gl_error();
 
     // dfdf
     glGenVertexArrays(1, &vao);
@@ -824,42 +822,23 @@ void InitOpenGL(HWND window)
             check_gl_error();
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        // alloc space for our points
         float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
-        glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW);
-            check_gl_error();
+        glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW); //GL_DYNAMIC_DRAW
         glBindVertexArray(vao);
-        // tie the "in" variable
-            // GLuint loc_position = glGetUniformLocation(shader_program, "position");
-            // char aaa[123]; sprintf(aaa, "loc %i\n", loc_position); OutputDebugString(aaa);
-            // check_gl_error();
-            // glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
-            // check_gl_error();
-            // glEnableVertexAttribArray(loc_position);
-            // check_gl_error();
+            GLuint loc_position = glGetAttribLocation(shader_program, "position");
+            glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
+            glEnableVertexAttribArray(loc_position);
+        glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-            check_gl_error();
-            glEnableVertexAttribArray(0);
-            check_gl_error();
-
-        glBindVertexArray(0);  // Unbind.
-    glBindBuffer(GL_ARRAY_BUFFER, 0);  // Unbind.
-
-
-    // glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
 
     // create our texture
     glGenTextures(1, &tex);
-    // glGenTextures(1, &tex2);
 
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-
-    // // could create and delete each frame maybe?
-    // glGenFramebuffers(1, &readFboId);
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -868,49 +847,6 @@ void InitOpenGL(HWND window)
 
 
 
-void RenderToScreenGDI(void *memory, int sWid, int sHei, int dWid, int dHei, HWND window)
-{
-
-    HDC hdc = GetDC(window);
-
-    RECT clientRect;
-    GetClientRect(window, &clientRect);
-    int winWidth = clientRect.right - clientRect.left;
-    int winHeight = clientRect.bottom - clientRect.top;
-
-    // here we clear out the edges
-    // PatBlt(hdc, width, 0, winWidth-width, winHeight, BLACKNESS);
-    // PatBlt(hdc, 0, height, width, winHeight-height, BLACKNESS);
-
-    BITMAPINFO info;
-    info.bmiHeader.biSize = sizeof(info);
-    info.bmiHeader.biWidth = sWid;
-    info.bmiHeader.biHeight = -sHei;  // negative to set origin in top left
-    info.bmiHeader.biPlanes = 1;
-    info.bmiHeader.biBitCount = 32;
-    info.bmiHeader.biCompression = BI_RGB;
-
-
-    float zoomFactor = 1;
-
-    // this is what actually puts the buffer on the screen
-    int result = StretchDIBits(
-                  hdc,
-                  0, 0, dWid, dHei,
-                  0, 0, sWid, sHei,
-                  memory,
-                  &info,
-                  DIB_RGB_COLORS,
-                  SRCCOPY);
-
-    if (!result)
-    {
-        OutputDebugString("StretchDIBits failed!");
-        // DWORD msg = GetLastError();
-    }
-
-    ReleaseDC(window, hdc);
-}
 
 
 //dfdf
@@ -920,6 +856,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 
+    // if window size changed.. could also call in WM_SIZE and not pass dWID here
     glViewport(0, 0, dWID, dHEI);
 
 
@@ -952,7 +889,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     int pos = (int)(proportion * (double)dWID);
 
     glViewport(pos, 12, dWID, 22);
-    glUniform1f(alpha_loc, 0.5);
+    glUniform1f(alpha_loc, 0.4);
     u32 gray = 0xaaaaaaaa;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -974,97 +911,6 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     ReleaseDC(window, hdc);
 }
 
-
-// todo: resizing here or resize with ffmpeg?
-void RenderToScreenGL0(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
-{
-    HDC hdc = GetDC(window);
-
-    glBindTexture(GL_TEXTURE_2D, tex);
-
-    // update our texture with new data
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
-
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, readFboId);
-
-    // should this only be needed once?
-    // (note texture needs to be bound at least once before calling this though??)
-    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, tex, 0);
-
-    // still not quite sure how this gets the memory bytes to the screen...
-    // i guess TexImage puts mem into tex2D
-    // then framebufferTex ties readfbo to that tex2d
-    // then this blit writes the readfbo to the screen (our bound hdc)
-    glBlitFramebuffer(0, 0, sWID, sHEI,
-                      0, dHEI, dWID, 0,   // flip vertically
-                      GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-
-    // // progress bar
-    // int pos = (int)(proportion * (double)dWID);
-    // u32 red = 0xffff0000;
-    // glBindTexture(GL_TEXTURE_2D, tex2);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
-    //              0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-    // glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-    //                        GL_TEXTURE_2D, tex2, 0);
-    // glBlitFramebuffer(0, 0, 1, 1,
-    //                   0, 12, pos, 37,
-    //                   GL_COLOR_BUFFER_BIT, GL_LINEAR);
-    // u32 gray = 0x99999999;
-    // glBindTexture(GL_TEXTURE_2D, tex2);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1,
-    //              0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
-    // glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-    //                        GL_TEXTURE_2D, tex2, 0);
-    // glBlitFramebuffer(0, 0, 1, 1,
-    //                   pos, 12, dWID, 37,
-                      // GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // i think also flushes things?
-    // glDeleteFramebuffers(1, &readFboId);
-
-
-    SwapBuffers(hdc);
-    // glFinish();  // should never need this?
-
-    ReleaseDC(window, hdc);
-}
-
-
-u32 AlphaBlend(u32 p1, u32 p2)
-{
-    static const int AMASK = 0xFF000000;
-    static const int RBMASK = 0x00FF00FF;
-    static const int GMASK = 0x0000FF00;
-    static const int AGMASK = AMASK | GMASK;
-    static const int ONEALPHA = 0x01000000;
-    unsigned int a = (p1 & AMASK) >> 24;
-    unsigned int na = 255 - a;
-    unsigned int rb = ((a * (p1 & RBMASK)) + (na * (p2 & RBMASK))) >> 8;
-    unsigned int ag = (a * ((p1 & AGMASK) >> 8)) + (na * (ONEALPHA | ((p2 & GMASK) >> 8)));
-    return ((rb & RBMASK) | (ag & AGMASK));
-}
-
-void BlendProgressBar(u32 *pixels, int width, int height, double proportion)
-{
-    int pos = (int)(proportion * (double)width);
-    for (int x = 0; x < width; x++)
-    {
-        // for (int y = 0; y < height; y++)
-        for (int y = height-37; y < height-12; y++)
-        {
-            if (x < pos)
-                pixels[x + y*width] = AlphaBlend(0xffff0000, pixels[x + y*width]);
-            else
-                pixels[x + y*width] = AlphaBlend(0x66999999, pixels[x + y*width]);
-        }
-    }
-}
 
 
 
@@ -1118,23 +964,6 @@ struct Timer
 
 
 
-
-
-void RenderWeird(u32* buf, int width, int height, int t)
-{
-    u8 r = 0;
-    u8 g = (sin((float)t/25.f)/2 + 0.5) * 256;
-    u8 b = 0;
-    for (int y = 0; y < height; y++)
-    {
-        r = sin(y*M_PI / height) * 255;
-        for (int x = 0; x < width; x++)
-        {
-            b = sin(x*M_PI / width) * 255;
-            buf[x + y*width] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-        }
-    }
-}
 
 
 //fdsa
@@ -1258,13 +1087,9 @@ void Update()
             frame_output,
             msSinceAudioStart);
 
-        // BlendProgressBar((u32*)vid_buffer, vidWID, vidHEI, percent);
-// }
         RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
-        // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 
 
-// }
 
         // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
@@ -1306,15 +1131,6 @@ void Update()
 
 
 
-// u8 *ReAllocScreenBuffer(u8 *buf, int wid, int hei)
-// {
-//     if (buf) av_free(buf);
-//     // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, wid, hei);
-//     // return (u8*)av_malloc(numBytes * sizeof(u8));
-//     int numBytes = sizeof(u32)*sizeof(u32) * wid * hei;
-//     return (u8*)av_malloc(numBytes);
-// }
-
 
 
 #define ID_EXIT 1001
@@ -1354,11 +1170,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
             bool left   = pos.x < win.left   + pad.x;
-            bool right  = pos.x > win.right  - pad.x -1;  // isn't win.right 1 pixel beyond window?
+            bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
             bool top    = pos.y < win.top    + pad.y;
             bool bottom = pos.y > win.bottom - pad.y -1;
-
-            // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window);
 
             if (top && left)     return HTTOPLEFT;
             if (top && right)    return HTTOPRIGHT;
@@ -1374,10 +1188,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_PAINT: {
             Update();
-            // PAINTSTRUCT ps;
-            // BeginPaint(hwnd, &ps);
-            // EndPaint(hwnd, &ps);
-            // return DefWindowProc(hwnd, message, wParam, lParam);
             return 0;
         } break;
 
@@ -1537,10 +1347,6 @@ int CALLBACK WinMain(
     InitOpenGL(window);
 
 
-    // temp gfx
-    // u32 *
-    secondary_buf = (u32*)malloc(vidWID * vidHEI * sizeof(u32)*sizeof(u32));
-    RenderWeird(secondary_buf, vidWID, vidHEI, 0);
 
 
     // SDL, for sound atm
