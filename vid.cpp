@@ -764,15 +764,32 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 }
 
 
+u32 AlphaBlend(u32 p1, u32 p2)
+{
+    static const int AMASK = 0xFF000000;
+    static const int RBMASK = 0x00FF00FF;
+    static const int GMASK = 0x0000FF00;
+    static const int AGMASK = AMASK | GMASK;
+    static const int ONEALPHA = 0x01000000;
+    unsigned int a = (p1 & AMASK) >> 24;
+    unsigned int na = 255 - a;
+    unsigned int rb = ((a * (p1 & RBMASK)) + (na * (p2 & RBMASK))) >> 8;
+    unsigned int ag = (a * ((p1 & AGMASK) >> 8)) + (na * (ONEALPHA | ((p2 & GMASK) >> 8)));
+    return ((rb & RBMASK) | (ag & AGMASK));
+}
+
 void BlendProgressBar(u32 *pixels, int width, int height, double proportion)
 {
     int pos = (int)(proportion * (double)width);
     for (int x = 0; x < width; x++)
     {
+        // for (int y = 0; y < height; y++)
         for (int y = height-37; y < height-12; y++)
         {
-            if (x < pos) pixels[x + y*width] = 0xffff0000;
-            else         pixels[x + y*width] = 0x99999999;
+            if (x < pos)
+                pixels[x + y*width] = AlphaBlend(0xffff0000, pixels[x + y*width]);
+            else
+                pixels[x + y*width] = AlphaBlend(0x66999999, pixels[x + y*width]);
         }
     }
 }
@@ -862,13 +879,13 @@ static void *sound_buffer;
 static struct SwsContext *sws_context;
 static AVFrame *frame_output;
 static HWND window;
-static u8 *buffer;
+static u8 *vid_buffer;
 static int vidWID;
 static int vidHEI;
 static int winWID;
 static int winHEI;
 static double targetMsPerFrame;
-static u32 *buf;
+static u32 *secondary_buf;
 
 
 
@@ -969,20 +986,20 @@ void Update()
             frame_output,
             msSinceAudioStart);
 
-        BlendProgressBar((u32*)buffer, winWID, winHEI, percent);
+        BlendProgressBar((u32*)vid_buffer, vidWID, vidHEI, percent);
 // }
-        RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
+        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
         // RenderToScreenGDI((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
 
 
 // }
 
-        // // DisplayAudioBuffer_FLOAT(buf, vidWID, vidHEI,
+        // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
         // //                    (float*)sound_buffer, bytes_in_buffer);
         // static int increm = 0;
-        // RenderWeird(buf, vidWID, vidHEI, increm++);
-        // RenderToScreenGL((void*)buf, vidWID, vidHEI, winWID, winHEI, window);
-        // RenderToScreenGDI((void*)buf, vidWID, vidHEI, window);
+        // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
+        // RenderToScreenGL((void*)secondary_buf, vidWID, vidHEI, winWID, winHEI, window);
+        // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
 
 
 
@@ -1017,6 +1034,17 @@ void Update()
 
 
 
+// u8 *ReAllocScreenBuffer(u8 *buf, int wid, int hei)
+// {
+//     if (buf) av_free(buf);
+//     // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, wid, hei);
+//     // return (u8*)av_malloc(numBytes * sizeof(u8));
+//     int numBytes = sizeof(u32)*sizeof(u32) * wid * hei;
+//     return (u8*)av_malloc(numBytes);
+// }
+
+
+
 #define ID_EXIT 1001
 #define ID_PAUSE 1002
 
@@ -1036,11 +1064,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             appRunning = false;
         } break;
 
+
         case WM_SIZE: {
             winWID = LOWORD(lParam);
             winHEI = HIWORD(lParam);
             return 0;
         }
+
 
         case WM_NCHITTEST: {
 
@@ -1056,7 +1086,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             bool top    = pos.y < win.top    + pad.y;
             bool bottom = pos.y > win.bottom - pad.y -1;
 
-            // RenderToScreenGL((void*)buffer, vidWID, vidHEI, winWID, winHEI, window);
+            // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window);
 
             if (top && left)     return HTTOPLEFT;
             if (top && right)    return HTTOPRIGHT;
@@ -1078,6 +1108,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // return DefWindowProc(hwnd, message, wParam, lParam);
             return 0;
         } break;
+
 
 
         case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
@@ -1236,8 +1267,8 @@ int CALLBACK WinMain(
 
     // temp gfx
     // u32 *
-    buf = (u32*)malloc(vidWID * vidHEI * sizeof(u32)*sizeof(u32));
-    RenderWeird(buf, vidWID, vidHEI, 0);
+    secondary_buf = (u32*)malloc(vidWID * vidHEI * sizeof(u32)*sizeof(u32));
+    RenderWeird(secondary_buf, vidWID, vidHEI, 0);
 
 
     // SDL, for sound atm
@@ -1296,10 +1327,10 @@ int CALLBACK WinMain(
         vidWID,
         vidHEI);
     // u8 *
-    buffer = (u8 *)av_malloc(numBytes * sizeof(u8));
+    vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
-    avpicture_fill((AVPicture *)frame_output, buffer, AV_PIX_FMT_RGB32,
+    avpicture_fill((AVPicture *)frame_output, vid_buffer, AV_PIX_FMT_RGB32,
         vidWID,
         vidHEI);
 
