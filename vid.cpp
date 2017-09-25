@@ -1022,6 +1022,12 @@ struct Stopwatch
             return ticks_elapsed_at_pause;
         return timer.TicksElapsedSinceStart();
     }
+    void ResetCompletely()
+    {
+    	timer.started = false;
+    	paused = false;
+    	ticks_elapsed_at_pause = 0;
+    }
     void Start()
     {
         if (timer.started)
@@ -1088,6 +1094,7 @@ static Timer menuCloseTimer;
 static bool globalContextMenuOpen;
 
 
+// todo: peruse this for memory leaks. also: weird deja vu
 bool LoadVideoFile(char *path)
 {
 
@@ -1098,13 +1105,16 @@ bool LoadVideoFile(char *path)
     // set window size on video source resolution
     winWID = loaded_video.video.codecContext->width;  // these will also be set by WM_SIZE but w/e
     winHEI = loaded_video.video.codecContext->height;
-    MoveWindow(window, 0, 0, winWID, winHEI, true);  // ever non-zero opening position? launch option?
+    RECT winRect;
+    GetWindowRect(window, &winRect);
+    //keep top left of window in same pos for now, change to keep center in same position?
+    MoveWindow(window, winRect.left, winRect.top, winWID, winHEI, true);  // ever non-zero opening position? launch option?
 
 
 
     // MAKE NOTE OF VIDEO LENGTH
 
-    // todo: add support for this
+    // todo: add handling for this
     assert(loaded_video.vfc->start_time==0);
         // char qwer2[123];
         // sprintf(qwer2, "start: %lli\n", start_time);
@@ -1114,6 +1124,8 @@ bool LoadVideoFile(char *path)
     duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
     logFormatContextDuration(loaded_video.vfc);
     elapsed = 0;
+
+    audio_stopwatch.ResetCompletely();
 
 
 
@@ -1576,8 +1588,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         	// 0 = just take the first one
         	if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
         	{
-        		OutputDebugString(filePath);
-        		// LoadVideoFile(filePath);
+        		// OutputDebugString(filePath);
+        		LoadVideoFile(filePath);
         	}
         	else
         	{
