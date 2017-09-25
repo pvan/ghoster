@@ -605,6 +605,27 @@ VideoFile OpenVideoFileAV(char *filepath)
 
 
 
+// adapted from ffmeg dump.c
+void logFormatContextDuration(AVFormatContext *fc)
+{
+    int methodEnum = fc->duration_estimation_method;
+    char buf[1024];
+    if (fc->duration != AV_NOPTS_VALUE) {
+        int hours, mins, secs, us;
+        int64_t duration = fc->duration + (fc->duration <= INT64_MAX - 5000 ? 5000 : 0); // ?
+        secs  = duration / AV_TIME_BASE;
+        us    = duration % AV_TIME_BASE;
+        mins  = secs / 60;
+        secs %= 60;
+        hours = mins / 60;
+        mins %= 60;
+        sprintf(buf, "DURATION:\n%02d:%02d:%02d.%02d\nmethod:%i\n", hours, mins, secs, (100 * us) / AV_TIME_BASE, methodEnum);
+    } else {
+        sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
+    }
+    OutputDebugString(buf);
+}
+
 
 
 void logSpec(SDL_AudioSpec *as) {
@@ -1062,6 +1083,139 @@ static Timer menuCloseTimer;
 static bool globalContextMenuOpen;
 
 
+bool LoadVideoFile(char *path)
+{
+
+    // VideoFile
+    loaded_video = OpenVideoFileAV(path);
+
+
+    // set window size on video source resolution
+    winWID = loaded_video.video.codecContext->width;  // these will also be set by WM_SIZE but w/e
+    winHEI = loaded_video.video.codecContext->height;
+    MoveWindow(window, 0, 0, winWID, winHEI, true);  // ever non-zero opening position? launch option?
+
+
+
+    // MAKE NOTE OF VIDEO LENGTH
+
+    // todo: add support for this
+    assert(loaded_video.vfc->start_time==0);
+        // char qwer2[123];
+        // sprintf(qwer2, "start: %lli\n", start_time);
+        // OutputDebugString(qwer2);
+
+
+    duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
+    logFormatContextDuration(loaded_video.vfc);
+    elapsed = 0;
+
+
+
+    // SET FPS BASED ON LOADED VIDEO
+
+    double targetFPS = (loaded_video.video.codecContext->time_base.den /
+                        loaded_video.video.codecContext->time_base.num) /
+                        loaded_video.video.codecContext->ticks_per_frame;
+
+    char vidfps[123];
+    sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+        loaded_video.video.codecContext->time_base.num,
+        loaded_video.video.codecContext->time_base.den,
+        targetFPS,
+        loaded_video.video.codecContext->ticks_per_frame
+    );
+    OutputDebugString(vidfps);
+
+    // double
+    targetMsPerFrame = 1000 / targetFPS;
+
+
+
+
+
+
+    // SDL, for sound atm
+
+    // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
+    if (SDL_Init(SDL_INIT_AUDIO))
+    {
+        char err[256];
+        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
+        MsgBox(err);
+        return false;
+    }
+    // SDL_AudioDeviceID
+    audio_device = SetupAudioSDL(loaded_video.audio.codecContext);
+
+    AVCodecContext *acc = loaded_video.audio.codecContext;
+
+    // try to keep this full
+    int audio_channels = acc->channels;
+
+    // how big of chunks do we want to decode and queue up at a time
+    int buffer_seconds = 2; // no reason not to just keep this big, right?
+    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
+    int samples_in_buffer = acc->sample_rate * buffer_seconds;
+    // int
+    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
+    // void *
+    sound_buffer = (void*)malloc(bytes_in_buffer);
+
+    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    // int
+    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
+
+
+
+
+    // MORE FFMPEG
+
+    // AVFrame *
+    frame_output = av_frame_alloc();  // just metadata
+
+    if (!frame_output)
+        { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
+
+
+    // actual mem for frame
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
+        // loaded_video.video.codecContext->width,
+        // loaded_video.video.codecContext->height);
+        vidWID,
+        vidHEI);
+    // u8 *
+    vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
+
+    // frame is now using buffer memory
+    avpicture_fill((AVPicture *)frame_output, vid_buffer, AV_PIX_FMT_RGB32,
+        vidWID,
+        vidHEI);
+
+    // for converting between frames i think
+    // struct SwsContext *
+    sws_context = 0;
+    sws_context = sws_getContext(
+        loaded_video.video.codecContext->width,
+        loaded_video.video.codecContext->height,
+        loaded_video.video.codecContext->pix_fmt,
+        vidWID,
+        vidHEI,
+        AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
+        SWS_BILINEAR,
+        0, 0, 0);
+
+
+
+
+    // av_frame_unref() //reset for next frame
+    return true;
+
+}
+
+
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
 void Update()
@@ -1415,27 +1569,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-// adapted from ffmeg dump.c
-void logFormatContextDuration(AVFormatContext *fc)
-{
-    int methodEnum = fc->duration_estimation_method;
-    char buf[1024];
-    if (fc->duration != AV_NOPTS_VALUE) {
-        int hours, mins, secs, us;
-        int64_t duration = fc->duration + (fc->duration <= INT64_MAX - 5000 ? 5000 : 0); // ?
-        secs  = duration / AV_TIME_BASE;
-        us    = duration % AV_TIME_BASE;
-        mins  = secs / 60;
-        secs %= 60;
-        hours = mins / 60;
-        mins %= 60;
-        sprintf(buf, "DURATION:\n%02d:%02d:%02d.%02d\nmethod:%i\n", hours, mins, secs, (100 * us) / AV_TIME_BASE, methodEnum);
-    } else {
-        sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
-    }
-    OutputDebugString(buf);
-}
-
 
 
 int CALLBACK WinMain(
@@ -1463,47 +1596,7 @@ int CALLBACK WinMain(
 
     // FFMPEG - load file right away to make window the same size
 
-    InitAV();
-
-    // VideoFile
-    loaded_video = OpenVideoFileAV(INPUT_FILE);
-
-
-
-    // MAKE NOTE OF VIDEO LENGTH
-
-    // todo: add support for this
-    assert(loaded_video.vfc->start_time==0);
-        // char qwer2[123];
-        // sprintf(qwer2, "start: %lli\n", start_time);
-        // OutputDebugString(qwer2);
-
-
-    duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
-    logFormatContextDuration(loaded_video.vfc);
-    elapsed = 0;
-
-
-
-    // SET FPS BASED ON LOADED VIDEO
-
-    double targetFPS = (loaded_video.video.codecContext->time_base.den /
-                        loaded_video.video.codecContext->time_base.num) /
-                        loaded_video.video.codecContext->ticks_per_frame;
-
-    char vidfps[123];
-    sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-        loaded_video.video.codecContext->time_base.num,
-        loaded_video.video.codecContext->time_base.den,
-        targetFPS,
-        loaded_video.video.codecContext->ticks_per_frame
-    );
-    OutputDebugString(vidfps);
-
-    // double
-    targetMsPerFrame = 1000 / targetFPS;
-
-
+    InitAV();  // basically just registers all codecs.. call when needed instead?
 
 
 
@@ -1519,15 +1612,15 @@ int CALLBACK WinMain(
     wc.lpszClassName = "best class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
-    // const int
-    vidWID = loaded_video.video.codecContext->width;
-    // const int
-    vidHEI = loaded_video.video.codecContext->height;
+    int openWidth = 960;
+    int openHeight = 720;
+    vidWID = openWidth;
+    vidHEI = openHeight;
     RECT neededRect = {};
-    winWID = vidWID;//960;
-    winHEI = vidHEI;//720;
-    neededRect.right = winWID;//WID; //960;
-    neededRect.bottom = winHEI;//HEI; //720;
+    winWID = vidWID;
+    winHEI = vidHEI;
+    neededRect.right = winWID;
+    neededRect.bottom = winHEI;
     // adjust window size based on desired client size
     // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
 
@@ -1569,83 +1662,12 @@ int CALLBACK WinMain(
 
 
 
-    // SDL, for sound atm
-
-    // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
-    if (SDL_Init(SDL_INIT_AUDIO))
-    {
-        char err[256];
-        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-        MsgBox(err);
-        return -1;
-    }
-    // SDL_AudioDeviceID
-    audio_device = SetupAudioSDL(loaded_video.audio.codecContext);
-
-    AVCodecContext *acc = loaded_video.audio.codecContext;
-
-    // try to keep this full
-    int audio_channels = acc->channels;
-
-    // how big of chunks do we want to decode and queue up at a time
-    int buffer_seconds = 2; // no reason not to just keep this big, right?
-    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int samples_in_buffer = acc->sample_rate * buffer_seconds;
-    // int
-    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
-    // void *
-    sound_buffer = (void*)malloc(bytes_in_buffer);
-
-    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    // int
-    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
 
 
 
+    // LOAD FILE
 
-    // MORE FFMPEG
-
-    // AVFrame *
-    frame_output = av_frame_alloc();  // just metadata
-
-    if (!frame_output)
-        { MsgBox("ffmpeg: Couldn't alloc frame."); return -1; }
-
-
-    // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
-        // loaded_video.video.codecContext->width,
-        // loaded_video.video.codecContext->height);
-        vidWID,
-        vidHEI);
-    // u8 *
-    vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
-
-    // frame is now using buffer memory
-    avpicture_fill((AVPicture *)frame_output, vid_buffer, AV_PIX_FMT_RGB32,
-        vidWID,
-        vidHEI);
-
-    // for converting between frames i think
-    // struct SwsContext *
-    sws_context = 0;
-    sws_context = sws_getContext(
-        loaded_video.video.codecContext->width,
-        loaded_video.video.codecContext->height,
-        loaded_video.video.codecContext->pix_fmt,
-        vidWID,
-        vidHEI,
-        AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
-        SWS_BILINEAR,
-        0, 0, 0);
-
-
-
-
-    // av_frame_unref() //reset for next frame
-
+    LoadVideoFile(INPUT_FILE);
 
 
 
