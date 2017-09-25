@@ -462,7 +462,7 @@ bool GetNextVideoFrame(
                     msSinceStart &&
                     !skipped_a_frame_already)
                 {
-                    OutputDebugString("skipped a frame\n");
+                    // OutputDebugString("skipped a frame\n");
                     skipped_a_frame_already = true;
 
                     // seems like we'd want this here right?
@@ -933,6 +933,10 @@ struct Timer
         starting_ticks = now.QuadPart;
         ticks_per_second = freq.QuadPart;
     }
+    void Stop()
+    {
+        started = false;
+    }
     i64 TicksNow()
     {
         LARGE_INTEGER ticks_now;
@@ -1052,150 +1056,161 @@ static u32 *secondary_buf;
 static Stopwatch audio_stopwatch;
 
 
+static Timer menuCloseTimer;
+static bool globalContextMenuOpen;
+
+
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
 void Update()
 {
 
+    // TODO: option to update as fast as possible and hog cpu? hmmm
 
-        // WHY NOT TIME FIRST
+    // WHY NOT TIME FIRST
 
-        // if (dt < targetMsPerFrame)
-        //     return;
-
-
-
+    // if (dt < targetMsPerFrame)
+    //     return;
 
 
-        if (vid_paused)
+    if (globalContextMenuOpen && menuCloseTimer.started && menuCloseTimer.MsSinceStart() > 150)
+    {
+        globalContextMenuOpen = false;
+        OutputDebugString("SETTING false\n");
+    }
+
+
+
+    if (vid_paused)
+    {
+        if (!vid_was_paused)
         {
-            if (!vid_was_paused)
-            {
-                audio_stopwatch.Pause();
-                SDL_PauseAudioDevice(audio_device, 1);
-            }
+            audio_stopwatch.Pause();
+            SDL_PauseAudioDevice(audio_device, 1);
         }
-        else
+    }
+    else
+    {
+        if (vid_was_paused || !audio_stopwatch.timer.started)
         {
-            if (vid_was_paused || !audio_stopwatch.timer.started)
+            audio_stopwatch.Start();
+            SDL_PauseAudioDevice(audio_device, 0);
+        }
+
+
+        elapsed = audio_stopwatch.MsElapsed() / 1000.0;
+        percent = elapsed/duration;
+            // char durbuf[123];
+            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+            // OutputDebugString(durbuf);
+
+
+        // SOUND
+
+        int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+            // char msg[256];
+            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+            // OutputDebugString(msg);
+
+
+        int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+            // char msg3[256];
+            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+            // OutputDebugString(msg3);
+
+        if (wanted_bytes >= 0)
+        {
+            if (wanted_bytes > bytes_in_buffer)
             {
-                audio_stopwatch.Start();
-                SDL_PauseAudioDevice(audio_device, 0);
+                // char errq[256];
+                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                // OutputDebugString(errq);
+
+                wanted_bytes = bytes_in_buffer;
             }
 
+            // ideally a little bite of sound, every frame
+            // todo: how to sync this right, pts dts?
+            int bytes_queued_up = GetNextAudioFrame(
+                video_file.afc,
+                video_file.audio.codecContext,
+                video_file.audio.index,
+                (u8*)sound_buffer,
+                wanted_bytes,
+                audio_stopwatch.MsElapsed());
 
-            elapsed = audio_stopwatch.MsElapsed() / 1000.0;
-            percent = elapsed/duration;
-                // char durbuf[123];
-                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-                // OutputDebugString(durbuf);
-
-
-            // SOUND
-
-            int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-                // char msg[256];
-                // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-                // OutputDebugString(msg);
-
-
-            int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-                // char msg3[256];
-                // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-                // OutputDebugString(msg3);
-
-            if (wanted_bytes >= 0)
+            if (bytes_queued_up > 0)
             {
-                if (wanted_bytes > bytes_in_buffer)
+                if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
                 {
-                    // char errq[256];
-                    // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-                    // OutputDebugString(errq);
-
-                    wanted_bytes = bytes_in_buffer;
+                    char audioerr[256];
+                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                    OutputDebugString(audioerr);
                 }
-
-                // ideally a little bite of sound, every frame
-                // todo: how to sync this right, pts dts?
-                int bytes_queued_up = GetNextAudioFrame(
-                    video_file.afc,
-                    video_file.audio.codecContext,
-                    video_file.audio.index,
-                    (u8*)sound_buffer,
-                    wanted_bytes,
-                    audio_stopwatch.MsElapsed());
-
-                if (bytes_queued_up > 0)
-                {
-                    if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
-                    {
-                        char audioerr[256];
-                        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-                        OutputDebugString(audioerr);
-                    }
-                       // char msg2[256];
-                       // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-                       // OutputDebugString(msg2);
-                }
+                   // char msg2[256];
+                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                   // OutputDebugString(msg2);
             }
-
-
-
-
-
-            // VIDEO
-
-            double msSinceAudioStart = audio_stopwatch.MsElapsed();
-
-            GetNextVideoFrame(
-                video_file.vfc,
-                video_file.video.codecContext,
-                sws_context,
-                video_file.video.index,
-                frame_output,
-                msSinceAudioStart);
-
         }
-        vid_was_paused = vid_paused;
-
-
-        RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
-
-        // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
-        // //                    (float*)sound_buffer, bytes_in_buffer);
-        // static int increm = 0;
-        // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
-        // RenderToScreenGL((void*)secondary_buf, vidWID, vidHEI, winWID, winHEI, window);
-        // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
 
 
 
 
-        // HIT FPS
 
-        // something seems off with this... ?
-        double dt = app_timer.MsSinceLastFrame();
+        // VIDEO
 
-        if (dt < targetMsPerFrame)
+        double msSinceAudioStart = audio_stopwatch.MsElapsed();
+
+        GetNextVideoFrame(
+            video_file.vfc,
+            video_file.video.codecContext,
+            sws_context,
+            video_file.video.index,
+            frame_output,
+            msSinceAudioStart);
+
+    }
+    vid_was_paused = vid_paused;
+
+
+    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
+
+    // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
+    // //                    (float*)sound_buffer, bytes_in_buffer);
+    // static int increm = 0;
+    // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
+    // RenderToScreenGL((void*)secondary_buf, vidWID, vidHEI, winWID, winHEI, window);
+    // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
+
+
+
+
+    // HIT FPS
+
+    // something seems off with this... ?
+    double dt = app_timer.MsSinceLastFrame();
+
+    if (dt < targetMsPerFrame)
+    {
+        double msToSleep = targetMsPerFrame - dt;
+        Sleep(msToSleep);
+        while (dt < targetMsPerFrame)  // is this weird?
         {
-            double msToSleep = targetMsPerFrame - dt;
-            Sleep(msToSleep);
-            while (dt < targetMsPerFrame)  // is this weird?
-            {
-                dt = app_timer.MsSinceLastFrame();
-            }
-            // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
-            // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
+            dt = app_timer.MsSinceLastFrame();
         }
-        else
-        {
-            // missed fps target
-            char msg[256];
-            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-                    targetMsPerFrame, dt);
-            OutputDebugString(msg);
-        }
-        app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+        // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
+        // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
+    }
+    else
+    {
+        // todo: seems to happen a lot with just clicking a bunch?
+        // missed fps target
+        char msg[256];
+        sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
+                targetMsPerFrame, dt);
+        OutputDebugString(msg);
+    }
+    app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
 }
 
@@ -1207,10 +1222,8 @@ void Update()
 #define ID_PAUSE 1002
 
 
-RECT MainRect;
-POINT point;
-POINT curpoint;
 
+POINT mDownPoint;
 
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1229,37 +1242,69 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
 
-        case WM_NCHITTEST: {
+        // case WM_NCHITTEST: {
 
-            RECT win;
-            if (!GetWindowRect(hwnd, &win))
-                return HTNOWHERE;
+        //     RECT win;
+        //     if (!GetWindowRect(hwnd, &win))
+        //         return HTNOWHERE;
 
-            POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
-            POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
+        //     POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
+        //     POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
-            bool left   = pos.x < win.left   + pad.x;
-            bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
-            bool top    = pos.y < win.top    + pad.y;
-            bool bottom = pos.y > win.bottom - pad.y -1;
+        //     bool left   = pos.x < win.left   + pad.x;
+        //     bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
+        //     bool top    = pos.y < win.top    + pad.y;
+        //     bool bottom = pos.y > win.bottom - pad.y -1;
 
-            if (top && left)     return HTTOPLEFT;
-            if (top && right)    return HTTOPRIGHT;
-            if (bottom && left)  return HTBOTTOMLEFT;
-            if (bottom && right) return HTBOTTOMRIGHT;
-            if (left)            return HTLEFT;
-            if (right)           return HTRIGHT;
-            if (top)             return HTTOP;
-            if (bottom)          return HTBOTTOM;
+        //     if (top && left)     return HTTOPLEFT;
+        //     if (top && right)    return HTTOPRIGHT;
+        //     if (bottom && left)  return HTBOTTOMLEFT;
+        //     if (bottom && right) return HTBOTTOMRIGHT;
+        //     if (left)            return HTLEFT;
+        //     if (right)           return HTRIGHT;
+        //     if (top)             return HTTOP;
+        //     if (bottom)          return HTBOTTOM;
 
-            return HTCAPTION;
-        } break;
+        //     return HTCAPTION;
+        // } break;
 
         case WM_PAINT: {
             Update();
             return 0;
         } break;
 
+
+        case WM_LBUTTONDOWN:
+        case WM_NCLBUTTONDOWN: {
+            // OutputDebugString("DOWN\n");
+            mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+        } break;
+
+        case WM_LBUTTONUP:
+        case WM_NCLBUTTONUP: {
+            // OutputDebugString("UP\n");
+            POINT mUpPoint = { LOWORD(lParam), HIWORD(lParam) };
+            double dx = mUpPoint.x - mDownPoint.x;
+            double dy = mUpPoint.y - mDownPoint.y;
+            double distance = sqrt(dx*dx + dy*dy);
+            char msg[123];
+            sprintf(msg, "dist: %f\n", distance);
+            double MOVEMENT_ALLOWED_IN_CLICK = 4;
+            if (distance < MOVEMENT_ALLOWED_IN_CLICK)
+            {
+                if (!globalContextMenuOpen)
+                {
+                    // OutputDebugString("false, pause\n");
+                    vid_paused = !vid_paused;
+                }
+                else
+                {
+                    OutputDebugString("true, skip\n");
+                    // globalContextMenuOpen = false; // force skip rest of timer
+                }
+            }
+            // OutputDebugString(msg);
+        } break;
 
         case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
         case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
@@ -1268,8 +1313,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
             SetForegroundWindow(hwnd);
-            // TrackPopupMenu(hPopupMenu, TPM_BOTTOMALIGN | TPM_LEFTALIGN, 0, 0, 0, hwnd, NULL);
+            // OutputDebugString("SETTING true\n");
+            globalContextMenuOpen = true;
+            menuCloseTimer.Stop();
             TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
+            menuCloseTimer.Start();
         } break;
         case WM_COMMAND: {
             switch (wParam)
@@ -1530,6 +1578,7 @@ int CALLBACK WinMain(
     while (appRunning)
     {
         MSG Message;
+        // todo: while or if?
         if (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&Message);
