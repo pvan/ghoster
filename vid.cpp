@@ -1078,7 +1078,7 @@ void Update()
     if (globalContextMenuOpen && menuCloseTimer.started && menuCloseTimer.MsSinceStart() > 150)
     {
         globalContextMenuOpen = false;
-        OutputDebugString("SETTING false\n");
+        // OutputDebugString("SETTING false\n");
     }
 
 
@@ -1224,6 +1224,21 @@ void Update()
 #define ID_PAUSE 1002
 
 
+void OpenRClickMenuAt(HWND hwnd, POINT point)
+{
+    HMENU hPopupMenu = CreatePopupMenu();
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
+    SetForegroundWindow(hwnd);
+
+    globalContextMenuOpen = true;
+    menuCloseTimer.Stop();
+    TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
+    menuCloseTimer.Start();
+}
+
+
 
 POINT mDownPoint;
 bool mDown;
@@ -1281,6 +1296,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:{
             mDown = true;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+            // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
             // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
         } break;
@@ -1347,13 +1363,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
             mDown = false;
-            // OutputDebugString("UP\n");
+            OutputDebugString("UP\n");
             POINT mUpPoint = { LOWORD(lParam), HIWORD(lParam) };
-            double dx = mUpPoint.x - mDownPoint.x;
-            double dy = mUpPoint.y - mDownPoint.y;
+            double dx = (double)mUpPoint.x - (double)mDownPoint.x;
+            double dy = (double)mUpPoint.y - (double)mDownPoint.y;
             double distance = sqrt(dx*dx + dy*dy);
             char msg[123];
             sprintf(msg, "dist: %f\n", distance);
+            OutputDebugString(msg);
             double MOVEMENT_ALLOWED_IN_CLICK = 8; // todo: another check to help with feel? speed?
             if (distance < MOVEMENT_ALLOWED_IN_CLICK)
             {
@@ -1371,18 +1388,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // OutputDebugString(msg);
         } break;
 
-        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT)
-        case WM_NCRBUTTONDOWN: {  // rclick in non-client area
-            HMENU hPopupMenu = CreatePopupMenu();
-            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
-            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-            InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
-            SetForegroundWindow(hwnd);
-            // OutputDebugString("SETTING true\n");
-            globalContextMenuOpen = true;
-            menuCloseTimer.Stop();
-            TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
-            menuCloseTimer.Start();
+        case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
+		    POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+		    ClientToScreen(hwnd, &openPoint);
+            OpenRClickMenuAt(hwnd, openPoint);
+        } break;
+        case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
+		    POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
         case WM_COMMAND: {
