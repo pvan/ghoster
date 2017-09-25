@@ -781,8 +781,8 @@ void InitOpenGL(HWND window)
             gl_Position = vec4(position, 0, 1);
         }
     );
-    OutputDebugString(vertex_shader);
-    OutputDebugString("\n");
+    // OutputDebugString(vertex_shader);
+    // OutputDebugString("\n");
 
     const char *fragment_shader = MULTILINE_STRING
     (
@@ -1288,6 +1288,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
+// adapted from ffmeg dump.c
+void logFormatContextDuration(AVFormatContext *fc)
+{
+    int methodEnum = fc->duration_estimation_method;
+    char buf[1024];
+    if (fc->duration != AV_NOPTS_VALUE) {
+        int hours, mins, secs, us;
+        int64_t duration = fc->duration + (fc->duration <= INT64_MAX - 5000 ? 5000 : 0); // ?
+        secs  = duration / AV_TIME_BASE;
+        us    = duration % AV_TIME_BASE;
+        mins  = secs / 60;
+        secs %= 60;
+        hours = mins / 60;
+        mins %= 60;
+        sprintf(buf, "DURATION:\n%02d:%02d:%02d.%02d\nmethod:%i\n", hours, mins, secs, (100 * us) / AV_TIME_BASE, methodEnum);
+    } else {
+        sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
+    }
+    OutputDebugString(buf);
+}
+
+
 
 int CALLBACK WinMain(
     HINSTANCE hInstance,
@@ -1323,16 +1345,15 @@ int CALLBACK WinMain(
 
     // MAKE NOTE OF VIDEO LENGTH
 
-    // use this?
+    // todo: add support for this
     assert(video_file.vfc->start_time==0);
-    // char qwer2[123];
-    // sprintf(qwer2, "start: %lli\n", start_time);
-    // OutputDebugString(qwer2);
+        // char qwer2[123];
+        // sprintf(qwer2, "start: %lli\n", start_time);
+        // OutputDebugString(qwer2);
 
-    duration = (double)video_file.vfc->duration / (double)AV_TIME_BASE; // not quite accurate??
-    char durbuf[123];
-    sprintf(durbuf, "duration: %f\n", duration);
-    OutputDebugString(durbuf);
+
+    duration = (double)video_file.vfc->duration / (double)AV_TIME_BASE;
+    logFormatContextDuration(video_file.vfc);
     elapsed = 0;
 
 
