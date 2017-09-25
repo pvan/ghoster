@@ -1042,7 +1042,7 @@ static Timer app_timer;
 static SDL_AudioDeviceID audio_device;
 static int desired_bytes_in_queue;
 static int bytes_in_buffer;
-static VideoFile video_file;
+static VideoFile loaded_video;
 static void *sound_buffer;
 static struct SwsContext *sws_context;
 static AVFrame *frame_output;
@@ -1134,9 +1134,9 @@ void Update()
             // ideally a little bite of sound, every frame
             // todo: how to sync this right, pts dts?
             int bytes_queued_up = GetNextAudioFrame(
-                video_file.afc,
-                video_file.audio.codecContext,
-                video_file.audio.index,
+                loaded_video.afc,
+                loaded_video.audio.codecContext,
+                loaded_video.audio.index,
                 (u8*)sound_buffer,
                 wanted_bytes,
                 audio_stopwatch.MsElapsed());
@@ -1164,10 +1164,10 @@ void Update()
         double msSinceAudioStart = audio_stopwatch.MsElapsed();
 
         GetNextVideoFrame(
-            video_file.vfc,
-            video_file.video.codecContext,
+            loaded_video.vfc,
+            loaded_video.video.codecContext,
             sws_context,
-            video_file.video.index,
+            loaded_video.video.index,
             frame_output,
             msSinceAudioStart);
 
@@ -1466,37 +1466,37 @@ int CALLBACK WinMain(
     InitAV();
 
     // VideoFile
-    video_file = OpenVideoFileAV(INPUT_FILE);
+    loaded_video = OpenVideoFileAV(INPUT_FILE);
 
 
 
     // MAKE NOTE OF VIDEO LENGTH
 
     // todo: add support for this
-    assert(video_file.vfc->start_time==0);
+    assert(loaded_video.vfc->start_time==0);
         // char qwer2[123];
         // sprintf(qwer2, "start: %lli\n", start_time);
         // OutputDebugString(qwer2);
 
 
-    duration = (double)video_file.vfc->duration / (double)AV_TIME_BASE;
-    logFormatContextDuration(video_file.vfc);
+    duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
+    logFormatContextDuration(loaded_video.vfc);
     elapsed = 0;
 
 
 
     // SET FPS BASED ON LOADED VIDEO
 
-    double targetFPS = (video_file.video.codecContext->time_base.den /
-                        video_file.video.codecContext->time_base.num) /
-                        video_file.video.codecContext->ticks_per_frame;
+    double targetFPS = (loaded_video.video.codecContext->time_base.den /
+                        loaded_video.video.codecContext->time_base.num) /
+                        loaded_video.video.codecContext->ticks_per_frame;
 
     char vidfps[123];
     sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-        video_file.video.codecContext->time_base.num,
-        video_file.video.codecContext->time_base.den,
+        loaded_video.video.codecContext->time_base.num,
+        loaded_video.video.codecContext->time_base.den,
         targetFPS,
-        video_file.video.codecContext->ticks_per_frame
+        loaded_video.video.codecContext->ticks_per_frame
     );
     OutputDebugString(vidfps);
 
@@ -1520,9 +1520,9 @@ int CALLBACK WinMain(
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
     // const int
-    vidWID = video_file.video.codecContext->width;
+    vidWID = loaded_video.video.codecContext->width;
     // const int
-    vidHEI = video_file.video.codecContext->height;
+    vidHEI = loaded_video.video.codecContext->height;
     RECT neededRect = {};
     winWID = vidWID;//960;
     winHEI = vidHEI;//720;
@@ -1580,9 +1580,9 @@ int CALLBACK WinMain(
         return -1;
     }
     // SDL_AudioDeviceID
-    audio_device = SetupAudioSDL(video_file.audio.codecContext);
+    audio_device = SetupAudioSDL(loaded_video.audio.codecContext);
 
-    AVCodecContext *acc = video_file.audio.codecContext;
+    AVCodecContext *acc = loaded_video.audio.codecContext;
 
     // try to keep this full
     int audio_channels = acc->channels;
@@ -1616,8 +1616,8 @@ int CALLBACK WinMain(
 
     // actual mem for frame
     int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
-        // video_file.video.codecContext->width,
-        // video_file.video.codecContext->height);
+        // loaded_video.video.codecContext->width,
+        // loaded_video.video.codecContext->height);
         vidWID,
         vidHEI);
     // u8 *
@@ -1632,9 +1632,9 @@ int CALLBACK WinMain(
     // struct SwsContext *
     sws_context = 0;
     sws_context = sws_getContext(
-        video_file.video.codecContext->width,
-        video_file.video.codecContext->height,
-        video_file.video.codecContext->pix_fmt,
+        loaded_video.video.codecContext->width,
+        loaded_video.video.codecContext->height,
+        loaded_video.video.codecContext->pix_fmt,
         vidWID,
         vidHEI,
         AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
