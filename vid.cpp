@@ -1224,6 +1224,7 @@ void Update()
 
 
 POINT mDownPoint;
+bool mDown;
 
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1242,31 +1243,32 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
 
-        // case WM_NCHITTEST: {
+        case WM_NCHITTEST: {
 
-        //     RECT win;
-        //     if (!GetWindowRect(hwnd, &win))
-        //         return HTNOWHERE;
+            RECT win;
+            if (!GetWindowRect(hwnd, &win))
+                return HTNOWHERE;
 
-        //     POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
-        //     POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
+            POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
+            POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
-        //     bool left   = pos.x < win.left   + pad.x;
-        //     bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
-        //     bool top    = pos.y < win.top    + pad.y;
-        //     bool bottom = pos.y > win.bottom - pad.y -1;
+            bool left   = pos.x < win.left   + pad.x;
+            bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
+            bool top    = pos.y < win.top    + pad.y;
+            bool bottom = pos.y > win.bottom - pad.y -1;
 
-        //     if (top && left)     return HTTOPLEFT;
-        //     if (top && right)    return HTTOPRIGHT;
-        //     if (bottom && left)  return HTBOTTOMLEFT;
-        //     if (bottom && right) return HTBOTTOMRIGHT;
-        //     if (left)            return HTLEFT;
-        //     if (right)           return HTRIGHT;
-        //     if (top)             return HTTOP;
-        //     if (bottom)          return HTBOTTOM;
+            if (top && left)     return HTTOPLEFT;
+            if (top && right)    return HTTOPRIGHT;
+            if (bottom && left)  return HTBOTTOMLEFT;
+            if (bottom && right) return HTBOTTOMRIGHT;
+            if (left)            return HTLEFT;
+            if (right)           return HTRIGHT;
+            if (top)             return HTTOP;
+            if (bottom)          return HTBOTTOM;
 
-        //     return HTCAPTION;
-        // } break;
+            // return HTCAPTION;
+            return HTCLIENT; // we now specifically call HTCAPTION in LBUTTONDOWN
+        } break;
 
         case WM_PAINT: {
             Update();
@@ -1274,14 +1276,30 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
-        case WM_LBUTTONDOWN:
+        case WM_LBUTTONDOWN:{
+            mDown = true;
+            mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+            // ReleaseCapture(); // still not sure if we should call this or not
+            // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+        } break;
         case WM_NCLBUTTONDOWN: {
             // OutputDebugString("DOWN\n");
-            mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+            // mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+            // return 0;
+        } break;
+
+        case WM_MOUSEMOVE: {
+            if (mDown) // TODO: this is not ever gettign set back to false
+            {
+                OutputDebugString("MOUSEMOVE\n");
+                // ReleaseCapture(); // still not sure if we should call this or not
+                SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+            }
         } break;
 
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
+            mDown = false;
             // OutputDebugString("UP\n");
             POINT mUpPoint = { LOWORD(lParam), HIWORD(lParam) };
             double dx = mUpPoint.x - mDownPoint.x;
@@ -1289,7 +1307,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             double distance = sqrt(dx*dx + dy*dy);
             char msg[123];
             sprintf(msg, "dist: %f\n", distance);
-            double MOVEMENT_ALLOWED_IN_CLICK = 4;
+            double MOVEMENT_ALLOWED_IN_CLICK = 6;
             if (distance < MOVEMENT_ALLOWED_IN_CLICK)
             {
                 if (!globalContextMenuOpen)
@@ -1306,7 +1324,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // OutputDebugString(msg);
         } break;
 
-        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT), probably won't ever fire
+        case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT)
         case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
             HMENU hPopupMenu = CreatePopupMenu();
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
@@ -1578,8 +1596,8 @@ int CALLBACK WinMain(
     while (appRunning)
     {
         MSG Message;
-        // todo: while or if?
-        if (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+        // while works much better with using MOUSEMOVE to enable drag
+        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&Message);
             DispatchMessage(&Message);
