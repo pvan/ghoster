@@ -4,6 +4,11 @@
 #include <math.h>
 
 
+// for drag drop
+#include <shellapi.h>
+#pragma comment(lib, "shell32.lib")
+
+
 #include <gl/gl.h>
 #pragma comment(lib, "opengl32.lib")
 #pragma comment(lib, "gdi32.lib")
@@ -1564,6 +1569,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
+
+        // can also implement IDropTarget, but who wants to do that?
+        case WM_DROPFILES: {
+        	char filePath[MAX_PATH];
+        	// 0 = just take the first one
+        	if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
+        	{
+        		OutputDebugString(filePath);
+        		// LoadVideoFile(filePath);
+        	}
+        	else
+        	{
+        		MsgBox("Unable to determine file path of dropped file.");
+        	}
+    	} break;
+
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
@@ -1661,7 +1682,9 @@ int CALLBACK WinMain(
 
 
 
+    // ENABLE DRAG DROP
 
+    DragAcceptFiles(window, true);
 
 
 
