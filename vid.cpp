@@ -888,6 +888,8 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 
+    // todo: mimic youtube show/hide
+    // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
     // fakey way to draw rects
     int pos = (int)(proportion * (double)dWID);
 
@@ -1271,7 +1273,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_PAINT: {
-            Update();
+            Update(); // todo: dragging is a little behind mouse
             return 0;
         } break;
 
@@ -1291,9 +1293,54 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEMOVE: {
             if (mDown) // TODO: this is not ever gettign set back to false
             {
-                OutputDebugString("MOUSEMOVE\n");
+
+                WINDOWPLACEMENT winpos;
+                winpos.length = sizeof(WINDOWPLACEMENT);
+                if (GetWindowPlacement(hwnd, &winpos))
+                {
+                    if (winpos.showCmd == SW_MAXIMIZE)
+                    {
+                        ShowWindow(hwnd, SW_RESTORE);
+
+                        int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+                        int mouseY = HIWORD(lParam);
+                        int winX = mouseX - winWID/2;
+                        int winY = mouseY - winHEI/2;
+                        MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+                    }
+                }
+
+                // OutputDebugString("MOUSEMOVE\n");
                 // ReleaseCapture(); // still not sure if we should call this or not
                 SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+            }
+        } break;
+
+        case WM_LBUTTONDBLCLK: {       // required CS_DBLCLKS window style
+
+            // TODO: only to undo the pause that happens otherwise see ;lkj
+            // if we are paused, double clicking will play a split second of video when max/min-ing video
+            vid_paused = !vid_paused;
+
+            WINDOWPLACEMENT winpos;
+            winpos.length = sizeof(WINDOWPLACEMENT);
+            if (GetWindowPlacement(hwnd, &winpos))
+            {
+                if (winpos.showCmd == SW_MAXIMIZE)
+                {
+                    ShowWindow(hwnd, SW_RESTORE);
+
+                    // make this an option... (we might want to keep it in the corner eg)
+                    // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+                    // int mouseY = HIWORD(lParam);
+                    // int winX = mouseX - winWID/2;
+                    // int winY = mouseY - winHEI/2;
+                    // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+                }
+                else
+                {
+                    ShowWindow(hwnd, SW_MAXIMIZE);
+                }
             }
         } break;
 
@@ -1307,25 +1354,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             double distance = sqrt(dx*dx + dy*dy);
             char msg[123];
             sprintf(msg, "dist: %f\n", distance);
-            double MOVEMENT_ALLOWED_IN_CLICK = 6;
+            double MOVEMENT_ALLOWED_IN_CLICK = 8; // todo: another check to help with feel? speed?
             if (distance < MOVEMENT_ALLOWED_IN_CLICK)
             {
                 if (!globalContextMenuOpen)
                 {
                     // OutputDebugString("false, pause\n");
-                    vid_paused = !vid_paused;
+                    vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
                 }
                 else
                 {
-                    OutputDebugString("true, skip\n");
-                    // globalContextMenuOpen = false; // force skip rest of timer
+                    // OutputDebugString("true, skip\n");
+                    globalContextMenuOpen = false; // force skip rest of timer
                 }
             }
             // OutputDebugString(msg);
         } break;
 
         case WM_RBUTTONDOWN:      // rclicks in client area (HTCLIENT)
-        case WM_NCRBUTTONDOWN: {  // rclick in non-client area (everywhere due to our WM_NCHITTEST method)
+        case WM_NCRBUTTONDOWN: {  // rclick in non-client area
             HMENU hPopupMenu = CreatePopupMenu();
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
             InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -1337,6 +1384,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             TrackPopupMenu(hPopupMenu, 0, LOWORD(lParam), HIWORD(lParam), 0, hwnd, NULL);
             menuCloseTimer.Start();
         } break;
+
         case WM_COMMAND: {
             switch (wParam)
             {
@@ -1451,7 +1499,7 @@ int CALLBACK WinMain(
 
     // register wndproc
     WNDCLASS wc = {};
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
