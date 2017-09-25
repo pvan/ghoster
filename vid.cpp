@@ -1065,7 +1065,7 @@ struct Stopwatch
 
 
 
-
+// todo: cleanup all these globals.. pass what you can and maybe an app global for some?
 //fdsa
 static double duration;
 static double elapsed;
@@ -1103,7 +1103,7 @@ bool LoadVideoFile(char *path)
 
 
     // set window size on video source resolution
-    winWID = loaded_video.video.codecContext->width;  // these will also be set by WM_SIZE but w/e
+    winWID = loaded_video.video.codecContext->width;
     winHEI = loaded_video.video.codecContext->height;
     RECT winRect;
     GetWindowRect(window, &winRect);
@@ -1191,6 +1191,7 @@ bool LoadVideoFile(char *path)
     // MORE FFMPEG
 
     // AVFrame *
+    if (frame_output) av_frame_free(&frame_output);
     frame_output = av_frame_alloc();  // just metadata
 
     if (!frame_output)
@@ -1198,12 +1199,8 @@ bool LoadVideoFile(char *path)
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32,
-        // loaded_video.video.codecContext->width,
-        // loaded_video.video.codecContext->height);
-        vidWID,
-        vidHEI);
-    // u8 *
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, vidWID, vidHEI);
+    if (vid_buffer) av_free(vid_buffer);
     vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
@@ -1213,6 +1210,7 @@ bool LoadVideoFile(char *path)
 
     // for converting between frames i think
     // struct SwsContext *
+    if (sws_context) sws_freeContext(sws_context);
     sws_context = 0;
     sws_context = sws_getContext(
         loaded_video.video.codecContext->width,
@@ -1226,8 +1224,6 @@ bool LoadVideoFile(char *path)
 
 
 
-
-    // av_frame_unref() //reset for next frame
     return true;
 
 }
