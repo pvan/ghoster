@@ -49,6 +49,7 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
+// char *INPUT_FILE = "D:/Users/phil/Desktop/test.3gp";
 
 
 
@@ -652,7 +653,7 @@ void logSpec(SDL_AudioSpec *as) {
     OutputDebugString(log);
 }
 
-SDL_AudioDeviceID SetupAudioSDL(AVCodecContext *audioContext)
+SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *audioContext)
 {
     SDL_AudioSpec wanted_spec, spec;
     wanted_spec.freq = samples_per_second;//acc->sample_rate;
@@ -1154,16 +1155,24 @@ bool LoadVideoFile(char *path)
 
     // SDL, for sound atm
 
-    // if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER))
-    if (SDL_Init(SDL_INIT_AUDIO))
+    if (sound_buffer)  // aint our first rodeo // better way to track this???
     {
-        char err[256];
-        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-        MsgBox(err);
-        return false;
+    	SDL_PauseAudioDevice(audio_device, 1);
+    	SDL_CloseAudioDevice(audio_device);
     }
-    // SDL_AudioDeviceID
-    audio_device = SetupAudioSDL(loaded_video.audio.codecContext);
+    else
+    {
+	    // should un-init if we do want to call again
+	    if (SDL_Init(SDL_INIT_AUDIO))
+	    {
+	        char err[256];
+	        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
+	        MsgBox(err);
+	        return false;
+	    }
+	}
+
+    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
 
     AVCodecContext *acc = loaded_video.audio.codecContext;
 
@@ -1176,7 +1185,8 @@ bool LoadVideoFile(char *path)
     int samples_in_buffer = acc->sample_rate * buffer_seconds;
     // int
     bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
-    // void *
+
+    if (sound_buffer) free(sound_buffer);  // is doing above better?
     sound_buffer = (void*)malloc(bytes_in_buffer);
 
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
