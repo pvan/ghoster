@@ -49,7 +49,7 @@ char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
 // char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test.3gp";
+// char *INPUT_FILE = "D:/Users/phil/Desktop/test.3gp"; // proper audio resampler for this to work
 
 
 
@@ -1087,8 +1087,9 @@ static int winWID;
 static int winHEI;
 static double targetMsPerFrame;
 static u32 *secondary_buf;
-
 static Stopwatch audio_stopwatch;
+static double vid_aspect; // feels like it'd be better to store this as a rational
+static bool lock_aspect = true;
 
 
 static Timer menuCloseTimer;
@@ -1111,6 +1112,7 @@ bool LoadVideoFile(char *path)
     //keep top left of window in same pos for now, change to keep center in same position?
     MoveWindow(window, winRect.left, winRect.top, winWID, winHEI, true);  // ever non-zero opening position? launch option?
 
+    vid_aspect = (double)winWID / (double)winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -1395,17 +1397,36 @@ void Update()
 
 
 
+void SetWindowToAspectRatio()
+{
+	RECT winRect;
+	GetWindowRect(window, &winRect);
+	int w = winRect.right - winRect.left;
+	int h = winRect.bottom - winRect.top;
+	// which to adjust tho?
+	int nw = (int)((double)h * vid_aspect);
+	int nh = (int)((double)w / vid_aspect);
+	// i guess always make smaller for now
+	if (nw < w)
+		MoveWindow(window, winRect.left, winRect.top, nw, h, true);
+	else
+		MoveWindow(window, winRect.left, winRect.top, w, nh, true);
+}
+
 
 
 #define ID_EXIT 1001
 #define ID_PAUSE 1002
+#define ID_ASPECT 1003
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
+	UINT aspectChecked = lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
     SetForegroundWindow(hwnd);
 
@@ -1431,10 +1452,51 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_SIZE: {
+        	// int w = LOWORD(lParam);
+        	// int h = HIWORD(lParam);
+        	// int lockedW = (int)((double)h * vid_aspect);
+        	// int lockedH = (int)((double)w / vid_aspect);
+        	// if
             winWID = LOWORD(lParam);
             winHEI = HIWORD(lParam);
             return 0;
         }
+
+        case WM_SIZING: {  // when dragging border
+        	if (lock_aspect)
+        	{
+	            RECT rc = *(RECT*)lParam;
+	            int w = rc.right - rc.left;
+	            int h = rc.bottom - rc.top;
+
+	        	switch (wParam)
+	        	{
+	                case WMSZ_LEFT:
+	                case WMSZ_RIGHT:
+	                    rc.bottom = rc.top + (int)((double)w / vid_aspect);
+	                    break;
+
+	                case WMSZ_TOP:
+	                case WMSZ_BOTTOM:
+	                    rc.right = rc.left + (int)((double)h * vid_aspect);
+	                    break;
+
+	                case WMSZ_LEFT + WMSZ_TOP:
+	                case WMSZ_LEFT + WMSZ_BOTTOM:
+	                    rc.left = rc.right - (int)((double)h * vid_aspect);
+	                    break;
+
+	                case WMSZ_RIGHT + WMSZ_TOP:
+	                    rc.top = rc.bottom - (int)((double)w / vid_aspect);
+	                    break;
+
+	                case WMSZ_RIGHT + WMSZ_BOTTOM:
+	                    rc.bottom = rc.top + (int)((double)w / vid_aspect);
+	                    break;
+	        	}
+	        	*(RECT*)lParam = rc;
+	        }
+        } break;
 
 
         case WM_NCHITTEST: {
@@ -1578,12 +1640,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_COMMAND: {
             switch (wParam)
             {
-                case ID_EXIT: {
+                case ID_EXIT:
                     appRunning = false;
-                } break;
-                case ID_PAUSE: {
+                	break;
+                case ID_PAUSE:
                     vid_paused = !vid_paused;
-                } break;
+                	break;
+                case ID_ASPECT:
+                	SetWindowToAspectRatio();
+                	lock_aspect = !lock_aspect;
+                	break;
             }
         } break;
 
