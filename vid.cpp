@@ -42,6 +42,9 @@ extern "C"
 
 const int samples_per_second = 44100;
 
+int progressBarT = 22;
+int progressBarB = 12;
+
 
 
 // char *INPUT_FILE = "D:/Users/phil/Desktop/sync3.mp4";
@@ -920,13 +923,13 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     // fakey way to draw rects
     int pos = (int)(proportion * (double)dWID);
 
-    glViewport(pos, 12, dWID, 22);
+    glViewport(pos, progressBarB, dWID, progressBarT);
     glUniform1f(alpha_loc, 0.4);
     u32 gray = 0xaaaaaaaa;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    glViewport(0, 12, pos, 22);
+    glViewport(0, progressBarB, pos, progressBarT);
     glUniform1f(alpha_loc, 0.6);
     u32 red = 0xffff0000;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
@@ -1415,6 +1418,7 @@ void SetWindowToAspectRatio()
 
 
 
+
 #define ID_EXIT 1001
 #define ID_PAUSE 1002
 #define ID_ASPECT 1003
@@ -1535,6 +1539,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_LBUTTONDOWN:{
             mDown = true;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
+            if (mDownPoint.y > winHEI-progressBarT && mDownPoint.y < winHEI-progressBarB)
+            {
+            	double prop = (double)mDownPoint.x / (double)winWID;
+            	char propbuf[123];
+            	sprintf(propbuf, "prop: %f\n", prop);
+            	OutputDebugString(propbuf);
+            }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
             // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
@@ -1548,6 +1559,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEMOVE: {
             if (mDown) // TODO: this is not ever gettign set back to false
             {
+                // OutputDebugString("MOUSEMOVE\n");
 
                 WINDOWPLACEMENT winpos;
                 winpos.length = sizeof(WINDOWPLACEMENT);
@@ -1565,7 +1577,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     }
                 }
 
-                // OutputDebugString("MOUSEMOVE\n");
                 // ReleaseCapture(); // still not sure if we should call this or not
                 SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
             }
@@ -1608,7 +1619,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             double dy = (double)mUpPoint.y - (double)mDownPoint.y;
             double distance = sqrt(dx*dx + dy*dy);
             char msg[123];
-            sprintf(msg, "dist: %f\n", distance);
+            sprintf(msg, "dist: %f  dx:%i, ux:%i\n", distance, mDownPoint.x, mUpPoint.x);
             OutputDebugString(msg);
             double MOVEMENT_ALLOWED_IN_CLICK = 8; // todo: another check to help with feel? speed?
             if (distance < MOVEMENT_ALLOWED_IN_CLICK)
