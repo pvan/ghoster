@@ -1099,6 +1099,51 @@ static Timer menuCloseTimer;
 static bool globalContextMenuOpen;
 
 
+// todo: what to do with this
+void SetupSDLSound()
+{
+    if (sound_buffer)  // aint our first rodeo // better way to track this???
+    {
+        SDL_PauseAudioDevice(audio_device, 1);
+        SDL_CloseAudioDevice(audio_device);
+    }
+    else
+    {
+        // should un-init if we do want to call again
+        if (SDL_Init(SDL_INIT_AUDIO))
+        {
+            char err[256];
+            sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
+            MsgBox(err);
+            //return false;
+        }
+    }
+
+    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
+
+    AVCodecContext *acc = loaded_video.audio.codecContext;
+
+    // try to keep this full
+    int audio_channels = acc->channels;
+
+    // how big of chunks do we want to decode and queue up at a time
+    int buffer_seconds = 2; // no reason not to just keep this big, right?
+    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
+    int samples_in_buffer = acc->sample_rate * buffer_seconds;
+    // int
+    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
+
+    if (sound_buffer) free(sound_buffer);  // is doing above better?
+    sound_buffer = (void*)malloc(bytes_in_buffer);
+
+    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    // int
+    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
+}
+
+
 // todo: peruse this for memory leaks. also: weird deja vu
 bool LoadVideoFile(char *path)
 {
@@ -1133,7 +1178,7 @@ bool LoadVideoFile(char *path)
 
     audio_stopwatch.ResetCompletely();
 
-
+//asdf
 
     // SET FPS BASED ON LOADED VIDEO
 
@@ -1160,45 +1205,7 @@ bool LoadVideoFile(char *path)
 
     // SDL, for sound atm
 
-    if (sound_buffer)  // aint our first rodeo // better way to track this???
-    {
-        SDL_PauseAudioDevice(audio_device, 1);
-        SDL_CloseAudioDevice(audio_device);
-    }
-    else
-    {
-        // should un-init if we do want to call again
-        if (SDL_Init(SDL_INIT_AUDIO))
-        {
-            char err[256];
-            sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-            MsgBox(err);
-            return false;
-        }
-    }
-
-    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
-
-    AVCodecContext *acc = loaded_video.audio.codecContext;
-
-    // try to keep this full
-    int audio_channels = acc->channels;
-
-    // how big of chunks do we want to decode and queue up at a time
-    int buffer_seconds = 2; // no reason not to just keep this big, right?
-    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int samples_in_buffer = acc->sample_rate * buffer_seconds;
-    // int
-    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
-
-    if (sound_buffer) free(sound_buffer);  // is doing above better?
-    sound_buffer = (void*)malloc(bytes_in_buffer);
-
-    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    // int
-    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
+    SetupSDLSound();
 
 
 
@@ -1244,6 +1251,9 @@ bool LoadVideoFile(char *path)
 }
 
 
+bool setSeek = false;
+double seekProportion = 0;
+
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
 void Update()
@@ -1281,6 +1291,22 @@ void Update()
             SDL_PauseAudioDevice(audio_device, 0);
         }
 
+        if (setSeek)
+        {//asdf
+
+            //SetupSDLSound();
+            SDL_ClearQueuedAudio(audio_device);
+
+            setSeek = false;
+            int seekPos = seekProportion * loaded_video.vfc->duration;
+            av_seek_frame(loaded_video.vfc, -1, seekPos, 0);
+            av_seek_frame(loaded_video.afc, -1, seekPos, 0);
+
+            double realTime = (double)seekPos / (double)AV_TIME_BASE;
+            int timeTicks = realTime * audio_stopwatch.timer.ticks_per_second;
+            audio_stopwatch.timer.starting_ticks = audio_stopwatch.timer.TicksNow() - timeTicks;
+
+        }
 
         elapsed = audio_stopwatch.MsElapsed() / 1000.0;
         percent = elapsed/duration;
@@ -1572,6 +1598,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 OutputDebugString(propbuf);
                 // OutputDebugString("clickingOnProgessBar true\n");
                 clickingOnProgessBar = true;
+
+                setSeek = true;
+                seekProportion = prop;
             }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
