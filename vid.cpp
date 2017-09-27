@@ -1559,7 +1559,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_MOUSEMOVE: {
             if (mDown) // TODO: this is not ever gettign set back to false
             {
-                // OutputDebugString("MOUSEMOVE\n");
+                OutputDebugString("MOUSEMOVE\n");
 
                 WINDOWPLACEMENT winpos;
                 winpos.length = sizeof(WINDOWPLACEMENT);
@@ -1610,10 +1610,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
+		case WM_EXITSIZEMOVE: {
+			// LBUTTONUP not triggering when captured
+            // OutputDebugString("UP (exit)\n");
+            mDown = false;
+		} break;
+
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
             mDown = false;
-            OutputDebugString("UP\n");
+            // OutputDebugString("UP\n");
             POINT mUpPoint = { LOWORD(lParam), HIWORD(lParam) };
             double dx = (double)mUpPoint.x - (double)mDownPoint.x;
             double dy = (double)mUpPoint.y - (double)mDownPoint.y;
