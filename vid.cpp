@@ -42,7 +42,7 @@ extern "C"
 
 const int samples_per_second = 44100;
 
-int progressBarT = 22;
+int progressBarH = 22;
 int progressBarB = 12;
 
 
@@ -923,13 +923,13 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     // fakey way to draw rects
     int pos = (int)(proportion * (double)dWID);
 
-    glViewport(pos, progressBarB, dWID, progressBarT);
+    glViewport(pos, progressBarB, dWID, progressBarH);
     glUniform1f(alpha_loc, 0.4);
     u32 gray = 0xaaaaaaaa;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    glViewport(0, progressBarB, pos, progressBarT);
+    glViewport(0, progressBarB, pos, progressBarH);
     glUniform1f(alpha_loc, 0.6);
     u32 red = 0xffff0000;
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
@@ -1445,6 +1445,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
+bool clickingOnProgessBar;
 
 void onMouseUp()
 {
@@ -1452,8 +1453,11 @@ void onMouseUp()
     {
         if (!globalContextMenuOpen)
         {
-            // OutputDebugString("false, pause\n");
-            vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+            if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse even handlers? w/ timers etc?
+            {
+                // OutputDebugString("false, pause\n");
+                vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+            }
         }
         else
         {
@@ -1461,6 +1465,8 @@ void onMouseUp()
             globalContextMenuOpen = false; // force skip rest of timer
         }
     }
+    // OutputDebugString("clickingOnProgessBar false\n");
+    clickingOnProgessBar = false;
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -1548,21 +1554,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_PAINT: {
-            Update(); // todo: dragging is a little behind mouse
+            Update(); // todo: dragging is a little behind mouse (only soln: sep thread?)
             return 0;
         } break;
 
 
         case WM_LBUTTONDOWN:{
+            // OutputDebugString("DOWN\n");
             mDown = true;
             itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            if (mDownPoint.y > winHEI-progressBarT && mDownPoint.y < winHEI-progressBarB)
+            if (mDownPoint.y >= winHEI-(progressBarH+progressBarB) && mDownPoint.y <= winHEI-progressBarB)
             {
                 double prop = (double)mDownPoint.x / (double)winWID;
                 char propbuf[123];
                 sprintf(propbuf, "prop: %f\n", prop);
                 OutputDebugString(propbuf);
+                // OutputDebugString("clickingOnProgessBar true\n");
+                clickingOnProgessBar = true;
             }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
@@ -1606,9 +1615,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 // -different m buttons for drag/pause
                 // -add time element (fast is always click? hmm maybe)
                 // -only 0 pixel movement allowed on pausing?
-                    char msg[123];
-                    sprintf(msg, "dist: %f\n", distance);
-                    OutputDebugString(msg);
+                    // char msg[123];
+                    // sprintf(msg, "dist: %f\n", distance);
+                    // OutputDebugString(msg);
                 double MOVEMENT_ALLOWED_IN_CLICK = 2.5; // todo: another check to help with feel? speed?
                 if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
                 {
@@ -1655,7 +1664,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_EXITSIZEMOVE: {
             // LBUTTONUP not triggering when captured
             mDown = false;
-            onMouseUp(); // applies?
+            onMouseUp();
         } break;
 
         case WM_LBUTTONUP:
@@ -1736,7 +1745,7 @@ int CALLBACK WinMain(
 
 
 
-    // FFMPEG - load file right away to make window the same size
+    // FFMPEG
 
     InitAV();  // basically just registers all codecs.. call when needed instead?
 
