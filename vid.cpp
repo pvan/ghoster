@@ -1028,9 +1028,9 @@ struct Stopwatch
     }
     void ResetCompletely()
     {
-    	timer.started = false;
-    	paused = false;
-    	ticks_elapsed_at_pause = 0;
+        timer.started = false;
+        paused = false;
+        ticks_elapsed_at_pause = 0;
     }
     void Start()
     {
@@ -1162,20 +1162,20 @@ bool LoadVideoFile(char *path)
 
     if (sound_buffer)  // aint our first rodeo // better way to track this???
     {
-    	SDL_PauseAudioDevice(audio_device, 1);
-    	SDL_CloseAudioDevice(audio_device);
+        SDL_PauseAudioDevice(audio_device, 1);
+        SDL_CloseAudioDevice(audio_device);
     }
     else
     {
-	    // should un-init if we do want to call again
-	    if (SDL_Init(SDL_INIT_AUDIO))
-	    {
-	        char err[256];
-	        sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-	        MsgBox(err);
-	        return false;
-	    }
-	}
+        // should un-init if we do want to call again
+        if (SDL_Init(SDL_INIT_AUDIO))
+        {
+            char err[256];
+            sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
+            MsgBox(err);
+            return false;
+        }
+    }
 
     audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
 
@@ -1402,18 +1402,18 @@ void Update()
 
 void SetWindowToAspectRatio()
 {
-	RECT winRect;
-	GetWindowRect(window, &winRect);
-	int w = winRect.right - winRect.left;
-	int h = winRect.bottom - winRect.top;
-	// which to adjust tho?
-	int nw = (int)((double)h * vid_aspect);
-	int nh = (int)((double)w / vid_aspect);
-	// i guess always make smaller for now
-	if (nw < w)
-		MoveWindow(window, winRect.left, winRect.top, nw, h, true);
-	else
-		MoveWindow(window, winRect.left, winRect.top, w, nh, true);
+    RECT winRect;
+    GetWindowRect(window, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
+    // which to adjust tho?
+    int nw = (int)((double)h * vid_aspect);
+    int nh = (int)((double)w / vid_aspect);
+    // i guess always make smaller for now
+    if (nw < w)
+        MoveWindow(window, winRect.left, winRect.top, nw, h, true);
+    else
+        MoveWindow(window, winRect.left, winRect.top, w, nh, true);
 }
 
 
@@ -1426,7 +1426,7 @@ void SetWindowToAspectRatio()
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
-	UINT aspectChecked = lock_aspect ? MF_CHECKED : MF_UNCHECKED;
+    UINT aspectChecked = lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -1444,7 +1444,24 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 POINT mDownPoint;
 bool mDown;
+bool itWasADrag;
 
+void onMouseUp()
+{
+    if (!itWasADrag)
+    {
+        if (!globalContextMenuOpen)
+        {
+            // OutputDebugString("false, pause\n");
+            vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+        }
+        else
+        {
+            // OutputDebugString("true, skip\n");
+            globalContextMenuOpen = false; // force skip rest of timer
+        }
+    }
+}
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1456,50 +1473,50 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_SIZE: {
-        	// int w = LOWORD(lParam);
-        	// int h = HIWORD(lParam);
-        	// int lockedW = (int)((double)h * vid_aspect);
-        	// int lockedH = (int)((double)w / vid_aspect);
-        	// if
+            // int w = LOWORD(lParam);
+            // int h = HIWORD(lParam);
+            // int lockedW = (int)((double)h * vid_aspect);
+            // int lockedH = (int)((double)w / vid_aspect);
+            // if
             winWID = LOWORD(lParam);
             winHEI = HIWORD(lParam);
             return 0;
         }
 
         case WM_SIZING: {  // when dragging border
-        	if (lock_aspect)
-        	{
-	            RECT rc = *(RECT*)lParam;
-	            int w = rc.right - rc.left;
-	            int h = rc.bottom - rc.top;
+            if (lock_aspect)
+            {
+                RECT rc = *(RECT*)lParam;
+                int w = rc.right - rc.left;
+                int h = rc.bottom - rc.top;
 
-	        	switch (wParam)
-	        	{
-	                case WMSZ_LEFT:
-	                case WMSZ_RIGHT:
-	                    rc.bottom = rc.top + (int)((double)w / vid_aspect);
-	                    break;
+                switch (wParam)
+                {
+                    case WMSZ_LEFT:
+                    case WMSZ_RIGHT:
+                        rc.bottom = rc.top + (int)((double)w / vid_aspect);
+                        break;
 
-	                case WMSZ_TOP:
-	                case WMSZ_BOTTOM:
-	                    rc.right = rc.left + (int)((double)h * vid_aspect);
-	                    break;
+                    case WMSZ_TOP:
+                    case WMSZ_BOTTOM:
+                        rc.right = rc.left + (int)((double)h * vid_aspect);
+                        break;
 
-	                case WMSZ_LEFT + WMSZ_TOP:
-	                case WMSZ_LEFT + WMSZ_BOTTOM:
-	                    rc.left = rc.right - (int)((double)h * vid_aspect);
-	                    break;
+                    case WMSZ_LEFT + WMSZ_TOP:
+                    case WMSZ_LEFT + WMSZ_BOTTOM:
+                        rc.left = rc.right - (int)((double)h * vid_aspect);
+                        break;
 
-	                case WMSZ_RIGHT + WMSZ_TOP:
-	                    rc.top = rc.bottom - (int)((double)w / vid_aspect);
-	                    break;
+                    case WMSZ_RIGHT + WMSZ_TOP:
+                        rc.top = rc.bottom - (int)((double)w / vid_aspect);
+                        break;
 
-	                case WMSZ_RIGHT + WMSZ_BOTTOM:
-	                    rc.bottom = rc.top + (int)((double)w / vid_aspect);
-	                    break;
-	        	}
-	        	*(RECT*)lParam = rc;
-	        }
+                    case WMSZ_RIGHT + WMSZ_BOTTOM:
+                        rc.bottom = rc.top + (int)((double)w / vid_aspect);
+                        break;
+                }
+                *(RECT*)lParam = rc;
+            }
         } break;
 
 
@@ -1538,13 +1555,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_LBUTTONDOWN:{
             mDown = true;
+            itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
             if (mDownPoint.y > winHEI-progressBarT && mDownPoint.y < winHEI-progressBarB)
             {
-            	double prop = (double)mDownPoint.x / (double)winWID;
-            	char propbuf[123];
-            	sprintf(propbuf, "prop: %f\n", prop);
-            	OutputDebugString(propbuf);
+                double prop = (double)mDownPoint.x / (double)winWID;
+                char propbuf[123];
+                sprintf(propbuf, "prop: %f\n", prop);
+                OutputDebugString(propbuf);
             }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
@@ -1557,9 +1575,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
-            if (mDown) // TODO: this is not ever gettign set back to false
+            if (mDown)
             {
-                OutputDebugString("MOUSEMOVE\n");
+                // OutputDebugString("MOUSEMOVE\n");
 
                 WINDOWPLACEMENT winpos;
                 winpos.length = sizeof(WINDOWPLACEMENT);
@@ -1577,8 +1595,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     }
                 }
 
-                // ReleaseCapture(); // still not sure if we should call this or not
-                SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+                // need to determine if click or drag here, not in buttonup
+                // because mousemove will trigger (i think) at the first pixel of movement
+                POINT mPos = { LOWORD(lParam), HIWORD(lParam) };
+                double dx = (double)mPos.x - (double)mDownPoint.x;
+                double dy = (double)mPos.y - (double)mDownPoint.y;
+                double distance = sqrt(dx*dx + dy*dy);
+                // not crazy about this...
+                // consider:
+                // -different m buttons for drag/pause
+                // -add time element (fast is always click? hmm maybe)
+                // -only 0 pixel movement allowed on pausing?
+                    char msg[123];
+                    sprintf(msg, "dist: %f\n", distance);
+                    OutputDebugString(msg);
+                double MOVEMENT_ALLOWED_IN_CLICK = 2.5; // todo: another check to help with feel? speed?
+                if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
+                {
+                    // itWasADrag = false;
+                }
+                else
+                {
+                    itWasADrag = true;
+                    // ReleaseCapture(); // still not sure if we should call this or not
+                    SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+                }
             }
         } break;
 
@@ -1586,15 +1627,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             // TODO: only to undo the pause that happens otherwise see ;lkj
             // if we are paused, double clicking will play a split second of video when max/min-ing video
-            vid_paused = !vid_paused;
+            // vid_paused = !vid_paused;
 
             WINDOWPLACEMENT winpos;
             winpos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(hwnd, &winpos))
+            if (GetWindowPlacement(window, &winpos))
             {
                 if (winpos.showCmd == SW_MAXIMIZE)
                 {
-                    ShowWindow(hwnd, SW_RESTORE);
+                    ShowWindow(window, SW_RESTORE);
 
                     // make this an option... (we might want to keep it in the corner eg)
                     // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
@@ -1605,52 +1646,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 else
                 {
-                    ShowWindow(hwnd, SW_MAXIMIZE);
+                    ShowWindow(window, SW_MAXIMIZE);
                 }
             }
+
         } break;
 
-		case WM_EXITSIZEMOVE: {
-			// LBUTTONUP not triggering when captured
-            // OutputDebugString("UP (exit)\n");
+        case WM_EXITSIZEMOVE: {
+            // LBUTTONUP not triggering when captured
             mDown = false;
-		} break;
+            onMouseUp(); // applies?
+        } break;
 
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
             mDown = false;
-            // OutputDebugString("UP\n");
-            POINT mUpPoint = { LOWORD(lParam), HIWORD(lParam) };
-            double dx = (double)mUpPoint.x - (double)mDownPoint.x;
-            double dy = (double)mUpPoint.y - (double)mDownPoint.y;
-            double distance = sqrt(dx*dx + dy*dy);
-            char msg[123];
-            sprintf(msg, "dist: %f  dx:%i, ux:%i\n", distance, mDownPoint.x, mUpPoint.x);
-            OutputDebugString(msg);
-            double MOVEMENT_ALLOWED_IN_CLICK = 8; // todo: another check to help with feel? speed?
-            if (distance < MOVEMENT_ALLOWED_IN_CLICK)
-            {
-                if (!globalContextMenuOpen)
-                {
-                    // OutputDebugString("false, pause\n");
-                    vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
-                }
-                else
-                {
-                    // OutputDebugString("true, skip\n");
-                    globalContextMenuOpen = false; // force skip rest of timer
-                }
-            }
-            // OutputDebugString(msg);
+            onMouseUp();
         } break;
 
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
-		    POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
-		    ClientToScreen(hwnd, &openPoint);
+            POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            ClientToScreen(hwnd, &openPoint);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
-		    POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
@@ -1659,32 +1679,32 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 case ID_EXIT:
                     appRunning = false;
-                	break;
+                    break;
                 case ID_PAUSE:
                     vid_paused = !vid_paused;
-                	break;
+                    break;
                 case ID_ASPECT:
-                	SetWindowToAspectRatio();
-                	lock_aspect = !lock_aspect;
-                	break;
+                    SetWindowToAspectRatio();
+                    lock_aspect = !lock_aspect;
+                    break;
             }
         } break;
 
 
         // can also implement IDropTarget, but who wants to do that?
         case WM_DROPFILES: {
-        	char filePath[MAX_PATH];
-        	// 0 = just take the first one
-        	if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
-        	{
-        		// OutputDebugString(filePath);
-        		LoadVideoFile(filePath);
-        	}
-        	else
-        	{
-        		MsgBox("Unable to determine file path of dropped file.");
-        	}
-    	} break;
+            char filePath[MAX_PATH];
+            // 0 = just take the first one
+            if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
+            {
+                // OutputDebugString(filePath);
+                LoadVideoFile(filePath);
+            }
+            else
+            {
+                MsgBox("Unable to determine file path of dropped file.");
+            }
+        } break;
 
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
