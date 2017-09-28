@@ -44,6 +44,9 @@ const int samples_per_second = 44100;
 
 int progressBarH = 22;
 int progressBarB = 12;
+double msOfLastMouseMove = -1000;
+bool drawProgressBar = false;
+double progressBarDisapearAfterThisManyMSOfInactivity = 1000;
 
 
 
@@ -150,6 +153,7 @@ static PFGL_TEX glActiveTexture;
 static bool appRunning = true;
 static bool vid_paused = false;
 static bool vid_was_paused = false;
+
 
 
 void MsgBox(char* s) {
@@ -881,9 +885,10 @@ void InitOpenGL(HWND window)
 
 
 
-
+// TODO: pull out progress bar rendering from this function
+// need to render to fbo to do so?
 //dfdf
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion)
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion, bool drawProgressBar)
 {
     HDC hdc = GetDC(window);
 
@@ -917,24 +922,25 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
 
+    if (drawProgressBar)
+    {
+        // todo: mimic youtube show/hide
+        // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
+        // fakey way to draw rects
+        int pos = (int)(proportion * (double)dWID);
 
-    // todo: mimic youtube show/hide
-    // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
-    // fakey way to draw rects
-    int pos = (int)(proportion * (double)dWID);
+        glViewport(pos, progressBarB, dWID, progressBarH);
+        glUniform1f(alpha_loc, 0.4);
+        u32 gray = 0xaaaaaaaa;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-    glViewport(pos, progressBarB, dWID, progressBarH);
-    glUniform1f(alpha_loc, 0.4);
-    u32 gray = 0xaaaaaaaa;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-    glViewport(0, progressBarB, pos, progressBarH);
-    glUniform1f(alpha_loc, 0.6);
-    u32 red = 0xffff0000;
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
+        glViewport(0, progressBarB, pos, progressBarH);
+        glUniform1f(alpha_loc, 0.6);
+        u32 red = 0xffff0000;
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
 
     // unbind and cleanup
 
@@ -1274,6 +1280,25 @@ void Update()
     }
 
 
+    if (app_timer.MsSinceStart() - msOfLastMouseMove > progressBarDisapearAfterThisManyMSOfInactivity)
+    {
+        drawProgressBar = false;
+    }
+    else
+    {
+        drawProgressBar = true;
+    }
+
+    POINT mPos;
+    GetCursorPos(&mPos);
+    RECT winRect;
+    GetWindowRect(window, &winRect);
+    if (!PtInRect(&winRect, mPos))
+    {
+        // OutputDebugString("outside window\n");
+        drawProgressBar = false;
+    }
+
 
     if (vid_paused)
     {
@@ -1383,7 +1408,7 @@ void Update()
     vid_was_paused = vid_paused;
 
 
-    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent);
+    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, drawProgressBar);
 
     // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
     // //                    (float*)sound_buffer, bytes_in_buffer);
@@ -1585,6 +1610,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
+        // case WM_MOUSELEAVE:  // need to call TrackMouseEvents for this? just check in our loop
+
         case WM_LBUTTONDOWN:{
             // OutputDebugString("DOWN\n");
             mDown = true;
@@ -1593,9 +1620,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (mDownPoint.y >= winHEI-(progressBarH+progressBarB) && mDownPoint.y <= winHEI-progressBarB)
             {
                 double prop = (double)mDownPoint.x / (double)winWID;
-                char propbuf[123];
-                sprintf(propbuf, "prop: %f\n", prop);
-                OutputDebugString(propbuf);
+                    // char propbuf[123];
+                    // sprintf(propbuf, "prop: %f\n", prop);
+                    // OutputDebugString(propbuf);
                 // OutputDebugString("clickingOnProgessBar true\n");
                 clickingOnProgessBar = true;
 
@@ -1613,6 +1640,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
+            msOfLastMouseMove = app_timer.MsSinceStart();
             if (mDown)
             {
                 // OutputDebugString("MOUSEMOVE\n");
