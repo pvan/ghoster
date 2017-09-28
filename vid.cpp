@@ -1497,6 +1497,7 @@ POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
 bool clickingOnProgessBar;
+bool wasNonClientHit;
 
 void onMouseUp()
 {
@@ -1506,8 +1507,11 @@ void onMouseUp()
         {
             if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse even handlers? w/ timers etc?
             {
-                // OutputDebugString("false, pause\n");
-                vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+                if (!wasNonClientHit)
+                {
+                    // OutputDebugString("false, pause\n");
+                    vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+                }
             }
         }
         else
@@ -1614,6 +1618,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_LBUTTONDOWN:{
             // OutputDebugString("DOWN\n");
+            wasNonClientHit = false;
             mDown = true;
             itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
@@ -1634,6 +1639,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
         } break;
         case WM_NCLBUTTONDOWN: {
+            wasNonClientHit = true;
             // OutputDebugString("DOWN\n");
             // mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
             // return 0;
@@ -1724,7 +1730,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             onMouseUp();
         } break;
 
-        case WM_LBUTTONUP:
+        case WM_LBUTTONUP: //{
+        //     mDown = false;
+        //     onMouseUp();
+        // } break;
         case WM_NCLBUTTONUP: {
             mDown = false;
             onMouseUp();
