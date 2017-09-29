@@ -1609,7 +1609,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_PAINT: {
-            Update(); // todo: dragging is a little behind mouse (only soln: sep thread?)
+            Update(); // doesn't seem to have an effect? i think related to our mouse getting captured?
+            ValidateRect(hwnd, 0); // if we don't do this, we'll just keep getting wm_paint msgs
             return 0;
         } break;
 
