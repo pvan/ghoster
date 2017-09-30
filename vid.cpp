@@ -1741,7 +1741,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // because we're waiting our target Ms at minimum
         // (any calculation time is added on top)
         case WM_ENTERSIZEMOVE: {
-            SetTimer(hwnd, 1, targetMsPerFrame, NULL); // strange if we decrease this, our window starts to lag behind mouse..?
+            // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nosedives
+            // 10 keeps our framerate fine but lags the window behind the mouse.. why?
+            SetTimer(hwnd, 1, 10, NULL);
         } break;
 
         case WM_TIMER: {
@@ -1770,12 +1772,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
             ClientToScreen(hwnd, &openPoint);
-            SetTimer(hwnd, 1, targetMsPerFrame, NULL);
+            SetTimer(hwnd, 1, 10, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
-            SetTimer(hwnd, 1, targetMsPerFrame, NULL);
+            SetTimer(hwnd, 1, 10, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
