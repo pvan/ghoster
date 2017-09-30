@@ -1105,6 +1105,13 @@ static Timer menuCloseTimer;
 static bool globalContextMenuOpen;
 
 
+// void Render()
+// {
+//     RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, drawProgressBar);
+// }
+
+
+
 // todo: what to do with this
 void SetupSDLSound()
 {
@@ -1528,6 +1535,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
+
         case WM_CLOSE: {
             appRunning = false;
         } break;
@@ -1608,11 +1616,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             return HTCLIENT; // we now specifically call HTCAPTION in LBUTTONDOWN
         } break;
 
-        case WM_PAINT: {
-            Update(); // doesn't seem to have an effect? i think related to our mouse getting captured?
-            ValidateRect(hwnd, 0); // if we don't do this, we'll just keep getting wm_paint msgs
-            return 0;
-        } break;
+        // case WM_PAINT: {
+        //  // Render();
+        //  SwapBuffers((HDC)wParam);
+        //     ValidateRect(hwnd, 0); // if we don't do this, we'll just keep getting wm_paint msgs
+        //     return 0;
+        // } break;
 
 
         // case WM_MOUSELEAVE:  // need to call TrackMouseEvents for this? just check in our loop
@@ -1725,9 +1734,27 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         } break;
 
+
+
+        // timer to keep updating while dragging / resizing
+        // feels a bit awkward, plus our framerate dips
+        // because we're waiting our target Ms at minimum
+        // (any calculation time is added on top)
+        case WM_ENTERSIZEMOVE: {
+            SetTimer(hwnd, 1, targetMsPerFrame, NULL); // strange if we decrease this, our window starts to lag behind mouse..?
+        } break;
+
+        case WM_TIMER: {
+            // OutputDebugString("tick\n");
+            Update();
+        } break;
+
+
+
         case WM_EXITSIZEMOVE: {
-            // LBUTTONUP not triggering when captured
-            mDown = false;
+            KillTimer(hwnd, 1);
+
+            mDown = false;  // LBUTTONUP not triggering when captured
             onMouseUp();
         } break;
 
@@ -1743,10 +1770,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
             ClientToScreen(hwnd, &openPoint);
+            SetTimer(hwnd, 1, targetMsPerFrame, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            SetTimer(hwnd, 1, targetMsPerFrame, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
@@ -1785,7 +1814,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
-
 
 
 
@@ -1899,14 +1927,12 @@ int CALLBACK WinMain(
     while (appRunning)
     {
         MSG Message;
-        // while works much better with using MOUSEMOVE to enable drag
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&Message);
             DispatchMessage(&Message);
         }
 
-        // OutputDebugString("UPDATE\n");
         Update();
 
     }
