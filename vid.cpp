@@ -1184,15 +1184,72 @@ bool LoadVideoFile(char *path)
 {
 
 
-	if (StringBeginsWith(path, "http"))
-	{
-		OutputDebugString("url\n");
-	}
-	if (!(path[1] == ':'))
-	{
-		OutputDebugString("not full filepath or url\n");
-		return false;
-	}
+    if (StringBeginsWith(path, "http"))
+    {
+        OutputDebugString("url\n");
+
+
+        // to get the output from running youtube-dl,
+        // we need to make a pipe to capture the stdout?
+
+        // based on
+        // https://support.microsoft.com/en-us/help/190351/how-to-spawn-console-processes-with-redirected-standard-handles
+        // simplier way?
+
+
+        // setup our custom pipes...
+
+        SECURITY_ATTRIBUTES sa;
+        // Set up the security attributes struct.
+        sa.nLength= sizeof(SECURITY_ATTRIBUTES);
+        sa.lpSecurityDescriptor = NULL;
+        sa.bInheritHandle = TRUE;
+
+
+        HANDLE outRead, outWrite;
+        if (!CreatePipe(&outRead, &outWrite, &sa, 0))
+        {
+            OutputDebugString("Error with CreatePipe()");
+            return false;
+        }
+
+
+        // actually run the cmd...
+
+        PROCESS_INFORMATION pi;
+        STARTUPINFO si;
+
+        // Set up the start up info struct.
+        ZeroMemory(&si,sizeof(STARTUPINFO));
+        si.cb = sizeof(STARTUPINFO);
+        // si.dwFlags = STARTF_USESTDHANDLES;
+        // si.hStdOutput = outWrite;
+        // si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+        // si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
+        // si.wShowWindow = SW_HIDE;
+
+        char args[MAX_PATH]; //todo: tempy
+        sprintf(args, "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe -g %s", path);
+
+        if (!CreateProcess(
+            "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe",
+            args,  // UNSAFE
+            0, 0, TRUE,
+            CREATE_NEW_CONSOLE,
+            0, 0,
+            &si, &pi))
+        {
+            OutputDebugString("Error creating youtube-dl process.");
+        }
+
+        return false;
+
+    }
+    else if (!(path[1] == ':'))
+    {
+        OutputDebugString("not full filepath or url\n");
+        return false;
+    }
 
     // VideoFile
     loaded_video = OpenVideoFileAV(path);
@@ -1537,22 +1594,22 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 bool PasteClipboard()
 {
-	HANDLE h;
-	if (!OpenClipboard(0))
-	{
-		OutputDebugString("Can't open clipboard.");
-		return false;
-	}
-	h = GetClipboardData(CF_TEXT);
-	if (!h) return false;
-	char tempcopy[MAX_PATH];
-	sprintf(tempcopy, "%s", (char*)h);
-	CloseClipboard();
-		char printit[MAX_PATH]; // should be +1
-		sprintf(printit, "%s\n", (char*)tempcopy);
-		OutputDebugString(printit);
-	LoadVideoFile(tempcopy);
-	return true;
+    HANDLE h;
+    if (!OpenClipboard(0))
+    {
+        OutputDebugString("Can't open clipboard.");
+        return false;
+    }
+    h = GetClipboardData(CF_TEXT);
+    if (!h) return false;
+    char tempcopy[MAX_PATH];
+    sprintf(tempcopy, "%s", (char*)h);
+    CloseClipboard();
+        char printit[MAX_PATH]; // should be +1
+        sprintf(printit, "%s\n", (char*)tempcopy);
+        OutputDebugString(printit);
+    LoadVideoFile(tempcopy);
+    return true;
 }
 
 
@@ -1845,24 +1902,24 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_KEYDOWN: {
-        	if (wParam == 0x56) // V
-        	{
-        		if (ctrlDown)
-        		{
-        			PasteClipboard();
-        		}
-        	}
-        	if (wParam == 0x11) // ctrl
-        	{
-        		ctrlDown = true;
-        	}
+            if (wParam == 0x56) // V
+            {
+                if (ctrlDown)
+                {
+                    PasteClipboard();
+                }
+            }
+            if (wParam == 0x11) // ctrl
+            {
+                ctrlDown = true;
+            }
         } break;
 
         case WM_KEYUP: {
-        	if (wParam == 0x11) // ctrl
-        	{
-        		ctrlDown = false;
-        	}
+            if (wParam == 0x11) // ctrl
+            {
+                ctrlDown = false;
+            }
         } break;
 
         case WM_COMMAND: {
@@ -1879,8 +1936,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     lock_aspect = !lock_aspect;
                     break;
                 case ID_PASTE:
-                	PasteClipboard();
-                	break;
+                    PasteClipboard();
+                    break;
             }
         } break;
 
