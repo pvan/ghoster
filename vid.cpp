@@ -570,7 +570,7 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     return result;
 }
 
-VideoFile OpenVideoFileAV(char *filepath)
+VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
 {
 
     VideoFile file;
@@ -578,8 +578,8 @@ VideoFile OpenVideoFileAV(char *filepath)
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
     file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
 
-    int open_result1 = avformat_open_input(&file.vfc, filepath, 0, 0);
-    int open_result2 = avformat_open_input(&file.afc, filepath, 0, 0);
+    int open_result1 = avformat_open_input(&file.vfc, videopath, 0, 0);
+    int open_result2 = avformat_open_input(&file.afc, audiopath, 0, 0);
     if (open_result1 != 0 || open_result2 != 0)
     {
         char averr[1024];
@@ -1283,25 +1283,28 @@ bool LoadVideoFile(char *path)
         OutputDebugString(video); OutputDebugString("\n");
         OutputDebugString(audio); OutputDebugString("\n");
 
-        path = video;
+        // path = video;
 
 
         CloseHandle(outRead);
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
 
+        loaded_video = OpenVideoFileAV(video, audio);
 
         // return false;
 
     }
-    else if (!(path[1] == ':'))
+    else if (path[1] == ':')
+    {
+        loaded_video = OpenVideoFileAV(path, path);
+    }
+    else
     {
         OutputDebugString("not full filepath or url\n");
         return false;
     }
 
-    // VideoFile
-    loaded_video = OpenVideoFileAV(path);
 
 
     // set window size on video source resolution
