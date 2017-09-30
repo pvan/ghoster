@@ -43,7 +43,7 @@ extern "C"
 const int samples_per_second = 44100;
 
 int progressBarH = 22;
-int progressBarB = 12;
+int progressBarB = 0;
 double msOfLastMouseMove = -1000;
 bool drawProgressBar = false;
 double progressBarDisapearAfterThisManyMSOfInactivity = 1000;
@@ -1745,11 +1745,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // because we're waiting our target Ms at minimum
         // (any calculation time is added on top)
         case WM_ENTERSIZEMOVE: {
-            // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nosedives
+            // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nose-dives
             // 10 keeps our framerate fine but lags the window behind the mouse.. why?
             SetTimer(hwnd, 1, 10, NULL);
         } break;
 
+        // basically a backdoor into our update loop
+        // for when we're stuck in a blocking DefWindowProc call
+        // (such as a drag/resize/menu open)
+        // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
             Update();
@@ -1758,7 +1762,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_EXITSIZEMOVE: {
-            KillTimer(hwnd, 1);
+            KillTimer(hwnd, 1); // this apparently is not the only exit point, had to add to end of msg pump
 
             mDown = false;  // LBUTTONUP not triggering when captured
             onMouseUp();
