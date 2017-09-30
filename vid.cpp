@@ -1178,6 +1178,116 @@ void SetupSDLSound()
 }
 
 
+bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
+{
+    // to get the output from running youtube-dl,
+    // we need to make a pipe to capture the stdout
+
+    // setup our custom pipes...
+
+    SECURITY_ATTRIBUTES sa;
+    // Set up the security attributes struct.
+    sa.nLength= sizeof(SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+
+
+    HANDLE outRead, outWrite;
+    if (!CreatePipe(&outRead, &outWrite, &sa, 0))
+    {
+        OutputDebugString("Error with CreatePipe()");
+        return false;
+    }
+
+
+    // actually run the cmd...
+
+    PROCESS_INFORMATION pi;
+    STARTUPINFO si;
+
+    // Set up the start up info struct.
+    ZeroMemory(&si,sizeof(STARTUPINFO));
+    si.cb = sizeof(STARTUPINFO);
+    si.dwFlags = STARTF_USESTDHANDLES;
+    si.hStdOutput = outWrite;
+    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+    si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
+    si.wShowWindow = SW_HIDE;
+
+    char args[MAX_PATH]; //todo: tempy
+    sprintf(args, "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe -g %s", path);
+
+    if (!CreateProcess(
+        "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe",
+        args,  // UNSAFE
+        0, 0, TRUE,
+        CREATE_NEW_CONSOLE,
+        0, 0,
+        &si, &pi))
+    {
+        OutputDebugString("Error creating youtube-dl process.");
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+
+    // close write end before reading from read end
+    if (!CloseHandle(outWrite))
+    {
+        OutputDebugString("Error with CloseHandle()");
+    }
+
+
+    // get the string out of the pipe...
+    // char result[1024*8];
+    char *result = path;
+
+    DWORD bytesRead;
+    if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
+    {
+        // too big
+    }
+
+    if (bytesRead == 0)
+    {
+        // no output?
+    }
+
+    // seem to get two urls, first video, second sound
+    *video = result;
+    *audio = result;
+    for (char *p = result; p++; *p)
+    {
+        if (*p == '\n')
+        {
+            *p = 0;
+            *audio = p+1;
+            break;
+        }
+    }
+    for (char *p = *audio; p++; *p)
+    {
+        if (*p == '\n')
+        {
+            *p = 0;
+            break;
+        }
+    }
+
+
+    OutputDebugString(*video); OutputDebugString("\n");
+    OutputDebugString(*audio); OutputDebugString("\n");
+
+    // path = video;
+
+
+    CloseHandle(outRead);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    return true;
+}
+
 // todo: peruse this for memory leaks. also: weird deja vu
 bool LoadVideoFile(char *path)
 {
@@ -1185,115 +1295,11 @@ bool LoadVideoFile(char *path)
 
     if (StringBeginsWith(path, "http"))
     {
-        OutputDebugString("url\n");
+        char *video_url;
+        char *audio_url;
+        FindAudioAndVideoUrls(path, &video_url, &audio_url);
 
-
-        // to get the output from running youtube-dl,
-        // we need to make a pipe to capture the stdout
-
-        // setup our custom pipes...
-
-        SECURITY_ATTRIBUTES sa;
-        // Set up the security attributes struct.
-        sa.nLength= sizeof(SECURITY_ATTRIBUTES);
-        sa.lpSecurityDescriptor = NULL;
-        sa.bInheritHandle = TRUE;
-
-
-        HANDLE outRead, outWrite;
-        if (!CreatePipe(&outRead, &outWrite, &sa, 0))
-        {
-            OutputDebugString("Error with CreatePipe()");
-            return false;
-        }
-
-
-        // actually run the cmd...
-
-        PROCESS_INFORMATION pi;
-        STARTUPINFO si;
-
-        // Set up the start up info struct.
-        ZeroMemory(&si,sizeof(STARTUPINFO));
-        si.cb = sizeof(STARTUPINFO);
-        si.dwFlags = STARTF_USESTDHANDLES;
-        si.hStdOutput = outWrite;
-        si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
-        si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
-        si.wShowWindow = SW_HIDE;
-
-        char args[MAX_PATH]; //todo: tempy
-        sprintf(args, "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe -g %s", path);
-
-        if (!CreateProcess(
-            "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe",
-            args,  // UNSAFE
-            0, 0, TRUE,
-            CREATE_NEW_CONSOLE,
-            0, 0,
-            &si, &pi))
-        {
-            OutputDebugString("Error creating youtube-dl process.");
-        }
-
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
-
-        // close write end before reading from read end
-        if (!CloseHandle(outWrite))
-        {
-            OutputDebugString("Error with CloseHandle()");
-        }
-
-
-        // get the string out of the pipe...
-        // char result[1024*8];
-        char *result = path;
-
-        DWORD bytesRead;
-        if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
-        {
-            // too big
-        }
-
-        if (bytesRead == 0)
-        {
-            // no output?
-        }
-
-        // seem to get two urls, first video, second sound
-        char *video = result;
-        char *audio = result;
-        for (char *p = result; p++; *p)
-        {
-            if (*p == '\n')
-            {
-                *p = 0;
-                audio = p+1;
-                break;
-            }
-        }
-        for (char *p = audio; p++; *p)
-        {
-            if (*p == '\n')
-            {
-                *p = 0;
-                break;
-            }
-        }
-
-
-        OutputDebugString(video); OutputDebugString("\n");
-        OutputDebugString(audio); OutputDebugString("\n");
-
-        // path = video;
-
-
-        CloseHandle(outRead);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-
-        loaded_video = OpenVideoFileAV(video, audio);
+        loaded_video = OpenVideoFileAV(video_url, audio_url);
 
         // return false;
 
