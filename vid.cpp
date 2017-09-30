@@ -1535,12 +1535,34 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 }
 
 
+bool PasteClipboard()
+{
+	HANDLE h;
+	if (!OpenClipboard(0))
+	{
+		OutputDebugString("Can't open clipboard.");
+		return false;
+	}
+	h = GetClipboardData(CF_TEXT);
+	if (!h) return false;
+	char tempcopy[MAX_PATH];
+	sprintf(tempcopy, "%s", (char*)h);
+	CloseClipboard();
+		char printit[MAX_PATH]; // should be +1
+		sprintf(printit, "%s\n", (char*)tempcopy);
+		OutputDebugString(printit);
+	LoadVideoFile(tempcopy);
+	return true;
+}
+
 
 POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
 bool clickingOnProgessBar;
 bool wasNonClientHit;
+
+bool ctrlDown;
 
 void onMouseUp()
 {
@@ -1821,6 +1843,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
+
+        case WM_KEYDOWN: {
+        	if (wParam == 0x56) // V
+        	{
+        		if (ctrlDown)
+        		{
+        			PasteClipboard();
+        		}
+        	}
+        	if (wParam == 0x11) // ctrl
+        	{
+        		ctrlDown = true;
+        	}
+        } break;
+
+        case WM_KEYUP: {
+        	if (wParam == 0x11) // ctrl
+        	{
+        		ctrlDown = false;
+        	}
+        } break;
+
         case WM_COMMAND: {
             switch (wParam)
             {
@@ -1835,19 +1879,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     lock_aspect = !lock_aspect;
                     break;
                 case ID_PASTE:
-                	HANDLE h;
-                	if (!OpenClipboard(0))
-                	{
-                		OutputDebugString("Can't open clipboard.");
-                		break;
-                	}
-                	h = GetClipboardData(CF_TEXT);
-                	if (!h) break;
-                	char tempcopy[MAX_PATH];
-                	sprintf(tempcopy, "%s", (char*)h);
-                	CloseClipboard();
-                	// OutputDebugString(tempcopy);
-                	LoadVideoFile(tempcopy);
+                	PasteClipboard();
                 	break;
             }
         } break;
