@@ -209,21 +209,21 @@ int GetNextAudioFrame(
     double msSinceStart)
 {
 
-    // todo: support non-float format source? qwer
-    SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
-                      AV_CH_LAYOUT_STEREO,  // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
-                      AV_SAMPLE_FMT_FLT,    // out_sample_fmt
-                      samples_per_second,   // out_sample_rate
-                      cc->channel_layout,   // in_ch_layout
-                      cc->sample_fmt,       // in_sample_fmt
-                      cc->sample_rate,      // in_sample_rate
-                      0,                    // log_offset
-                      NULL);                // log_ctx
-    swr_init(swr);
-    if (!swr_is_initialized(swr)) {
-        OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
-        return -1;
-    }
+    // // todo: support non-float format source? qwer
+    // SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
+    //                   AV_CH_LAYOUT_STEREO,  // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+    //                   AV_SAMPLE_FMT_FLT,    // out_sample_fmt
+    //                   samples_per_second,   // out_sample_rate
+    //                   cc->channel_layout,   // in_ch_layout
+    //                   cc->sample_fmt,       // in_sample_fmt
+    //                   cc->sample_rate,      // in_sample_rate
+    //                   0,                    // log_offset
+    //                   NULL);                // log_ctx
+    // swr_init(swr);
+    // if (!swr_is_initialized(swr)) {
+    //     OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
+    //     return -1;
+    // }
 
         // to actually resample...
         // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
@@ -346,12 +346,16 @@ int GetNextAudioFrame(
                         out[j++] = inR[i];
                     }
 
-                    // old method with no resampling.. (dropped R channel)
-                    // memcpy(outBuffer, frame->data[0], additional_bytes);
-
                     additional_bytes = j*sizeof(float);
                     outBuffer+=additional_bytes;
                     bytes_written+=additional_bytes;
+
+
+                    // old method with no resampling.. (dropped R channel)
+                    // memcpy(outBuffer, frame->data[0], additional_bytes);
+                    // outBuffer+=additional_bytes;
+                    // bytes_written+=additional_bytes;
+
 
 
                     // now try to guess when we're done based on the size of the last frame
