@@ -1457,7 +1457,7 @@ void Update()
         if (!vid_was_paused)
         {
             audio_stopwatch.Pause();
-            // SDL_PauseAudioDevice(audio_device, 1);
+            SDL_PauseAudioDevice(audio_device, 1);
         }
     }
     else
@@ -1465,80 +1465,80 @@ void Update()
         if (vid_was_paused || !audio_stopwatch.timer.started)
         {
             audio_stopwatch.Start();
-            // SDL_PauseAudioDevice(audio_device, 0);
+            SDL_PauseAudioDevice(audio_device, 0);
         }
 
-        // if (setSeek)
-        // {//asdf
+        if (setSeek)
+        {//asdf
 
-        //     //SetupSDLSound();
-        //     SDL_ClearQueuedAudio(audio_device);
+            //SetupSDLSound();
+            SDL_ClearQueuedAudio(audio_device);
 
-        //     setSeek = false;
-        //     int seekPos = seekProportion * loaded_video.vfc->duration;
-        //     av_seek_frame(loaded_video.vfc, -1, seekPos, 0);
-        //     av_seek_frame(loaded_video.afc, -1, seekPos, 0);
+            setSeek = false;
+            int seekPos = seekProportion * loaded_video.vfc->duration;
+            av_seek_frame(loaded_video.vfc, -1, seekPos, 0);
+            av_seek_frame(loaded_video.afc, -1, seekPos, 0);
 
-        //     double realTime = (double)seekPos / (double)AV_TIME_BASE;
-        //     int timeTicks = realTime * audio_stopwatch.timer.ticks_per_second;
-        //     audio_stopwatch.timer.starting_ticks = audio_stopwatch.timer.TicksNow() - timeTicks;
+            double realTime = (double)seekPos / (double)AV_TIME_BASE;
+            int timeTicks = realTime * audio_stopwatch.timer.ticks_per_second;
+            audio_stopwatch.timer.starting_ticks = audio_stopwatch.timer.TicksNow() - timeTicks;
 
-        // }
+        }
 
-        // elapsed = audio_stopwatch.MsElapsed() / 1000.0;
-        // percent = elapsed/duration;
-        //     // char durbuf[123];
-        //     // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-        //     // OutputDebugString(durbuf);
-
-
-        // // SOUND
-
-        // int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-        //     // char msg[256];
-        //     // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-        //     // OutputDebugString(msg);
+        elapsed = audio_stopwatch.MsElapsed() / 1000.0;
+        percent = elapsed/duration;
+            // char durbuf[123];
+            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+            // OutputDebugString(durbuf);
 
 
-        // int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-        //     // char msg3[256];
-        //     // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-        //     // OutputDebugString(msg3);
+        // SOUND
 
-        // if (wanted_bytes >= 0)
-        // {
-        //     if (wanted_bytes > bytes_in_buffer)
-        //     {
-        //         // char errq[256];
-        //         // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-        //         // OutputDebugString(errq);
+        int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
+            // char msg[256];
+            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+            // OutputDebugString(msg);
 
-        //         wanted_bytes = bytes_in_buffer;
-        //     }
 
-        //     // ideally a little bite of sound, every frame
-        //     // todo: how to sync this right, pts dts?
-        //     int bytes_queued_up = GetNextAudioFrame(
-        //         loaded_video.afc,
-        //         loaded_video.audio.codecContext,
-        //         loaded_video.audio.index,
-        //         (u8*)sound_buffer,
-        //         wanted_bytes,
-        //         audio_stopwatch.MsElapsed());
+        int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
+            // char msg3[256];
+            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+            // OutputDebugString(msg3);
 
-        //     if (bytes_queued_up > 0)
-        //     {
-        //         if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
-        //         {
-        //             char audioerr[256];
-        //             sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-        //             OutputDebugString(audioerr);
-        //         }
-        //            // char msg2[256];
-        //            // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-        //            // OutputDebugString(msg2);
-        //     }
-        // }
+        if (wanted_bytes >= 0)
+        {
+            if (wanted_bytes > bytes_in_buffer)
+            {
+                // char errq[256];
+                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                // OutputDebugString(errq);
+
+                wanted_bytes = bytes_in_buffer;
+            }
+
+            // ideally a little bite of sound, every frame
+            // todo: how to sync this right, pts dts?
+            int bytes_queued_up = GetNextAudioFrame(
+                loaded_video.afc,
+                loaded_video.audio.codecContext,
+                loaded_video.audio.index,
+                (u8*)sound_buffer,
+                wanted_bytes,
+                audio_stopwatch.MsElapsed());
+
+            if (bytes_queued_up > 0)
+            {
+                if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+                {
+                    char audioerr[256];
+                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                    OutputDebugString(audioerr);
+                }
+                   // char msg2[256];
+                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                   // OutputDebugString(msg2);
+            }
+        }
 
 
 
