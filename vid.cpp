@@ -546,7 +546,7 @@ struct StreamAV
 struct VideoFile
 {
     AVFormatContext *vfc;
-    AVFormatContext *afc;  // kind of a hack? to read audio and video in sep loops
+    AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
 };
@@ -604,7 +604,6 @@ VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
     // find first video and audio stream
     // todo: use av_find_best_stream?
     file.video.index = -1;
-    file.audio.index = -1;
     for (int i = 0; i < file.vfc->nb_streams; i++)
     {
         if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
@@ -612,7 +611,11 @@ VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
             if (file.video.index == -1)
                 file.video.index = i;
         }
-        if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
+    }
+    file.audio.index = -1;
+    for (int i = 0; i < file.afc->nb_streams; i++)
+    {
+        if (file.afc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
         {
             if (file.audio.index == -1)
                 file.audio.index = i;
@@ -1360,7 +1363,7 @@ bool LoadVideoFile(char *path)
 
     // // SDL, for sound atm
 
-    // SetupSDLSound();
+    SetupSDLSound();
 
 
 
