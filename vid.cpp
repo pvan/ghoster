@@ -161,6 +161,23 @@ void MsgBox(char* s) {
 }
 
 
+// this is case sensitive
+bool StringBeginsWith(const char *str, const char *front)
+{
+    while (*front)
+    {
+        if (!*str)
+            return false;
+
+        if (*front != *str)
+            return false;
+
+        front++;
+        str++;
+    }
+    return true;
+}
+
 
 void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 {
@@ -555,6 +572,7 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 
 VideoFile OpenVideoFileAV(char *filepath)
 {
+
     VideoFile file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -1165,6 +1183,17 @@ void SetupSDLSound()
 bool LoadVideoFile(char *path)
 {
 
+
+	if (StringBeginsWith(path, "http"))
+	{
+		OutputDebugString("url\n");
+	}
+	if (!(path[1] == ':'))
+	{
+		OutputDebugString("not full filepath or url\n");
+		return false;
+	}
+
     // VideoFile
     loaded_video = OpenVideoFileAV(path);
 
@@ -1484,6 +1513,7 @@ void SetWindowToAspectRatio()
 #define ID_EXIT 1001
 #define ID_PAUSE 1002
 #define ID_ASPECT 1003
+#define ID_PASTE 1004
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
@@ -1493,6 +1523,8 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
     SetForegroundWindow(hwnd);
 
@@ -1802,6 +1834,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     SetWindowToAspectRatio();
                     lock_aspect = !lock_aspect;
                     break;
+                case ID_PASTE:
+                	HANDLE h;
+                	if (!OpenClipboard(0))
+                	{
+                		OutputDebugString("Can't open clipboard.");
+                		break;
+                	}
+                	h = GetClipboardData(CF_TEXT);
+                	if (!h) break;
+                	char tempcopy[MAX_PATH];
+                	sprintf(tempcopy, "%s", (char*)h);
+                	CloseClipboard();
+                	// OutputDebugString(tempcopy);
+                	LoadVideoFile(tempcopy);
+                	break;
             }
         } break;
 
