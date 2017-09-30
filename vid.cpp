@@ -618,19 +618,15 @@ VideoFile OpenVideoFileAV(char *filepath)
                 file.audio.index = i;
         }
     }
-    // if (file.video.index == -1)
-    // {
-    //     MsgBox("ffmpeg: No video stream found.");
-    //     return file;  // todo: support missing streams
-    // }
-    // if (file.audio.index == -1)
-    // {
-    //     MsgBox("ffmpeg: No audio stream found.");
-    //     return file;  // todo: support missing streams
-    // }
+    if (file.video.index != -1)
+    {
+        file.video.codecContext = OpenAndFindCodec(file.vfc, file.video.index);
+    }
+    if (file.audio.index != -1)
+    {
+        file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
+    }
 
-    file.video.codecContext = OpenAndFindCodec(file.vfc, file.video.index);
-    // file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
 
     return file;
 }
