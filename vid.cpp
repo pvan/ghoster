@@ -1935,8 +1935,14 @@ int CALLBACK WinMain(
         MSG Message;
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
+            // char ttt[123];
+            // sprintf(ttt, "msg: %i\n", Message.message);
+            // OutputDebugString(ttt);
+
             TranslateMessage(&Message);
             DispatchMessage(&Message);
+
+            KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
         Update();
