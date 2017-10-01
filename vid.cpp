@@ -253,7 +253,9 @@ int GetNextAudioFrame(
         // memcpy(*data + *size, buffer, frame_count * sizeof(double));
         // *size += frame_count;
 
-
+	// char tempy[123];
+	// sprintf(tempy, "%lli\n", cc->sample_fmt);
+	// OutputDebugString(tempy);
 
     AVPacket readingPacket;
     av_init_packet(&readingPacket);
@@ -353,6 +355,8 @@ int GetNextAudioFrame(
 
                     // todo: this will only work with 2 channel planar float -> 2 chan interleaved float
                     // better would be a resampler?
+            // hacky quick way to support more formats temporarily
+            if (cc->sample_fmt == 8) {
                     float *out = (float*)outBuffer;
                     float *inL = (float*)frame->data[0];
                     float *inR = (float*)frame->data[1];
@@ -360,10 +364,24 @@ int GetNextAudioFrame(
                     for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
                     {
                         out[j++] = inL[i];
-                        out[j++] = inR[i];
+                        if (inR != 0) out[j++] = inR[i];  // even hacker way
+                        else out[j++] = inL[i];
                     }
 
                     additional_bytes = j*sizeof(float);
+            }
+            else {
+                    float *out = (float*)outBuffer;
+                    float *inL = (float*)frame->data[0];
+                    int j = 0;
+                    for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
+                    {
+                        out[j++] = inL[i];
+                    }
+
+                    additional_bytes = j*sizeof(float);
+            }
+
                     outBuffer+=additional_bytes;
                     bytes_written+=additional_bytes;
 
