@@ -1208,7 +1208,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     // Set up the start up info struct.
     ZeroMemory(&si,sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
-    si.dwFlags = STARTF_USESTDHANDLES;
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
     si.hStdOutput = outWrite;
     si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
     si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
