@@ -1,21 +1,4 @@
 
-[x] fix no R audio (convert to 2 channels?)
-[x] everything is blue
-
-[x] load files
-
-[x] drag without blocking
-[ ] fix laggy resize/move [use multithreading?]
-[x] lock aspect ratio
-
-[x] track files / progress bar
-[x] seeking
-
-[x] pause/start
-
-
-[x] context menu
-
 
 [ ] repeat toggle
 
@@ -35,9 +18,6 @@
 
 [ ] more than one audio stream
 [?] more than one video stream??
-[x] less than one of each
-
-[x] yt vids, manually or feed from yt-dl maybe via stdin?
 
 
 [ ] looks like we need to dl a low quality version first or we'll lag on large files??
@@ -48,6 +28,17 @@
 
 
 [ ] volume! 
+
+
+[ ] buffering / waiting animation
+
+
+
+[ ] more precise seeking:
+av_seek_frame(fc, ?, 0.15, flag_any | flag_backw)
+first i frame before desired frame
+read forward w/o using till we get to desired time
+
 
 
 ---consider-----
@@ -63,6 +54,9 @@ look at avconv as alternative to ffmpeg
 when playing url...
 ..d/l asyn high quality
 ..play low quality instantly, switching to high quality on the fly?
+
+
+replace youtube-dl with homegrown/internal variant?
 
 
 
@@ -104,13 +98,6 @@ just a failsafe check
 
 
 
-
-more precise seeking:
-
-av_seek_frame(fc, ?, 0.15, flag_any | flag_backw)
-
-first i frame before desired frame
-read forward w/o using till we get to desired time
 
 
 
