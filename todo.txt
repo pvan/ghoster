@@ -62,6 +62,8 @@ replace youtube-dl with homegrown/internal variant?
 
 grown/shrink which side of window based on screen location when changing aspect ratio??
 
+option to reset to native video resolution? [doesn't seem actually useful]
+
 
 ---instructions-------
 

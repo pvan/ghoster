@@ -51,11 +51,11 @@ double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 
 
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync3.mp4";
-char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync1.mp4";
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync1.mp4";
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test4.mp4";
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.mp4";
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test3.avi";
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp"; // proper audio resampler for this to work
+char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp"; // proper audio resampler for this to work
 
 
 
@@ -211,6 +211,17 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 
 
+static SwrContext *swr;
+
+// note these should be the same
+// since we pass ffmpeg output directly to sdl
+#define FFMPEG_LAYOUT AV_CH_LAYOUT_STEREO
+#define FFMPEG_FORMAT AV_SAMPLE_FMT_FLT
+#define FFMPEG_CHANNELS 2
+#define SDL_CHANNELS 2
+#define SDL_FORMAT AUDIO_F32
+
+
 // todo: decode with newest api?
 // avcodec_send_packet / avcodec_receive_frame
 // (for video too)
@@ -226,36 +237,31 @@ int GetNextAudioFrame(
     double msSinceStart)
 {
 
-    // // todo: support non-float format source? qwer
-    // SwrContext *swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
-    //                   AV_CH_LAYOUT_STEREO,  // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
-    //                   AV_SAMPLE_FMT_FLT,    // out_sample_fmt
-    //                   samples_per_second,   // out_sample_rate
-    //                   cc->channel_layout,   // in_ch_layout
-    //                   cc->sample_fmt,       // in_sample_fmt
-    //                   cc->sample_rate,      // in_sample_rate
-    //                   0,                    // log_offset
-    //                   NULL);                // log_ctx
-    // swr_init(swr);
-    // if (!swr_is_initialized(swr)) {
-    //     OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
-    //     return -1;
-    // }
 
-        // to actually resample...
-        // see https://rodic.fr/blog/libavcodec-tutorial-decode-audio-file/
-        // // resample frames
-        // double* buffer;
-        // av_samples_alloc((uint8_t**) &buffer, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
-        // int frame_count = swr_convert(swr, (uint8_t**) &buffer, frame->nb_samples, (const uint8_t**) frame->data, frame->nb_samples);
-        // // append resampled frames to data
-        // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
-        // memcpy(*data + *size, buffer, frame_count * sizeof(double));
-        // *size += frame_count;
+    if (!swr)
+    {
+        // todo: free this when loading new video? any other time?
+        // todo: support non-float format source?
+        // todo: pass output options in from when we use in CreateSDLAudioDeviceFor? qwer
+        swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
+                    FFMPEG_LAYOUT,      // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+                    FFMPEG_FORMAT,      // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
+                    samples_per_second, // out_sample_rate
+                    cc->channel_layout, // in_ch_layout
+                    cc->sample_fmt,     // in_sample_fmt
+                    cc->sample_rate,    // in_sample_rate
+                    0,                  // log_offset
+                    NULL);              // log_ctx
+        swr_init(swr);
+        if (!swr_is_initialized(swr)) {
+            OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
+            return -1;
+        }
+    }
 
-	// char tempy[123];
-	// sprintf(tempy, "%lli\n", cc->sample_fmt);
-	// OutputDebugString(tempy);
+    // char tempy[123];
+    // sprintf(tempy, "%lli\n", cc->sample_fmt);
+    // OutputDebugString(tempy);
 
     AVPacket readingPacket;
     av_init_packet(&readingPacket);
@@ -298,8 +304,6 @@ int GetNextAudioFrame(
                     decodingPacket.size -= packet_bytes_decoded;
                     decodingPacket.data += packet_bytes_decoded;
 
-                    int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
-
 
                     // keep a check here so we don't overflow outBuffer??
                     // (ie, in case we guessed when to quit wrong below)
@@ -337,60 +341,31 @@ int GetNextAudioFrame(
                     // }
 
 
-        // // resample frames
-        // // double* raw_channels;
-        // // av_samples_alloc((u8**) &raw_channels, NULL, 1, frame->nb_samples, AV_SAMPLE_FMT_DBL, 0);
-        // int frame_count = swr_convert(
-        //     swr,
-        //     (u8**)&outBuffer,
-        //     frame->nb_samples,
-        //     (const u8**)&frame->extended_data,
-        //     frame->nb_samples);
-
-        // // append resampled frames to data
-        // *data = (double*) realloc(*data, (*size + frame->nb_samples) * sizeof(double));
-        // memcpy(*data + *size, buffer, frame_count * sizeof(double));
-        // *size += frame_count;
+                    // see notes from http://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-February/013592.html
+                    // "It depends on sample format you set in swr_alloc_set_opts().
+                    // For planar sample formats out[x] have x channel
+                    // For interleaved sample formats there is out[0] only and it have
+                    // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
 
 
-                    // todo: this will only work with 2 channel planar float -> 2 chan interleaved float
-                    // better would be a resampler?
-            // hacky quick way to support more formats temporarily
-            if (cc->sample_fmt == 8) {
-                    float *out = (float*)outBuffer;
-                    float *inL = (float*)frame->data[0];
-                    float *inR = (float*)frame->data[1];
-                    int j = 0;
-                    for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
-                    {
-                        out[j++] = inL[i];
-                        if (inR != 0) out[j++] = inR[i];  // even hacker way
-                        else out[j++] = inL[i];
-                    }
+                    // resample frames
+                    float* buffer_this_frame;
+                    av_samples_alloc((u8**)&buffer_this_frame, NULL,
+                                     FFMPEG_CHANNELS, frame->nb_samples, FFMPEG_FORMAT, 0);
+                    int frame_count = swr_convert(
+                        swr,
+                        (u8**)&buffer_this_frame,
+                        frame->nb_samples,
+                        (const u8**)&frame->data,  //extended_data ?
+                        frame->nb_samples);
 
-                    additional_bytes = j*sizeof(float);
-            }
-            else {
-                    float *out = (float*)outBuffer;
-                    float *inL = (float*)frame->data[0];
-                    int j = 0;
-                    for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
-                    {
-                        out[j++] = inL[i];
-                    }
-
-                    additional_bytes = j*sizeof(float);
-            }
-
+                    // append resampled frames to data
+                    int additional_bytes = frame->nb_samples *
+                                           av_get_bytes_per_sample(cc->sample_fmt) *
+                                           FFMPEG_CHANNELS;
+                    memcpy(outBuffer, buffer_this_frame, additional_bytes);
                     outBuffer+=additional_bytes;
                     bytes_written+=additional_bytes;
-
-
-                    // old method with no resampling.. (dropped R channel)
-                    // memcpy(outBuffer, frame->data[0], additional_bytes);
-                    // outBuffer+=additional_bytes;
-                    // bytes_written+=additional_bytes;
-
 
 
                     // now try to guess when we're done based on the size of the last frame
@@ -702,9 +677,9 @@ void logSpec(SDL_AudioSpec *as) {
 SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *audioContext)
 {
     SDL_AudioSpec wanted_spec, spec;
-    wanted_spec.freq = samples_per_second;//acc->sample_rate;
-    wanted_spec.format = AUDIO_F32;//AUDIO_F32;//AUDIO_S16SYS;
-    wanted_spec.channels = 2; //acc->channels; qwer
+    wanted_spec.freq = samples_per_second; // acc->sample_rate
+    wanted_spec.format = SDL_FORMAT; //AUDIO_F32 AUDIO_S16SYS
+    wanted_spec.channels = SDL_CHANNELS; // acc->channels
     wanted_spec.silence = 0;
     wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
     wanted_spec.callback = 0;  // none to set samples ourself
@@ -1350,9 +1325,9 @@ bool LoadVideoFile(char *path)
 
     // todo: add handling for this
     assert(loaded_video.vfc->start_time==0);
-        // char qwer2[123];
-        // sprintf(qwer2, "start: %lli\n", start_time);
-        // OutputDebugString(qwer2);
+        // char rewq[123];
+        // sprintf(rewq, "start: %lli\n", start_time);
+        // OutputDebugString(rewq);
 
 
     duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
@@ -1550,6 +1525,11 @@ void Update()
                 (u8*)sound_buffer,
                 wanted_bytes,
                 audio_stopwatch.MsElapsed());
+
+
+                    // char ggg[256];
+                    // sprintf(ggg, "audio sample: %f\n", *(float*)sound_buffer);
+                    // OutputDebugString(ggg);
 
             if (bytes_queued_up > 0)
             {
