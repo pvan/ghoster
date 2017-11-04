@@ -2,6 +2,8 @@
 
 [ ] repeat toggle
 
+[ ] keep new loaded video same window size (maybe resize to new aspect ratio)
+
 
 (right now, could drift out sync over long durations since audio is not tied to clock in any way)
 [ ] dont use audio timer to track position but get actual audio bytes sent 
@@ -58,6 +60,7 @@ when playing url...
 
 replace youtube-dl with homegrown/internal variant?
 
+grown/shrink which side of window based on screen location when changing aspect ratio??
 
 
 ---instructions-------
