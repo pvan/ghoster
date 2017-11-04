@@ -1,0 +1,139 @@
+
+[x] fix no R audio (convert to 2 channels?)
+[x] everything is blue
+
+[x] load files
+
+[x] drag without blocking
+[ ] fix laggy resize/move [use multithreading?]
+[x] lock aspect ratio
+
+[x] track files / progress bar
+[x] seeking
+
+[x] pause/start
+
+
+[x] context menu
+
+
+[ ] repeat toggle
+
+
+(right now, could drift out sync over long durations since audio is not tied to clock in any way)
+[ ] dont use audio timer to track position but get actual audio bytes sent 
+[ ] alternative: correctly slow down and speed up audio to match the timer
+
+
+[ ] snap to screen edges
+
+
+[ ] icon
+
+[ ] taskbar
+
+
+[ ] more than one audio stream
+[?] more than one video stream??
+[x] less than one of each
+
+[x] yt vids, manually or feed from yt-dl maybe via stdin?
+
+
+[ ] looks like we need to dl a low quality version first or we'll lag on large files??
+
+[ ] feels like sync issues when seeking youtube videos
+
+[ ] look into how ffmpeg dls videos -- cache anywhere?
+
+
+[ ] volume! 
+
+
+---consider-----
+
+drag with middle mouse button?
+
+auto crop black bars
+(or do manually by resize borders keeping window same)
+
+
+look at avconv as alternative to ffmpeg
+
+when playing url...
+..d/l asyn high quality
+..play low quality instantly, switching to high quality on the fly?
+
+
+
+---instructions-------
+
+to load a file
+
+pass path as argument
+drag file onto window
+drag url onto window
+paste (ctrl+V) url or path from clipboard while window active
+rclick menu, paste url or path
+rclick menu, open file... ?
+
+
+
+---notes---
+
+
+debug print these cases--
+PTS out of order
+any b frames?
+repeat_pict?
+
+
+use avframe repeat_pict ?
+
+
+only pause when waiting for next frame?
+
+
+
+cross check audio clock 
+w/ pts of data buffer sent to sdl
++ sdl delay estimate (2x buf length?)
+
+usually no change
+just a failsafe check
+
+
+
+
+more precise seeking:
+
+av_seek_frame(fc, ?, 0.15, flag_any | flag_backw)
+
+first i frame before desired frame
+read forward w/o using till we get to desired time
+
+
+
+fluid buffering----
+
+[xxx        ] time playing
+[.....      ] time buffered
+
+two threads 
+-1 getting video quickly as possible given what we have and time until we run out
+-1 grabbing highest res frame avil for next frame, buffer if none avail
+
+
+i/o loop
+-fast, responsive
+-no drops
+-animate if waiting for data
+
+
+d/l / decode loop
+-get data asap, even if low qual
+-improve qual asap
+-ok to wait, esp if video playing, but w/in reason (timeout?)
+
+
+
