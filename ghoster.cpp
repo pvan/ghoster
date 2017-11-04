@@ -46,7 +46,7 @@ int progressBarH = 22;
 int progressBarB = 0;
 double msOfLastMouseMove = -1000;
 bool drawProgressBar = false;
-double progressBarDisapearAfterThisManyMSOfInactivity = 1000;
+double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 
 
 
@@ -1233,17 +1233,18 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     si.wShowWindow = SW_HIDE;
 
     char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe -g %s", path);
+    sprintf(args, "youtube-dl.exe -g %s", path);
 
     if (!CreateProcess(
-        "D:\\~phil\\projects\\videoplayer\\tools\\youtube-dl.exe",
-        args,  // UNSAFE
+        "youtube-dl.exe",
+        args,  // todo: UNSAFE
         0, 0, TRUE,
         CREATE_NEW_CONSOLE,
         0, 0,
         &si, &pi))
     {
-        OutputDebugString("Error creating youtube-dl process.");
+        //OutputDebugString("Error creating youtube-dl process.");
+        MsgBox("Error creating youtube-dl process.");
     }
 
     WaitForSingleObject(pi.hProcess, INFINITE);
@@ -1456,7 +1457,7 @@ void Update()
     }
 
 
-    if (app_timer.MsSinceStart() - msOfLastMouseMove > progressBarDisapearAfterThisManyMSOfInactivity)
+    if (app_timer.MsSinceStart() - msOfLastMouseMove > progressBarDisapearAfterThisManyMsOfInactivity)
     {
         drawProgressBar = false;
     }

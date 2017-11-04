@@ -5,7 +5,9 @@ IF NOT EXIST build mkdir build
 
 REM  better way?
 xcopy /s /y /q lib\ffmpeg-3.3.3-win64-shared\bin\*.dll build
+xcopy /s /y /q lib\ffmpeg-3.3.3-win64-shared\bin\*.exe build
 xcopy /s /y /q lib\SDL2-2.0.5\lib\x64\*.dll build
+xcopy /s /y /q lib\youtube-dl.exe build
 
 
 if not defined DevEnvDir (
@@ -49,7 +51,7 @@ REM  -FC             full paths in errors (for sublime error regex)
 
 
 pushd build
-cl -nologo %CompilerFlags% %WarningFlags% ..\vid.cpp %LinkerFlags% user32.lib Winmm.lib
+cl -nologo %CompilerFlags% %WarningFlags% ..\ghoster.cpp %LinkerFlags% user32.lib Winmm.lib
 popd
 
 
