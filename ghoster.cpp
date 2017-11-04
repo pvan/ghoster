@@ -50,12 +50,12 @@ double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 
 
 
-// char *INPUT_FILE = "D:/Users/phil/Desktop/sync3.mp4";
-char *INPUT_FILE = "D:/Users/phil/Desktop/sync1.mp4";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test4.mp4";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test.mp4";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test3.avi";
-// char *INPUT_FILE = "D:/Users/phil/Desktop/test.3gp"; // proper audio resampler for this to work
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync3.mp4";
+char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync1.mp4";
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test4.mp4";
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.mp4";
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test3.avi";
+// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp"; // proper audio resampler for this to work
 
 
 
