@@ -359,45 +359,19 @@ int GetNextAudioFrame(
                     // For interleaved sample formats there is out[0] only and it have
                     // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
 
-
-                    // // resample frames
-                    // u8* buffer_this_frame;
-                    // av_samples_alloc(&buffer_this_frame, NULL,
-                    //                  FFMPEG_CHANNELS, frame->nb_samples, FFMPEG_FORMAT, 0);
-                    // int sample_count = swr_convert(
-                    //     swr,
-                    //     (u8**)&buffer_this_frame,
-                    //     frame->nb_samples,
-                    //     (const u8**)&frame->data,  //extended_data ?
-                    //     frame->nb_samples);
-
-                    // // append resampled frames to data
-                    // int additional_bytes = frame->nb_samples *
-                    //                        av_get_bytes_per_sample(cc->sample_fmt) *
-                    //                        FFMPEG_CHANNELS; //  FFMPEG_CHANNELS  cc->channels  ?
-                    // // memcpy(outBuffer, buffer_this_frame, additional_bytes);
-                    // memcpy(outBuffer, buffer_this_frame, additional_bytes);
-                    // outBuffer+=additional_bytes;
-                    // bytes_written+=additional_bytes;
-
-                    bool planar;
+                    bool planar = false;
 					switch (cc->sample_fmt) {
 						case AV_SAMPLE_FMT_U8P:
 						case AV_SAMPLE_FMT_S16P:
 						case AV_SAMPLE_FMT_S32P:
 						case AV_SAMPLE_FMT_FLTP:
-						case AV_SAMPLE_FMT_DBLP: {
-							planar = true;
-						}
-						default: {
-							planar = false;
-						}
+						case AV_SAMPLE_FMT_DBLP: planar = true;
 					}
 
 					int additional_bytes = frame->nb_samples *
 										   cc->channels *
 										   av_get_bytes_per_sample(cc->sample_fmt);
-					if (!planar)
+					if (!planar || cc->channels == 1)
 					{
 						memcpy(outBuffer, frame->data[0], additional_bytes);
 						outBuffer += additional_bytes;
@@ -407,52 +381,22 @@ int GetNextAudioFrame(
 					{
 						for (int sample = 0; sample < frame->nb_samples; sample++)
 						{
-							for (int channel = 0; cc->channels; channel++)
+							for (int channel = 0; channel < cc->channels; channel++)
 							{
-								outBuffer[channel] = frame->data[channel][sample];
+								u8 *thisChannel = frame->data[channel];
+								u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
+								for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
+								{
+									*outBuffer = *thisSample;
+									outBuffer++;
+									thisSample++;
+									bytes_written++;
+								}
 							}
-							outBuffer += av_get_bytes_per_sample(cc->sample_fmt);
-							bytes_written += av_get_bytes_per_sample(cc->sample_fmt);
 						}
 					}
 					// note bytes_written is total this call, not just this frame
 					// assert(bytes_written == additional_bytes); // only true on first loop
-
-// int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
-//                 if (cc->sample_fmt == 8) {
-                        // float *out = (float*)outBuffer;
-                        // float *inL = (float*)frame->data[0];
-                        // float *inR = (float*)frame->data[1];
-                        // int j = 0;
-                        // for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
-                        // {
-                        //     out[j++] = inL[i];
-                        //     if (inR != 0) out[j++] = inR[i];  // even hacker way
-                        //     else out[j++] = inL[i];
-                        // }
-
-                        // additional_bytes = j*sizeof(float);
-//                 }
-//                 else {
-//                         float *out = (float*)outBuffer;
-//                         float *inL = (float*)frame->data[0];
-//                         int j = 0;
-//                         for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
-//                         {
-//                             out[j++] = inL[i];
-//                         }
-
-//                         additional_bytes = j*sizeof(float);
-// //                 }
-//                 outBuffer+=additional_bytes;
-//                 bytes_written+=additional_bytes;
-
-
-                    // // old method with no resampling.. (dropped R channel)
-                    //  memcpy(outBuffer, frame->data[0], additional_bytes);
-                    //  outBuffer+=additional_bytes;
-                    //  bytes_written+=additional_bytes;
-
 
 
 
@@ -744,16 +688,30 @@ void logFormatContextDuration(AVFormatContext *fc)
 
 
 void logSpec(SDL_AudioSpec *as) {
+	char format[1234];
+	switch(as->format) {
+		case AV_SAMPLE_FMT_U8:   sprintf(format, "AV_SAMPLE_FMT_U8");   break;
+		case AV_SAMPLE_FMT_U8P:  sprintf(format, "AV_SAMPLE_FMT_U8P");  break;
+		case AV_SAMPLE_FMT_S16:  sprintf(format, "AV_SAMPLE_FMT_S16");  break;
+		case AV_SAMPLE_FMT_S16P: sprintf(format, "AV_SAMPLE_FMT_S16P"); break;
+		case AV_SAMPLE_FMT_S32:  sprintf(format, "AV_SAMPLE_FMT_S32");  break;
+		case AV_SAMPLE_FMT_S32P: sprintf(format, "AV_SAMPLE_FMT_S32P"); break;
+		case AV_SAMPLE_FMT_FLT:  sprintf(format, "AV_SAMPLE_FMT_FLT");  break;
+		case AV_SAMPLE_FMT_FLTP: sprintf(format, "AV_SAMPLE_FMT_FLTP"); break;
+		case AV_SAMPLE_FMT_DBL:  sprintf(format, "AV_SAMPLE_FMT_DBL");  break;
+		case AV_SAMPLE_FMT_DBLP: sprintf(format, "AV_SAMPLE_FMT_DBLP"); break;
+		default: sprintf(format, "%5d", (int)as->format); break;
+	}
     char log[1024];
     sprintf(log,
         " freq______%5d\n"
-        " format____%5d\n"
+        " format____%s\n"
         " channels__%5d\n"
         " silence___%5d\n"
         " samples___%5d\n"
         " size______%5d\n\n",
         (int) as->freq,
-        (int) as->format,
+              format,
         (int) as->channels,
         (int) as->silence,
         (int) as->samples,
@@ -1273,7 +1231,8 @@ void SetupSDLSoundFor(VideoFile thisVideo)
         }
     }
 
-    audio_device = CreateSDLAudioDeviceFor(thisVideo.audio.codecContext);
+    AVCodecContext *acc = thisVideo.audio.codecContext;
+    audio_device = CreateSDLAudioDeviceFor(acc);
 
     // don't use this any more actually, since
     // we're resampling everything anyway, use our SDL_* instead
@@ -1281,20 +1240,21 @@ void SetupSDLSoundFor(VideoFile thisVideo)
 
     // todo: if we change from float format all these sizeof(floats) would need to change
 
+    int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
+
     // how big of chunks do we want to decode and queue up at a time
-    int buffer_seconds = 1; // no reason not to just keep this big, right?
     // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int samples_in_buffer = SDL_SAMPLES_PER_SECOND * buffer_seconds;
-    bytes_in_buffer = samples_in_buffer * sizeof(float) * SDL_CHANNELS;
+    int buffer_seconds = 1; // no reason not to just keep this big, right?
+    int samples_in_buffer = buffer_seconds * acc->sample_rate;
+    bytes_in_buffer = samples_in_buffer * bytes_per_sample; // todo: global
 
     if (sound_buffer) free(sound_buffer);  // is doing above better?
     sound_buffer = (void*)malloc(bytes_in_buffer);
 
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
     int desired_seconds_in_queue = 1; // how far ahead in seconds do we queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * SDL_SAMPLES_PER_SECOND;
-    // int
-    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * SDL_CHANNELS;
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    desired_bytes_in_queue = desired_samples_in_queue * bytes_per_sample; // todo: global
 }
 
 
@@ -1413,6 +1373,9 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 bool LoadVideoFile(char *path)
 {
 
+	char loadingMsg[1234];
+	sprintf(loadingMsg, "\nLoading %s\n", path);
+	OutputDebugString(loadingMsg);
 
     if (StringBeginsWith(path, "http"))
     {
