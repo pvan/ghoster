@@ -216,25 +216,6 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 
 
-static SwrContext *swr;
-
-// note this stuff should be the same / compatible
-// since we pass ffmpeg output directly to sdl
-// #define FFMPEG_LAYOUT AV_CH_LAYOUT_STEREO
-// #define FFMPEG_CHANNELS 2
-// #define SDL_CHANNELS 2
-#define FFMPEG_LAYOUT AV_CH_LAYOUT_MONO
-#define FFMPEG_CHANNELS 1
-#define SDL_CHANNELS 1
-
-#define FFMPEG_FORMAT AV_SAMPLE_FMT_FLT
-#define SDL_FORMAT AUDIO_F32
-
-#define FFMPEG_SAMPLES_PER_SECOND 44100
-#define SDL_SAMPLES_PER_SECOND 44100
-
-// const int samples_per_second = 44100;
-
 
 // todo: decode with newest api?
 // avcodec_send_packet / avcodec_receive_frame
@@ -457,7 +438,8 @@ bool GetNextVideoFrame(
     SwsContext *sws_context,
     int streamIndex,
     AVFrame *outFrame,
-    double msSinceStart)
+    double msSinceStart,
+    double msAudioLatencyEstimate)
 {
     AVPacket packet;
 
@@ -507,9 +489,6 @@ bool GetNextVideoFrame(
                 //qwer
                 // double msAudioLatencyEstimate = 50;
 
-                // this feels just a bit early? maybe we should double it? or more?
-                double msAudioLatencyEstimate = 1024.0 / SDL_SAMPLES_PER_SECOND * 1000.0;
-                msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
 
                 // skip frame if too far off
@@ -721,15 +700,6 @@ void logSpec(SDL_AudioSpec *as) {
 }
 
 
-#define FFMPEG_LAYOUT AV_CH_LAYOUT_MONO
-#define FFMPEG_CHANNELS 1
-#define SDL_CHANNELS 1
-
-#define FFMPEG_FORMAT AV_SAMPLE_FMT_FLT
-#define SDL_FORMAT AUDIO_F32
-
-#define FFMPEG_SAMPLES_PER_SECOND 44100
-#define SDL_SAMPLES_PER_SECOND 44100
 
 SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
 {
@@ -1664,13 +1634,18 @@ void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
 
         double msSinceAudioStart = audio_stopwatch.MsElapsed();
 
+        // this feels just a bit early? maybe we should double it? or more?
+        double msAudioLatencyEstimate = 1024.0 / 44100.0 * 1000.0;
+        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
+
         GetNextVideoFrame(
             loaded_video.vfc,
             loaded_video.video.codecContext,
             sws_context,
             loaded_video.video.index,
             frame_output,
-            msSinceAudioStart);
+            msSinceAudioStart,
+            msAudioLatencyEstimate);
 
     }
     vid_was_paused = vid_paused;
