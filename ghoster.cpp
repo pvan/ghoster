@@ -229,7 +229,7 @@ int GetNextAudioFrame(
     AVCodecContext *cc,
     int streamIndex,
     u8 *outBuffer,
-    int outBufferSize,
+    int requestedBytes,
     double msSinceStart)
 {
 
@@ -299,12 +299,13 @@ int GetNextAudioFrame(
                     decodingPacket.data += packet_bytes_decoded;
 
 
-                    // keep a check here so we don't overflow outBuffer??
+                    // keep a check here so we don't overflow outBuffer?
                     // (ie, in case we guessed when to quit wrong below)
-                    // if (bytes_written+additional_bytes > outBufferSize)
-                    // {
-                    //  return bytes_written;
-                    // }
+                    if (bytes_written+additional_bytes > requestedBytes)
+                    {
+                    	assert(false); // for now we want to know if this ever happens
+                    	return bytes_written;
+                    }
 
 
                     // double msToPlayFrame = 1000 * frame->pts *
@@ -383,7 +384,7 @@ int GetNextAudioFrame(
 
 
                     // now try to guess when we're done based on the size of the last frame
-                    if (bytes_written+additional_bytes > outBufferSize)
+                    if (bytes_written+additional_bytes > requestedBytes)
                     {
                         // av_free_packet(&readingPacket);
                         // av_free_packet(&decodingPacket);
@@ -1511,7 +1512,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(SoundBuffer *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
+void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
@@ -1604,13 +1605,13 @@ void Update(SoundBuffer *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
 
         if (wanted_bytes >= 0)
         {
-            if (wanted_bytes > sound->size_in_bytes)
+            if (wanted_bytes > ffmpeg_to_sdl_buffer->size_in_bytes)
             {
                 // char errq[256];
-                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, sound->size_in_bytes);
+                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer->size_in_bytes);
                 // OutputDebugString(errq);
 
-                wanted_bytes = sound->size_in_bytes;
+                wanted_bytes = ffmpeg_to_sdl_buffer->size_in_bytes;
             }
 
             // ideally a little bite of sound, every frame
@@ -1619,14 +1620,14 @@ void Update(SoundBuffer *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
                 loaded_video.afc,
                 loaded_video.audio.codecContext,
                 loaded_video.audio.index,
-                sound->data,
+                ffmpeg_to_sdl_buffer->data,
                 wanted_bytes,
                 audio_stopwatch.MsElapsed());
 
 
             if (bytes_queued_up > 0)
             {
-                if (SDL_QueueAudio(sdl_stuff->audio_device, sound->data, bytes_queued_up) < 0)
+                if (SDL_QueueAudio(sdl_stuff->audio_device, ffmpeg_to_sdl_buffer->data, bytes_queued_up) < 0)
                 {
                     char audioerr[256];
                     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
