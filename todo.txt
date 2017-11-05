@@ -1,10 +1,12 @@
 
+[ ] add black bars when aspect ratio is locked and full screen
 
-[ ] separate app / movie / etc data
+
+[x] separate app / movie / etc data
 
 [ ] split movie loading into sep thread to keep io responsive
 
-[ ] break code into files
+[x] break code into files
 
 
 
