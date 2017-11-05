@@ -311,6 +311,12 @@ struct RunningMovie
     double elapsed;
     Stopwatch audio_stopwatch;
     double vid_aspect; // feels like it'd be better to store this as a rational
+
+    // lines between runnningmovie and appstate are blurring a bit to me right now
+    bool vid_paused = false;
+    bool vid_was_paused = false;
+
+    double targetMsPerFrame;
 };
 
 
@@ -321,6 +327,13 @@ struct AppState {
 
     Timer menuCloseTimer;
     bool globalContextMenuOpen;
+
+    bool lock_aspect = true;
+
+    // a bit awkward, we set these when we want to seek somewhere
+    // better way? a function method maybe?
+    bool setSeek = false;
+    double seekProportion = 0;
 };
 
 
@@ -339,8 +352,17 @@ static RunningMovie global_loaded_video;
 static Timer app_timer;
 
 
-static bool vid_paused = false;
-static bool vid_was_paused = false;
+
+static HWND window;
+static u8 *vid_buffer;
+static int vidWID;
+static int vidHEI;
+static int winWID;
+static int winHEI;
+
+
+
+
 
 
 
@@ -1195,35 +1217,6 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 
-
-// todo: cleanup all these globals.. pass what you can and maybe an app global for some?
-
-static HWND window;
-static u8 *vid_buffer;
-static int vidWID;
-static int vidHEI;
-static int winWID;
-static int winHEI;
-
-static bool lock_aspect = true;
-
-static double targetMsPerFrame;
-// static u32 *secondary_buf;
-
-
-static bool setSeek = false;
-static double seekProportion = 0;
-
-
-
-
-// void Render()
-// {
-//     RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, drawProgressBar);
-// }
-
-
-
 // todo: what to do with this
 void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 {
@@ -1479,7 +1472,7 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
     OutputDebugString(vidfps);
 
     // double
-    targetMsPerFrame = 1000 / targetFPS;
+    newMovie->targetMsPerFrame = 1000 / targetFPS;
 
 
 
@@ -1579,9 +1572,9 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     double percent = loaded_video->elapsed/loaded_video->duration;
 
 
-    if (vid_paused)
+    if (loaded_video->vid_paused)
     {
-        if (!vid_was_paused)
+        if (!loaded_video->vid_was_paused)
         {
             loaded_video->audio_stopwatch.Pause();
             SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)true);
@@ -1589,20 +1582,20 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     }
     else
     {
-        if (vid_was_paused || !loaded_video->audio_stopwatch.timer.started)
+        if (loaded_video->vid_was_paused || !loaded_video->audio_stopwatch.timer.started)
         {
             loaded_video->audio_stopwatch.Start();
             SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)false);
         }
 
-        if (setSeek)
+        if (state->setSeek)
         {//asdf
 
             //SetupSDLSound();
             SDL_ClearQueuedAudio(sdl_stuff->audio_device);
 
-            setSeek = false;
-            int seekPos = seekProportion * loaded_video->av_movie.vfc->duration;
+            state->setSeek = false;
+            int seekPos = state->seekProportion * loaded_video->av_movie.vfc->duration;
             av_seek_frame(loaded_video->av_movie.vfc, -1, seekPos, 0);
             av_seek_frame(loaded_video->av_movie.afc, -1, seekPos, 0);
 
@@ -1690,7 +1683,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
             msAudioLatencyEstimate);
 
     }
-    vid_was_paused = vid_paused;
+    loaded_video->vid_was_paused = loaded_video->vid_paused;
 
 
     RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, state->drawProgressBar);
@@ -1710,11 +1703,11 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     // something seems off with this... ?
     double dt = app_timer.MsSinceLastFrame();
 
-    if (dt < targetMsPerFrame)
+    if (dt < loaded_video->targetMsPerFrame)
     {
-        double msToSleep = targetMsPerFrame - dt;
+        double msToSleep = loaded_video->targetMsPerFrame - dt;
         Sleep(msToSleep);
-        while (dt < targetMsPerFrame)  // is this weird?
+        while (dt < loaded_video->targetMsPerFrame)  // is this weird?
         {
             dt = app_timer.MsSinceLastFrame();
         }
@@ -1727,7 +1720,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
         // missed fps target
         char msg[256];
         sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-                targetMsPerFrame, dt);
+                loaded_video->targetMsPerFrame, dt);
         OutputDebugString(msg);
     }
     app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
@@ -1763,7 +1756,7 @@ void SetWindowToAspectRatio(double vid_aspect)
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
-    UINT aspectChecked = lock_aspect ? MF_CHECKED : MF_UNCHECKED;
+    UINT aspectChecked = global_app_state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -1820,7 +1813,7 @@ void onMouseUp()
                 if (!wasNonClientHit)
                 {
                     // OutputDebugString("false, pause\n");
-                    vid_paused = !vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+                    global_loaded_video.vid_paused = !global_loaded_video.vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
                 }
             }
         }
@@ -1856,7 +1849,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
 
         case WM_SIZING: {  // when dragging border
-            if (lock_aspect)
+            if (global_app_state.lock_aspect)
             {
                 RECT rc = *(RECT*)lParam;
                 int w = rc.right - rc.left;
@@ -1946,8 +1939,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 // OutputDebugString("clickingOnProgessBar true\n");
                 clickingOnProgessBar = true;
 
-                setSeek = true;
-                seekProportion = prop;
+                global_app_state.setSeek = true;
+                global_app_state.seekProportion = prop;
             }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
@@ -2124,11 +2117,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     global_app_state.appRunning = false;
                     break;
                 case ID_PAUSE:
-                    vid_paused = !vid_paused;
+                    global_loaded_video.vid_paused = !global_loaded_video.vid_paused;
                     break;
                 case ID_ASPECT:
                     SetWindowToAspectRatio(global_loaded_video.vid_aspect);
-                    lock_aspect = !lock_aspect;
+                    global_app_state.lock_aspect = !global_app_state.lock_aspect;
                     break;
                 case ID_PASTE:
                     PasteClipboard();
