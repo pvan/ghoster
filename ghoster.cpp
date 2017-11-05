@@ -49,15 +49,18 @@ double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 
 
 
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync3.mp4";
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/sync1.mp4";
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test4.mp4";
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.mp4";
-// char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test3.avi";
-char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp";
-// char *INPUT_FILE = "https://www.youtube.com/watch?v=RYbe-35_BaA";
-// char *INPUT_FILE = "https://www.youtube.com/watch?v=ucZl6vQ_8Uo";
-// char *INPUT_FILE = "https://www.youtube.com/watch?v=tprMEs-zfQA";
+char *TEST_FILES[] = {
+	"D:/~phil/projects/ghoster/test-vids/sync3.mp4",
+	"D:/~phil/projects/ghoster/test-vids/sync1.mp4",
+	"D:/~phil/projects/ghoster/test-vids/test4.mp4",
+	"D:/~phil/projects/ghoster/test-vids/test.mp4",
+	"D:/~phil/projects/ghoster/test-vids/test3.avi",
+	"D:/~phil/projects/ghoster/test-vids/test.3gp",
+	"https://www.youtube.com/watch?v=RYbe-35_BaA",
+	"https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
+	"https://www.youtube.com/watch?v=tprMEs-zfQA",
+	"https://www.youtube.com/watch?v=NAvOdjRsOoI"
+};
 
 
 
@@ -675,7 +678,8 @@ VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
         return file;
     }
 
-    av_dump_format(file.vfc, 0, INPUT_FILE, 0);
+    // this must be sending to stdout or something? (not showing up anywhere)
+    av_dump_format(file.vfc, 0, videopath, 0);
 
 
     // find first video and audio stream
@@ -2109,6 +2113,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 ctrlDown = false;
             }
+            if (wParam >= 0x30 && wParam <= 0x39) // 0-9
+            {
+            	LoadVideoFile(TEST_FILES[wParam - 0x30]);
+            	// debugLoadTestVideo(wParam - 0x30);
+            }
         } break;
 
         case WM_COMMAND: {
@@ -2250,7 +2259,7 @@ int CALLBACK WinMain(
 
     // LOAD FILE
 
-    LoadVideoFile(INPUT_FILE);
+    LoadVideoFile(TEST_FILES[0]);
 
 
 
