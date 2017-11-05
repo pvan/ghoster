@@ -1521,7 +1521,6 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
 
-    // WHY NOT TIME FIRST
 
     // if (dt < targetMsPerFrame)
     //     return;
@@ -1530,7 +1529,6 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
     if (globalContextMenuOpen && menuCloseTimer.started && menuCloseTimer.MsSinceStart() > 150)
     {
         globalContextMenuOpen = false;
-        // OutputDebugString("SETTING false\n");
     }
 
 
@@ -1549,7 +1547,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
     GetWindowRect(window, &winRect);
     if (!PtInRect(&winRect, mPos))
     {
-        // OutputDebugString("outside window\n");
+        // OutputDebugString("mouse outside window\n");
         drawProgressBar = false;
     }
 
