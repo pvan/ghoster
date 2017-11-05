@@ -317,6 +317,10 @@ struct RunningMovie
     bool vid_was_paused = false;
 
     double targetMsPerFrame;
+
+    u8 *vid_buffer;
+    int vidWID;
+    int vidHEI;
 };
 
 
@@ -354,9 +358,6 @@ static Timer app_timer;
 
 
 static HWND window;
-static u8 *vid_buffer;
-static int vidWID;
-static int vidHEI;
 static int winWID;
 static int winHEI;
 
@@ -1425,8 +1426,10 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
     MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
-    winWID = loaded_video->video.codecContext->width;
-    winHEI = loaded_video->video.codecContext->height;
+    newMovie->vidWID = loaded_video->video.codecContext->width;
+    newMovie->vidHEI = loaded_video->video.codecContext->height;
+    winWID = newMovie->vidWID;
+    winHEI = newMovie->vidHEI;
     RECT winRect;
     GetWindowRect(window, &winRect);
     //keep top left of window in same pos for now, change to keep center in same position?
@@ -1499,14 +1502,14 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, vidWID, vidHEI);
-    if (vid_buffer) av_free(vid_buffer);
-    vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, newMovie->vidWID, newMovie->vidHEI);
+    if (newMovie->vid_buffer) av_free(newMovie->vid_buffer);
+    newMovie->vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
-    avpicture_fill((AVPicture *)newMovie->frame_output, vid_buffer, AV_PIX_FMT_RGB32,
-        vidWID,
-        vidHEI);
+    avpicture_fill((AVPicture *)newMovie->frame_output, newMovie->vid_buffer, AV_PIX_FMT_RGB32,
+        newMovie->vidWID,
+        newMovie->vidHEI);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
     // could we use opengl for this instead and should we?
@@ -1516,8 +1519,8 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
         loaded_video->video.codecContext->width,
         loaded_video->video.codecContext->height,
         loaded_video->video.codecContext->pix_fmt,
-        vidWID,
-        vidHEI,
+        newMovie->vidWID,
+        newMovie->vidHEI,
         AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
         SWS_BILINEAR,
         0, 0, 0);
@@ -1686,7 +1689,13 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     loaded_video->vid_was_paused = loaded_video->vid_paused;
 
 
-    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, state->drawProgressBar);
+    RenderToScreenGL((void*)loaded_video->vid_buffer,
+                    loaded_video->vidWID,
+                    loaded_video->vidHEI,
+                    winWID,
+                    winHEI,
+                    window,
+                    percent, state->drawProgressBar);
 
     // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
     //            (float*)sound_buffer, bytes_in_buffer);
@@ -2194,11 +2203,9 @@ int CALLBACK WinMain(
 
     int openWidth = 960;
     int openHeight = 720;
-    vidWID = openWidth;
-    vidHEI = openHeight;
     RECT neededRect = {};
-    winWID = vidWID;
-    winHEI = vidHEI;
+    winWID = openWidth;
+    winHEI = openHeight;
     neededRect.right = winWID;
     neededRect.bottom = winHEI;
     // adjust window size based on desired client size
