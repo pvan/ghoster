@@ -1205,7 +1205,7 @@ static VideoFile global_loaded_video;
 
 
 // todo: what to do with this
-void SetupSDLSoundFor(AVCodecContext *acc, sound_stuff_rename_me *sound, SDLStuff *sdl_stuff)
+void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 {
 	// todo: remove the globals from this function (return an audio_buffer object?)
 
@@ -1231,6 +1231,15 @@ void SetupSDLSoundFor(AVCodecContext *acc, sound_stuff_rename_me *sound, SDLStuf
 
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
 
+    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    int desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
+}
+void SetupSoundBuffer(AVCodecContext *acc, sound_stuff_rename_me *sound)
+{
+    int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
+
     // how big of chunks do we want to decode and queue up at a time
     // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
     int buffer_seconds = 1; // this is what limits how long we spend decoding audio each frame
@@ -1240,10 +1249,6 @@ void SetupSDLSoundFor(AVCodecContext *acc, sound_stuff_rename_me *sound, SDLStuf
     if (sound->ffmpeg_to_sdl_buffer) free(sound->ffmpeg_to_sdl_buffer);
     sound->ffmpeg_to_sdl_buffer = (u8*)malloc(sound->bytes_in_this_buffer);
 
-    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
 }
 
 
@@ -1456,7 +1461,9 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_sound_stuff, &global_sdl_stuff);
+    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_sdl_stuff);
+
+    SetupSoundBuffer(loaded_video->audio.codecContext, &global_sound_stuff);
 
 
 
