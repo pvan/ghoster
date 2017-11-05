@@ -504,7 +504,7 @@ bool GetNextVideoFrame(
 
                 // todo: this should be somewhere else, also how to estimate?
                 // and is there any video latency? just research how to properly sync
-                //asdfasdf
+                //qwer
                 // double msAudioLatencyEstimate = 50;
 
                 // this feels just a bit early? maybe we should double it? or more?
@@ -1465,7 +1465,7 @@ bool LoadVideoFile(char *path)
 
 
 
-    // // SDL, for sound atm
+    // SDL, for sound atm
 
     SetupSDLSoundFor(loaded_video);
 
@@ -1572,11 +1572,6 @@ void Update()
         if (setSeek)
         {//asdf
 
-            // for (int i = 0; i < bytes_in_buffer; i++)
-            // {
-            //     ((u8*)sound_buffer)[i] = 0;
-            // }
-
             //SetupSDLSound();
             SDL_ClearQueuedAudio(audio_device);
 
@@ -1601,23 +1596,23 @@ void Update()
         // SOUND
 
         int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-            char msg[256];
-            sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-            OutputDebugString(msg);
+            // char msg[256];
+            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+            // OutputDebugString(msg);
 
 
         int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-            char msg3[256];
-            sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-            OutputDebugString(msg3);
+            // char msg3[256];
+            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+            // OutputDebugString(msg3);
 
         if (wanted_bytes >= 0)
         {
             if (wanted_bytes > bytes_in_buffer)
             {
-                char errq[256];
-                sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-                OutputDebugString(errq);
+                // char errq[256];
+                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                // OutputDebugString(errq);
 
                 wanted_bytes = bytes_in_buffer;
             }
@@ -1645,9 +1640,9 @@ void Update()
                     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
                     OutputDebugString(audioerr);
                 }
-                   char msg2[256];
-                   sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-                   OutputDebugString(msg2);
+                   // char msg2[256];
+                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                   // OutputDebugString(msg2);
             }
         }
 
@@ -1794,7 +1789,7 @@ void onMouseUp()
     {
         if (!globalContextMenuOpen)
         {
-            if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse even handlers? w/ timers etc?
+            if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
             {
                 if (!wasNonClientHit)
                 {
