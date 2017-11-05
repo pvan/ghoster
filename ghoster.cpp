@@ -300,11 +300,6 @@ struct Stopwatch
     }
 };
 
-// struct Movie
-// {
-// };
-
-
 
 struct Movie
 {
@@ -315,14 +310,14 @@ struct Movie
 
     struct SwsContext *sws_context;
 
+    AVFrame *frame_output;
+
     double duration;
     double elapsed;
     Stopwatch audio_stopwatch;
     double vid_aspect; // feels like it'd be better to store this as a rational
 };
 
-
-static bool lock_aspect = true;
 
 
 // kind of rearranged this stuff but still all global..
@@ -662,12 +657,6 @@ bool GetNextVideoFrame(
                 //         msSinceStart
                 //         );
                 // OutputDebugString(zxcv);
-
-                // todo: this should be somewhere else, also how to estimate?
-                // and is there any video latency? just research how to properly sync
-                //qwer
-                // double msAudioLatencyEstimate = 50;
-
 
 
                 // skip frame if too far off
@@ -1185,9 +1174,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 
-
 // todo: cleanup all these globals.. pass what you can and maybe an app global for some?
-static AVFrame *frame_output;
 
 static HWND window;
 static u8 *vid_buffer;
@@ -1196,8 +1183,10 @@ static int vidHEI;
 static int winWID;
 static int winHEI;
 
+static bool lock_aspect = true;
+
 static double targetMsPerFrame;
-static u32 *secondary_buf;
+// static u32 *secondary_buf;
 
 
 static bool setSeek = false;
@@ -1488,10 +1477,10 @@ bool LoadMovie(char *path, Movie *loaded_video)
     // MORE FFMPEG
 
     // AVFrame *
-    if (frame_output) av_frame_free(&frame_output);
-    frame_output = av_frame_alloc();  // just metadata
+    if (loaded_video->frame_output) av_frame_free(&loaded_video->frame_output);
+    loaded_video->frame_output = av_frame_alloc();  // just metadata
 
-    if (!frame_output)
+    if (!loaded_video->frame_output)
         { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
 
 
@@ -1501,7 +1490,7 @@ bool LoadMovie(char *path, Movie *loaded_video)
     vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
-    avpicture_fill((AVPicture *)frame_output, vid_buffer, AV_PIX_FMT_RGB32,
+    avpicture_fill((AVPicture *)loaded_video->frame_output, vid_buffer, AV_PIX_FMT_RGB32,
         vidWID,
         vidHEI);
 
@@ -1675,7 +1664,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loade
             loaded_video->video.codecContext,
             loaded_video->sws_context,
             loaded_video->video.index,
-            frame_output,
+            loaded_video->frame_output,
             msSinceAudioStart,
             msAudioLatencyEstimate);
 
