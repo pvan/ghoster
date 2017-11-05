@@ -41,12 +41,6 @@ extern "C"
 
 
 
-int progressBarH = 22;
-int progressBarB = 0;
-double msOfLastMouseMove = -1000;
-bool drawProgressBar = false;
-double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
-
 
 
 char *TEST_FILES[] = {
@@ -153,11 +147,6 @@ static PFGL_UNI glUniform1i;
 static PFGL_UNIF glUniform1f;
 static PFGL_TEX glActiveTexture;
 
-
-
-static bool appRunning = true;
-static bool vid_paused = false;
-static bool vid_was_paused = false;
 
 
 
@@ -325,10 +314,22 @@ struct RunningMovie
 };
 
 
+struct AppState {
+    bool appRunning = true;
+    double msOfLastMouseMove = -1000;
+    bool drawProgressBar = false;
+
+    Timer menuCloseTimer;
+    bool globalContextMenuOpen;
+};
+
 
 // kind of rearranged this stuff but still all global..
 // problem is we need to call update() from wndproc
 // and update() needs to know about this stuff
+
+static AppState global_app_state;
+
 static SoundBuffer global_ffmpeg_to_sdl_buffer;
 
 static SDLStuff global_sdl_stuff;
@@ -336,6 +337,21 @@ static SDLStuff global_sdl_stuff;
 static RunningMovie global_loaded_video;
 
 static Timer app_timer;
+
+
+static bool vid_paused = false;
+static bool vid_was_paused = false;
+
+
+
+// progress bar position
+const int PROGRESS_BAR_H = 22;
+const int PROGRESS_BAR_B = 0;
+
+// hide progress bar after this many ms
+const double PROGRESS_BAR_TIMEOUT = 1000;
+
+
 
 
 void MsgBox(char* s) {
@@ -1152,13 +1168,13 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
         // fakey way to draw rects
         int pos = (int)(proportion * (double)dWID);
 
-        glViewport(pos, progressBarB, dWID, progressBarH);
+        glViewport(pos, PROGRESS_BAR_B, dWID, PROGRESS_BAR_H);
         glUniform1f(alpha_loc, 0.4);
         u32 gray = 0xaaaaaaaa;
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 
-        glViewport(0, progressBarB, pos, progressBarH);
+        glViewport(0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H);
         glUniform1f(alpha_loc, 0.6);
         u32 red = 0xffff0000;
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
@@ -1198,8 +1214,6 @@ static double targetMsPerFrame;
 static bool setSeek = false;
 static double seekProportion = 0;
 
-static Timer menuCloseTimer;
-static bool globalContextMenuOpen;
 
 
 
@@ -1524,7 +1538,7 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie *loaded_video)
+void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie *loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
@@ -1534,19 +1548,19 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie
     //     return;
 
 
-    if (globalContextMenuOpen && menuCloseTimer.started && menuCloseTimer.MsSinceStart() > 150)
+    if (state->globalContextMenuOpen && state->menuCloseTimer.started && state->menuCloseTimer.MsSinceStart() > 150)
     {
-        globalContextMenuOpen = false;
+        state->globalContextMenuOpen = false;
     }
 
 
-    if (app_timer.MsSinceStart() - msOfLastMouseMove > progressBarDisapearAfterThisManyMsOfInactivity)
+    if (app_timer.MsSinceStart() - state->msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
     {
-        drawProgressBar = false;
+        state->drawProgressBar = false;
     }
     else
     {
-        drawProgressBar = true;
+        state->drawProgressBar = true;
     }
 
     POINT mPos;
@@ -1556,7 +1570,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie
     if (!PtInRect(&winRect, mPos))
     {
         // OutputDebugString("mouse outside window\n");
-        drawProgressBar = false;
+        state->drawProgressBar = false;
     }
 
 
@@ -1679,7 +1693,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie
     vid_was_paused = vid_paused;
 
 
-    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, drawProgressBar);
+    RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, state->drawProgressBar);
 
     // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
     //            (float*)sound_buffer, bytes_in_buffer);
@@ -1759,10 +1773,10 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
     SetForegroundWindow(hwnd);
 
-    globalContextMenuOpen = true;
-    menuCloseTimer.Stop();
+    global_app_state.globalContextMenuOpen = true;
+    global_app_state.menuCloseTimer.Stop();
     TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    menuCloseTimer.Start();
+    global_app_state.menuCloseTimer.Start();
 }
 
 
@@ -1799,7 +1813,7 @@ void onMouseUp()
 {
     if (!itWasADrag)
     {
-        if (!globalContextMenuOpen)
+        if (!global_app_state.globalContextMenuOpen)
         {
             if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
             {
@@ -1813,7 +1827,7 @@ void onMouseUp()
         else
         {
             // OutputDebugString("true, skip\n");
-            globalContextMenuOpen = false; // force skip rest of timer
+            global_app_state.globalContextMenuOpen = false; // force skip rest of timer
         }
     }
     // OutputDebugString("clickingOnProgessBar false\n");
@@ -1826,7 +1840,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
 
         case WM_CLOSE: {
-            appRunning = false;
+            global_app_state.appRunning = false;
         } break;
 
 
@@ -1923,7 +1937,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             mDown = true;
             itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            if (mDownPoint.y >= winHEI-(progressBarH+progressBarB) && mDownPoint.y <= winHEI-progressBarB)
+            if (mDownPoint.y >= winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) && mDownPoint.y <= winHEI-PROGRESS_BAR_B)
             {
                 double prop = (double)mDownPoint.x / (double)winWID;
                     // char propbuf[123];
@@ -1947,7 +1961,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
-            msOfLastMouseMove = app_timer.MsSinceStart();
+            global_app_state.msOfLastMouseMove = app_timer.MsSinceStart();
             if (mDown)
             {
                 // OutputDebugString("MOUSEMOVE\n");
@@ -2043,7 +2057,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
-            Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
+            Update(&global_app_state, &global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
         } break;
 
 
@@ -2107,7 +2121,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (wParam)
             {
                 case ID_EXIT:
-                    appRunning = false;
+                    global_app_state.appRunning = false;
                     break;
                 case ID_PAUSE:
                     vid_paused = !vid_paused;
@@ -2251,7 +2265,7 @@ int CALLBACK WinMain(
     // seed our first frame dt
     app_timer.EndFrame();
 
-    while (appRunning)
+    while (global_app_state.appRunning)
     {
         MSG Message;
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
@@ -2266,7 +2280,7 @@ int CALLBACK WinMain(
             KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
-        Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
+        Update(&global_app_state, &global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
 
     }
 
