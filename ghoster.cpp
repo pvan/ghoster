@@ -172,6 +172,7 @@ struct SDLStuff
     bool setup_at_least_once = false;
     int desired_bytes_in_sdl_queue;
     SDL_AudioDeviceID audio_device;
+    SDL_AudioSpec spec;
 };
 
 
@@ -731,7 +732,7 @@ void logSpec(SDL_AudioSpec *as) {
 
 
 
-SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
+bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 {
 
     // note: the av planar formats are converted to interleaved in the decoder
@@ -766,15 +767,16 @@ SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
     wanted_spec.userdata = 0;
 
 
-    SDL_AudioDeviceID audio_device = SDL_OpenAudioDevice(0, 0,
-        &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
+    sdl_stuff->audio_device = SDL_OpenAudioDevice(0, 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 
-    if (audio_device == 0)
+    sdl_stuff->spec = spec;
+
+    if (sdl_stuff->audio_device == 0)
     {
         char audioerr[256];
         sprintf(audioerr, "SDL: Failed to open audio: %s\n", SDL_GetError());
         OutputDebugString(audioerr);
-        return 0;
+        return false;
     }
 
     if (wanted_spec.format != spec.format)
@@ -783,7 +785,7 @@ SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
         char audioerr[256];
         sprintf(audioerr, "SDL: Couldn't find desired format: %s\n", SDL_GetError());
         OutputDebugString(audioerr);
-        return 0;
+        return false;
     }
 
     OutputDebugString("SDL: audio spec wanted:\n");
@@ -791,7 +793,7 @@ SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
     OutputDebugString("SDL: audio spec got:\n");
     logSpec(&spec);
 
-    return audio_device;
+    return true;
 }
 
 
@@ -1232,8 +1234,14 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
         sdl_stuff->setup_at_least_once = true;
     }
 
-    sdl_stuff->audio_device = CreateSDLAudioDeviceFor(acc);
+    if (!CreateSDLAudioDeviceFor(acc, sdl_stuff))
+    {
+        MsgBox("SDL: Failed to create audio device.");
+        // return false; ?
+    }
 
+
+    // right place for this or better place??
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
 
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
@@ -1649,8 +1657,8 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
 
         double msSinceAudioStart = audio_stopwatch.MsElapsed();
 
-        // this feels just a bit early? maybe we should double it? or more?
-        double msAudioLatencyEstimate = 1024.0 / 44100.0 * 1000.0;
+        // use twice the sdl buffer length for now
+        double msAudioLatencyEstimate = sdl_stuff->spec.samples / sdl_stuff->spec.freq * 1000.0;
         msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
         GetNextVideoFrame(
