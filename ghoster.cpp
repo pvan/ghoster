@@ -161,6 +161,48 @@ static bool vid_was_paused = false;
 
 
 
+struct SoundBuffer
+{
+	u8* data;
+	int size_in_bytes;
+
+};
+
+struct SDLStuff
+{
+	bool setup_at_least_once = false;
+	int desired_bytes_in_sdl_queue;
+	SDL_AudioDeviceID audio_device;
+};
+
+
+struct StreamAV
+{
+    int index;
+    AVCodecContext *codecContext;
+    // AVCodec *codec;
+};
+
+struct VideoFile
+{
+    AVFormatContext *vfc;
+    AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
+    StreamAV video;
+    StreamAV audio;
+};
+
+
+// kind of rearranged this stuff but still all global..
+// problem is we need to call update() from wndproc
+// and update() needs to know about this stuff
+static SoundBuffer global_sound_stuff;
+
+static SDLStuff global_sdl_stuff;
+
+static VideoFile global_loaded_video;
+
+
+
 
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
@@ -228,11 +270,13 @@ int GetNextAudioFrame(
     AVFormatContext *fc,
     AVCodecContext *cc,
     int streamIndex,
-    u8 *outBuffer,
+    // u8 *outBuffer,
+    SoundBuffer outBuf,
     int requestedBytes,
     double msSinceStart)
 {
 
+	u8 *outBuffer = outBuf.data;
 
     // if (!swr)
     // {
@@ -299,13 +343,17 @@ int GetNextAudioFrame(
                     decodingPacket.data += packet_bytes_decoded;
 
 
+					int additional_bytes = frame->nb_samples *
+										   cc->channels *
+										   av_get_bytes_per_sample(cc->sample_fmt);
+
                     // keep a check here so we don't overflow outBuffer?
                     // (ie, in case we guessed when to quit wrong below)
-                    if (bytes_written+additional_bytes > requestedBytes)
-                    {
-                    	assert(false); // for now we want to know if this ever happens
-                    	return bytes_written;
-                    }
+//                     if (bytes_written+additional_bytes > requestedBytes)
+//                     {
+// 4                    	assert(false); // for now we want to know if this ever happens
+//                     	return bytes_written;
+//                     }
 
 
                     // double msToPlayFrame = 1000 * frame->pts *
@@ -351,9 +399,6 @@ int GetNextAudioFrame(
 						case AV_SAMPLE_FMT_DBLP: planar = true;
 					}
 
-					int additional_bytes = frame->nb_samples *
-										   cc->channels *
-										   av_get_bytes_per_sample(cc->sample_fmt);
 					if (!planar || cc->channels == 1)
 					{
 						memcpy(outBuffer, frame->data[0], additional_bytes);
@@ -418,7 +463,7 @@ int GetNextAudioFrame(
     // is set, there can be buffered up frames that need to be flushed, so we'll do that
     if (cc->codec->capabilities & CODEC_CAP_DELAY)
     {
-        assert(false);
+        assert(false);  // todo: for now we just need an example file with this
         av_init_packet(&readingPacket);
         // Decode all the remaining frames in the buffer, until the end is reached
         int gotFrame = 0;
@@ -540,21 +585,6 @@ bool GetNextVideoFrame(
 
 
 
-
-struct StreamAV
-{
-    int index;
-    AVCodecContext *codecContext;
-    // AVCodec *codec;
-};
-
-struct VideoFile
-{
-    AVFormatContext *vfc;
-    AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
-    StreamAV video;
-    StreamAV audio;
-};
 
 void InitAV()
 {
@@ -1180,30 +1210,6 @@ static bool globalContextMenuOpen;
 // }
 
 
-struct SoundBuffer
-{
-	u8* data;
-	int size_in_bytes;
-
-};
-
-struct SDLStuff
-{
-	bool setup_at_least_once = false;
-	int desired_bytes_in_sdl_queue;
-	SDL_AudioDeviceID audio_device;
-};
-
-
-// kind of rearranged this stuff but still all global..
-// problem is we need to call update() from wndproc
-// and update() needs to know about this stuff
-static SoundBuffer global_sound_stuff;
-
-static SDLStuff global_sdl_stuff;
-
-static VideoFile global_loaded_video;
-
 
 // todo: what to do with this
 void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
@@ -1620,7 +1626,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
                 loaded_video.afc,
                 loaded_video.audio.codecContext,
                 loaded_video.audio.index,
-                ffmpeg_to_sdl_buffer->data,
+                *ffmpeg_to_sdl_buffer,
                 wanted_bytes,
                 audio_stopwatch.MsElapsed());
 
