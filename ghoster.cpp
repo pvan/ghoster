@@ -338,6 +338,13 @@ struct AppState {
     // better way? a function method maybe?
     bool setSeek = false;
     double seekProportion = 0;
+
+
+    HWND window;
+    int winWID;
+    int winHEI;
+
+    Timer app_timer;
 };
 
 
@@ -353,13 +360,8 @@ static SDLStuff global_sdl_stuff;
 
 static RunningMovie global_loaded_video;
 
-static Timer app_timer;
 
 
-
-static HWND window;
-static int winWID;
-static int winHEI;
 
 
 
@@ -1428,14 +1430,14 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
     // set window size on video source resolution
     newMovie->vidWID = loaded_video->video.codecContext->width;
     newMovie->vidHEI = loaded_video->video.codecContext->height;
-    winWID = newMovie->vidWID;
-    winHEI = newMovie->vidHEI;
+    global_app_state.winWID = newMovie->vidWID;
+    global_app_state.winHEI = newMovie->vidHEI;
     RECT winRect;
-    GetWindowRect(window, &winRect);
+    GetWindowRect(global_app_state.window, &winRect);
     //keep top left of window in same pos for now, change to keep center in same position?
-    MoveWindow(window, winRect.left, winRect.top, winWID, winHEI, true);  // ever non-zero opening position? launch option?
+    MoveWindow(global_app_state.window, winRect.left, winRect.top, global_app_state.winWID, global_app_state.winHEI, true);  // ever non-zero opening position? launch option?
 
-    newMovie->vid_aspect = (double)winWID / (double)winHEI;
+    newMovie->vid_aspect = (double)global_app_state.winWID / (double)global_app_state.winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -1550,7 +1552,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     }
 
 
-    if (app_timer.MsSinceStart() - state->msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
+    if (state->app_timer.MsSinceStart() - state->msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
     {
         state->drawProgressBar = false;
     }
@@ -1562,7 +1564,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     POINT mPos;
     GetCursorPos(&mPos);
     RECT winRect;
-    GetWindowRect(window, &winRect);
+    GetWindowRect(state->window, &winRect);
     if (!PtInRect(&winRect, mPos))
     {
         // OutputDebugString("mouse outside window\n");
@@ -1692,9 +1694,9 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     RenderToScreenGL((void*)loaded_video->vid_buffer,
                     loaded_video->vidWID,
                     loaded_video->vidHEI,
-                    winWID,
-                    winHEI,
-                    window,
+                    state->winWID,
+                    state->winHEI,
+                    state->window,
                     percent, state->drawProgressBar);
 
     // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
@@ -1710,7 +1712,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
     // HIT FPS
 
     // something seems off with this... ?
-    double dt = app_timer.MsSinceLastFrame();
+    double dt = state->app_timer.MsSinceLastFrame();
 
     if (dt < loaded_video->targetMsPerFrame)
     {
@@ -1718,7 +1720,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
         Sleep(msToSleep);
         while (dt < loaded_video->targetMsPerFrame)  // is this weird?
         {
-            dt = app_timer.MsSinceLastFrame();
+            dt = state->app_timer.MsSinceLastFrame();
         }
         // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
         // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
@@ -1732,7 +1734,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
                 loaded_video->targetMsPerFrame, dt);
         OutputDebugString(msg);
     }
-    app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+    state->app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
 }
 
@@ -1741,7 +1743,7 @@ void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_st
 void SetWindowToAspectRatio(double vid_aspect)
 {
     RECT winRect;
-    GetWindowRect(window, &winRect);
+    GetWindowRect(global_app_state.window, &winRect);
     int w = winRect.right - winRect.left;
     int h = winRect.bottom - winRect.top;
     // which to adjust tho?
@@ -1749,9 +1751,9 @@ void SetWindowToAspectRatio(double vid_aspect)
     int nh = (int)((double)w / vid_aspect);
     // i guess always make smaller for now
     if (nw < w)
-        MoveWindow(window, winRect.left, winRect.top, nw, h, true);
+        MoveWindow(global_app_state.window, winRect.left, winRect.top, nw, h, true);
     else
-        MoveWindow(window, winRect.left, winRect.top, w, nh, true);
+        MoveWindow(global_app_state.window, winRect.left, winRect.top, w, nh, true);
 }
 
 
@@ -1852,8 +1854,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // int lockedW = (int)((double)h * vid_aspect);
             // int lockedH = (int)((double)w / vid_aspect);
             // if
-            winWID = LOWORD(lParam);
-            winHEI = HIWORD(lParam);
+            global_app_state.winWID = LOWORD(lParam);
+            global_app_state.winHEI = HIWORD(lParam);
             return 0;
         }
 
@@ -1939,9 +1941,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             mDown = true;
             itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            if (mDownPoint.y >= winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) && mDownPoint.y <= winHEI-PROGRESS_BAR_B)
+            if (mDownPoint.y >= global_app_state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+                mDownPoint.y <= global_app_state.winHEI-PROGRESS_BAR_B)
             {
-                double prop = (double)mDownPoint.x / (double)winWID;
+                double prop = (double)mDownPoint.x / (double)global_app_state.winWID;
                     // char propbuf[123];
                     // sprintf(propbuf, "prop: %f\n", prop);
                     // OutputDebugString(propbuf);
@@ -1963,7 +1966,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
-            global_app_state.msOfLastMouseMove = app_timer.MsSinceStart();
+            global_app_state.msOfLastMouseMove = global_app_state.app_timer.MsSinceStart();
             if (mDown)
             {
                 // OutputDebugString("MOUSEMOVE\n");
@@ -1978,9 +1981,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                         int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
                         int mouseY = HIWORD(lParam);
-                        int winX = mouseX - winWID/2;
-                        int winY = mouseY - winHEI/2;
-                        MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+                        int winX = mouseX - global_app_state.winWID/2;
+                        int winY = mouseY - global_app_state.winHEI/2;
+                        MoveWindow(hwnd, winX, winY, global_app_state.winWID, global_app_state.winHEI, true);
                     }
                 }
 
@@ -2020,11 +2023,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             WINDOWPLACEMENT winpos;
             winpos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(window, &winpos))
+            if (GetWindowPlacement(global_app_state.window, &winpos))
             {
                 if (winpos.showCmd == SW_MAXIMIZE)
                 {
-                    ShowWindow(window, SW_RESTORE);
+                    ShowWindow(global_app_state.window, SW_RESTORE);
 
                     // make this an option... (we might want to keep it in the corner eg)
                     // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
@@ -2035,7 +2038,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 else
                 {
-                    ShowWindow(window, SW_MAXIMIZE);
+                    ShowWindow(global_app_state.window, SW_MAXIMIZE);
                 }
             }
 
@@ -2178,7 +2181,7 @@ int CALLBACK WinMain(
     }
 
     // Timer timer;
-    app_timer.Start();
+    global_app_state.app_timer.Start();
 
 
 
@@ -2201,13 +2204,11 @@ int CALLBACK WinMain(
     wc.lpszClassName = "best class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
-    int openWidth = 960;
-    int openHeight = 720;
+    global_app_state.winWID = 960;
+    global_app_state.winHEI = 720;
     RECT neededRect = {};
-    winWID = openWidth;
-    winHEI = openHeight;
-    neededRect.right = winWID;
-    neededRect.bottom = winHEI;
+    neededRect.right = global_app_state.winWID;
+    neededRect.bottom = global_app_state.winHEI;
     // adjust window size based on desired client size
     // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
 
@@ -2223,7 +2224,7 @@ int CALLBACK WinMain(
     if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
 
     // HWND
-    window = CreateWindowEx(
+    global_app_state.window = CreateWindowEx(
         exStyles,
         wc.lpszClassName, "vid player",
         WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
@@ -2231,26 +2232,26 @@ int CALLBACK WinMain(
         neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
         0, 0, hInstance, 0);
 
-    if (!window)
+    if (!global_app_state.window)
     {
         MsgBox("Couldn't open window.");
     }
 
     // set window transparent (if styles above are right)
     if (SEE_THROUGH || CLICK_THROUGH)
-        SetLayeredWindowAttributes(window, 0, 122, LWA_ALPHA);
+        SetLayeredWindowAttributes(global_app_state.window, 0, 122, LWA_ALPHA);
 
 
 
     // OPENGL
 
-    InitOpenGL(window);
+    InitOpenGL(global_app_state.window);
 
 
 
     // ENABLE DRAG DROP
 
-    DragAcceptFiles(window, true);
+    DragAcceptFiles(global_app_state.window, true);
 
 
 
@@ -2263,7 +2264,7 @@ int CALLBACK WinMain(
     // MAIN LOOP
 
     // seed our first frame dt
-    app_timer.EndFrame();
+    global_app_state.app_timer.EndFrame();
 
     while (global_app_state.appRunning)
     {
@@ -2277,7 +2278,7 @@ int CALLBACK WinMain(
             TranslateMessage(&Message);
             DispatchMessage(&Message);
 
-            KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
+            KillTimer(global_app_state.window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
         Update(&global_app_state, &global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
