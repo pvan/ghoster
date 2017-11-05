@@ -161,6 +161,7 @@ static bool vid_was_paused = false;
 
 
 
+
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
@@ -1180,11 +1181,14 @@ static bool globalContextMenuOpen;
 
 struct sound_stuff_rename_me
 {
-	bool setup_at_least_once = false;
 	u8* ffmpeg_to_sdl_buffer;
 	int bytes_in_this_buffer;
 
-	// better place for these?
+};
+
+struct SDLStuff
+{
+	bool setup_at_least_once = false;
 	int desired_bytes_in_sdl_queue;
 	SDL_AudioDeviceID audio_device;
 };
@@ -1195,18 +1199,20 @@ struct sound_stuff_rename_me
 // and update() needs to know about this stuff
 static sound_stuff_rename_me global_sound_stuff;
 
+static SDLStuff global_sdl_stuff;
+
 static VideoFile global_loaded_video;
 
 
 // todo: what to do with this
-void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound)
+void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound, SDLStuff *sdl_stuff)
 {
 	// todo: remove the globals from this function (return an audio_buffer object?)
 
-    if (sound->setup_at_least_once)
+    if (sdl_stuff->setup_at_least_once)
     {
-        SDL_PauseAudioDevice(sound->audio_device, (int)true);
-        SDL_CloseAudioDevice(sound->audio_device);
+        SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)true);
+        SDL_CloseAudioDevice(sdl_stuff->audio_device);
     }
     else
     {
@@ -1218,11 +1224,11 @@ void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound)
             MsgBox(err);
             //return false;
         }
-        sound->setup_at_least_once = true;
+        sdl_stuff->setup_at_least_once = true;
     }
 
     AVCodecContext *acc = thisVideo.audio.codecContext;
-    sound->audio_device = CreateSDLAudioDeviceFor(acc);
+    sdl_stuff->audio_device = CreateSDLAudioDeviceFor(acc);
 
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
 
@@ -1238,7 +1244,7 @@ void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound)
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
     int desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
     int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    sound->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
+    sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
 }
 
 
@@ -1451,7 +1457,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(*loaded_video, &global_sound_stuff);
+    SetupSDLSoundFor(*loaded_video, &global_sound_stuff, &global_sdl_stuff);
 
 
 
@@ -1499,7 +1505,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
+void Update(sound_stuff_rename_me *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
@@ -1542,7 +1548,7 @@ void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
         if (!vid_was_paused)
         {
             audio_stopwatch.Pause();
-            SDL_PauseAudioDevice(sound->audio_device, (int)true);
+            SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)true);
         }
     }
     else
@@ -1550,14 +1556,14 @@ void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
         if (vid_was_paused || !audio_stopwatch.timer.started)
         {
             audio_stopwatch.Start();
-            SDL_PauseAudioDevice(sound->audio_device, (int)false);
+            SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)false);
         }
 
         if (setSeek)
         {//asdf
 
             //SetupSDLSound();
-            SDL_ClearQueuedAudio(sound->audio_device);
+            SDL_ClearQueuedAudio(sdl_stuff->audio_device);
 
             setSeek = false;
             int seekPos = seekProportion * loaded_video.vfc->duration;
@@ -1579,13 +1585,13 @@ void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
 
         // SOUND
 
-        int bytes_left_in_queue = SDL_GetQueuedAudioSize(sound->audio_device);
+        int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff->audio_device);
             // char msg[256];
             // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
             // OutputDebugString(msg);
 
 
-        int wanted_bytes = sound->desired_bytes_in_sdl_queue - bytes_left_in_queue;
+        int wanted_bytes = sdl_stuff->desired_bytes_in_sdl_queue - bytes_left_in_queue;
             // char msg3[256];
             // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
             // OutputDebugString(msg3);
@@ -1614,7 +1620,7 @@ void Update(sound_stuff_rename_me *sound, VideoFile loaded_video)
 
             if (bytes_queued_up > 0)
             {
-                if (SDL_QueueAudio(sound->audio_device, sound->ffmpeg_to_sdl_buffer, bytes_queued_up) < 0)
+                if (SDL_QueueAudio(sdl_stuff->audio_device, sound->ffmpeg_to_sdl_buffer, bytes_queued_up) < 0)
                 {
                     char audioerr[256];
                     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
@@ -2013,7 +2019,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
-            Update(&global_sound_stuff, global_loaded_video);
+            Update(&global_sound_stuff, &global_sdl_stuff, global_loaded_video);
         } break;
 
 
@@ -2236,7 +2242,7 @@ int CALLBACK WinMain(
             KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
-        Update(&global_sound_stuff, global_loaded_video);
+        Update(&global_sound_stuff, &global_sdl_stuff, global_loaded_video);
 
     }
 
