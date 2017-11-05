@@ -165,7 +165,6 @@ struct SoundBuffer
 {
     u8* data;
     int size_in_bytes;
-
 };
 
 struct SDLStuff
@@ -195,7 +194,7 @@ struct VideoFile
 // kind of rearranged this stuff but still all global..
 // problem is we need to call update() from wndproc
 // and update() needs to know about this stuff
-static SoundBuffer global_sound_stuff;
+static SoundBuffer global_ffmpeg_to_sdl_buffer;
 
 static SDLStuff global_sdl_stuff;
 
@@ -1469,7 +1468,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
     SetupSDLSoundFor(loaded_video->audio.codecContext, &global_sdl_stuff);
 
-    SetupSoundBuffer(loaded_video->audio.codecContext, &global_sound_stuff);
+    SetupSoundBuffer(loaded_video->audio.codecContext, &global_ffmpeg_to_sdl_buffer);
 
 
 
@@ -2031,7 +2030,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
-            Update(&global_sound_stuff, &global_sdl_stuff, global_loaded_video);
+            Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, global_loaded_video);
         } break;
 
 
@@ -2254,7 +2253,7 @@ int CALLBACK WinMain(
             KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
-        Update(&global_sound_stuff, &global_sdl_stuff, global_loaded_video);
+        Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, global_loaded_video);
 
     }
 
