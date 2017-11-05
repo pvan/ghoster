@@ -183,13 +183,142 @@ struct StreamAV
     // AVCodec *codec;
 };
 
-struct VideoFile
+struct Timer
+{
+    i64 starting_ticks;
+    i64 ticks_per_second;  // set via QueryPerformanceFrequency on Start()
+    i64 ticks_last_frame;
+    bool started = false;
+    void Start()
+    {
+        started = true;
+        LARGE_INTEGER now;    // .QuadPart to get number as int64
+        LARGE_INTEGER freq;
+        QueryPerformanceCounter(&now);
+        QueryPerformanceFrequency(&freq);
+        starting_ticks = now.QuadPart;
+        ticks_per_second = freq.QuadPart;
+    }
+    void Stop()
+    {
+        started = false;
+    }
+    i64 TicksNow()
+    {
+        LARGE_INTEGER ticks_now;
+        QueryPerformanceCounter(&ticks_now);
+        return ticks_now.QuadPart;
+    }
+    i64 TicksElapsedSinceStart()
+    {
+        if (!started) return 0;
+        return TicksNow() - starting_ticks;
+    }
+    double MsElapsedBetween(i64 old_ticks, i64 ticks_now)
+    {
+        int64_t ticks_elapsed = ticks_now - old_ticks;
+        ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
+        double delta_ms = (double)ticks_elapsed / (double)ticks_per_second;
+        return delta_ms;
+    }
+    double MsElapsedSince(i64 old_ticks)
+    {
+        return MsElapsedBetween(old_ticks, TicksNow());
+    }
+    double MsSinceStart()
+    {
+        if (!started) {
+            OutputDebugString("Timer: Tried to get time without starting first.\n");
+            return 0;
+        }
+        return MsElapsedSince(starting_ticks);
+    }
+
+    // these feel a little state-y
+    double MsSinceLastFrame()
+    {
+        return MsElapsedSince(ticks_last_frame);
+    }
+    void EndFrame()
+    {
+        ticks_last_frame = TicksNow();
+    }
+
+};
+
+
+struct Stopwatch
+{
+    Timer timer;
+    bool paused = false;
+    i64 ticks_elapsed_at_pause;
+    i64 TicksElapsed()
+    {
+        if (!timer.started)
+            return 0;
+        if (paused)
+            return ticks_elapsed_at_pause;
+        return timer.TicksElapsedSinceStart();
+    }
+    void ResetCompletely()
+    {
+        timer.started = false;
+        paused = false;
+        ticks_elapsed_at_pause = 0;
+    }
+    void Start()
+    {
+        if (timer.started)
+        {
+            if (paused)
+            {
+                // OutputDebugString("Stopwatch: Unpausing.");
+                // restart and subtract our already elapsed time
+                timer.Start();
+                timer.starting_ticks -= ticks_elapsed_at_pause;
+            }
+            else
+            {
+                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
+            }
+        }
+        else
+        {
+            // OutputDebugString("Stopwatch: Starting for the first time.");
+            timer.Start();
+        }
+        paused = false;
+    }
+    void Pause()
+    {
+        ticks_elapsed_at_pause = TicksElapsed();
+        paused = true; // set after getting ticks or we'll get old ticks_elap value
+    }
+    double MsElapsed()
+    {
+        return (double)(TicksElapsed()*1000) / (double)timer.ticks_per_second;
+    }
+};
+
+// struct Movie
+// {
+// };
+
+struct Movie
 {
     AVFormatContext *vfc;
     AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
+
+    double duration;
+    double elapsed;
+    Stopwatch audio_stopwatch;
+    double vid_aspect; // feels like it'd be better to store this as a rational
 };
+
+
+static bool lock_aspect = true;
 
 
 // kind of rearranged this stuff but still all global..
@@ -199,9 +328,9 @@ static SoundBuffer global_ffmpeg_to_sdl_buffer;
 
 static SDLStuff global_sdl_stuff;
 
-static VideoFile global_loaded_video;
+static Movie global_loaded_video;
 
-
+static Timer app_timer;
 
 
 void MsgBox(char* s) {
@@ -604,10 +733,10 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     return result;
 }
 
-VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
+Movie OpenMovieAV(char *videopath, char *audiopath)
 {
 
-    VideoFile file;
+    Movie file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
     file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -1050,150 +1179,22 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 
-struct Timer
-{
-    i64 starting_ticks;
-    i64 ticks_per_second;  // set via QueryPerformanceFrequency on Start()
-    i64 ticks_last_frame;
-    bool started = false;
-    void Start()
-    {
-        started = true;
-        LARGE_INTEGER now;    // .QuadPart to get number as int64
-        LARGE_INTEGER freq;
-        QueryPerformanceCounter(&now);
-        QueryPerformanceFrequency(&freq);
-        starting_ticks = now.QuadPart;
-        ticks_per_second = freq.QuadPart;
-    }
-    void Stop()
-    {
-        started = false;
-    }
-    i64 TicksNow()
-    {
-        LARGE_INTEGER ticks_now;
-        QueryPerformanceCounter(&ticks_now);
-        return ticks_now.QuadPart;
-    }
-    i64 TicksElapsedSinceStart()
-    {
-        if (!started) return 0;
-        return TicksNow() - starting_ticks;
-    }
-    double MsElapsedBetween(i64 old_ticks, i64 ticks_now)
-    {
-        int64_t ticks_elapsed = ticks_now - old_ticks;
-        ticks_elapsed *= 1000; // tip from msdn: covert to ms before to help w/ precision
-        double delta_ms = (double)ticks_elapsed / (double)ticks_per_second;
-        return delta_ms;
-    }
-    double MsElapsedSince(i64 old_ticks)
-    {
-        return MsElapsedBetween(old_ticks, TicksNow());
-    }
-    double MsSinceStart()
-    {
-        if (!started) {
-            OutputDebugString("Timer: Tried to get time without starting first.\n");
-            return 0;
-        }
-        return MsElapsedSince(starting_ticks);
-    }
-
-    // these feel a little state-y
-    double MsSinceLastFrame()
-    {
-        return MsElapsedSince(ticks_last_frame);
-    }
-    void EndFrame()
-    {
-        ticks_last_frame = TicksNow();
-    }
-
-};
-
-
-struct Stopwatch
-{
-    Timer timer;
-    bool paused = false;
-    i64 ticks_elapsed_at_pause;
-    i64 TicksElapsed()
-    {
-        if (!timer.started)
-            return 0;
-        if (paused)
-            return ticks_elapsed_at_pause;
-        return timer.TicksElapsedSinceStart();
-    }
-    void ResetCompletely()
-    {
-        timer.started = false;
-        paused = false;
-        ticks_elapsed_at_pause = 0;
-    }
-    void Start()
-    {
-        if (timer.started)
-        {
-            if (paused)
-            {
-                // OutputDebugString("Stopwatch: Unpausing.");
-                // restart and subtract our already elapsed time
-                timer.Start();
-                timer.starting_ticks -= ticks_elapsed_at_pause;
-            }
-            else
-            {
-                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
-            }
-        }
-        else
-        {
-            // OutputDebugString("Stopwatch: Starting for the first time.");
-            timer.Start();
-        }
-        paused = false;
-    }
-    void Pause()
-    {
-        ticks_elapsed_at_pause = TicksElapsed();
-        paused = true; // set after getting ticks or we'll get old ticks_elap value
-    }
-    double MsElapsed()
-    {
-        return (double)(TicksElapsed()*1000) / (double)timer.ticks_per_second;
-    }
-};
-
 
 
 
 // todo: cleanup all these globals.. pass what you can and maybe an app global for some?
-//fdsa
-static double duration;
-static double elapsed;
-static double percent;
-static Timer app_timer;
-// static SDL_AudioDeviceID audio_device;
-// static int desired_bytes_in_queue;
-// static int bytes_in_buffer;
-// static VideoFile loaded_video;
-// static void *sound_buffer;
 static struct SwsContext *sws_context;
 static AVFrame *frame_output;
+
 static HWND window;
 static u8 *vid_buffer;
 static int vidWID;
 static int vidHEI;
 static int winWID;
 static int winHEI;
+
 static double targetMsPerFrame;
 static u32 *secondary_buf;
-static Stopwatch audio_stopwatch;
-static double vid_aspect; // feels like it'd be better to store this as a rational
-static bool lock_aspect = true;
 
 
 static bool setSeek = false;
@@ -1384,7 +1385,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 }
 
 // todo: peruse this for memory leaks. also: weird deja vu
-bool LoadVideoFile(char *path, VideoFile *loaded_video)
+bool LoadMovie(char *path, Movie *loaded_video)
 {
 
     char loadingMsg[1234];
@@ -1397,7 +1398,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
         char *audio_url;
         if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
         {
-            *loaded_video = OpenVideoFileAV(video_url, audio_url);
+            *loaded_video = OpenMovieAV(video_url, audio_url);
         }
         else
         {
@@ -1407,7 +1408,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
     }
     else if (path[1] == ':')
     {
-        *loaded_video = OpenVideoFileAV(path, path);
+        *loaded_video = OpenMovieAV(path, path);
     }
     else
     {
@@ -1425,7 +1426,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
     //keep top left of window in same pos for now, change to keep center in same position?
     MoveWindow(window, winRect.left, winRect.top, winWID, winHEI, true);  // ever non-zero opening position? launch option?
 
-    vid_aspect = (double)winWID / (double)winHEI;
+    loaded_video->vid_aspect = (double)winWID / (double)winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -1442,10 +1443,10 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
     OutputDebugString("\naudio format ctx:\n");
     logFormatContextDuration(loaded_video->afc);
 
-    duration = (double)loaded_video->vfc->duration / (double)AV_TIME_BASE;
-    elapsed = 0;
+    loaded_video->duration = (double)loaded_video->vfc->duration / (double)AV_TIME_BASE;
+    loaded_video->elapsed = 0;
 
-    audio_stopwatch.ResetCompletely();
+    loaded_video->audio_stopwatch.ResetCompletely();
 
 //asdf
 
@@ -1524,7 +1525,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile loaded_video)
+void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
@@ -1560,19 +1561,24 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
     }
 
 
+    // best place for this?
+    loaded_video->elapsed = loaded_video->audio_stopwatch.MsElapsed() / 1000.0;
+    double percent = loaded_video->elapsed/loaded_video->duration;
+
+
     if (vid_paused)
     {
         if (!vid_was_paused)
         {
-            audio_stopwatch.Pause();
+            loaded_video->audio_stopwatch.Pause();
             SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)true);
         }
     }
     else
     {
-        if (vid_was_paused || !audio_stopwatch.timer.started)
+        if (vid_was_paused || !loaded_video->audio_stopwatch.timer.started)
         {
-            audio_stopwatch.Start();
+            loaded_video->audio_stopwatch.Start();
             SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)false);
         }
 
@@ -1583,18 +1589,18 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
             SDL_ClearQueuedAudio(sdl_stuff->audio_device);
 
             setSeek = false;
-            int seekPos = seekProportion * loaded_video.vfc->duration;
-            av_seek_frame(loaded_video.vfc, -1, seekPos, 0);
-            av_seek_frame(loaded_video.afc, -1, seekPos, 0);
+            int seekPos = seekProportion * loaded_video->vfc->duration;
+            av_seek_frame(loaded_video->vfc, -1, seekPos, 0);
+            av_seek_frame(loaded_video->afc, -1, seekPos, 0);
 
             double realTime = (double)seekPos / (double)AV_TIME_BASE;
-            int timeTicks = realTime * audio_stopwatch.timer.ticks_per_second;
-            audio_stopwatch.timer.starting_ticks = audio_stopwatch.timer.TicksNow() - timeTicks;
+            int timeTicks = realTime * loaded_video->audio_stopwatch.timer.ticks_per_second;
+            loaded_video->audio_stopwatch.timer.starting_ticks = loaded_video->audio_stopwatch.timer.TicksNow() - timeTicks;
 
         }
 
-        elapsed = audio_stopwatch.MsElapsed() / 1000.0;
-        percent = elapsed/duration;
+        loaded_video->elapsed = loaded_video->audio_stopwatch.MsElapsed() / 1000.0;
+        percent = loaded_video->elapsed/loaded_video->duration;
             // char durbuf[123];
             // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
             // OutputDebugString(durbuf);
@@ -1627,12 +1633,12 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
             // ideally a little bite of sound, every frame
             // todo: how to sync this right, pts dts?
             int bytes_queued_up = GetNextAudioFrame(
-                loaded_video.afc,
-                loaded_video.audio.codecContext,
-                loaded_video.audio.index,
+                loaded_video->afc,
+                loaded_video->audio.codecContext,
+                loaded_video->audio.index,
                 *ffmpeg_to_sdl_buffer,
                 wanted_bytes,
-                audio_stopwatch.MsElapsed());
+                loaded_video->audio_stopwatch.MsElapsed());
 
 
             if (bytes_queued_up > 0)
@@ -1655,17 +1661,17 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
 
         // VIDEO
 
-        double msSinceAudioStart = audio_stopwatch.MsElapsed();
+        double msSinceAudioStart = loaded_video->audio_stopwatch.MsElapsed();
 
         // use twice the sdl buffer length for now
         double msAudioLatencyEstimate = sdl_stuff->spec.samples / sdl_stuff->spec.freq * 1000.0;
         msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
         GetNextVideoFrame(
-            loaded_video.vfc,
-            loaded_video.video.codecContext,
+            loaded_video->vfc,
+            loaded_video->video.codecContext,
             sws_context,
-            loaded_video.video.index,
+            loaded_video->video.index,
             frame_output,
             msSinceAudioStart,
             msAudioLatencyEstimate);
@@ -1717,7 +1723,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, VideoFile lo
 
 
 
-void SetWindowToAspectRatio()
+void SetWindowToAspectRatio(double vid_aspect)
 {
     RECT winRect;
     GetWindowRect(window, &winRect);
@@ -1778,7 +1784,7 @@ bool PasteClipboard()
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    return LoadVideoFile(clipboardContents, &global_loaded_video);
+    return LoadMovie(clipboardContents, &global_loaded_video);
 }
 
 
@@ -1842,6 +1848,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 RECT rc = *(RECT*)lParam;
                 int w = rc.right - rc.left;
                 int h = rc.bottom - rc.top;
+
+                double vid_aspect = global_loaded_video.vid_aspect;
 
                 switch (wParam)
                 {
@@ -2036,7 +2044,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
-            Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, global_loaded_video);
+            Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
         } break;
 
 
@@ -2091,7 +2099,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
-                LoadVideoFile(TEST_FILES[wParam - 0x30], &global_loaded_video);
+                LoadMovie(TEST_FILES[wParam - 0x30], &global_loaded_video);
                 // debugLoadTestVideo(wParam - 0x30);
             }
         } break;
@@ -2106,7 +2114,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     vid_paused = !vid_paused;
                     break;
                 case ID_ASPECT:
-                    SetWindowToAspectRatio();
+                    SetWindowToAspectRatio(global_loaded_video.vid_aspect);
                     lock_aspect = !lock_aspect;
                     break;
                 case ID_PASTE:
@@ -2123,7 +2131,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
             {
                 // OutputDebugString(filePath);
-                LoadVideoFile(filePath, &global_loaded_video);
+                LoadMovie(filePath, &global_loaded_video);
             }
             else
             {
@@ -2235,7 +2243,7 @@ int CALLBACK WinMain(
 
     // LOAD FILE
 
-    LoadVideoFile(TEST_FILES[0], &global_loaded_video);
+    LoadMovie(TEST_FILES[0], &global_loaded_video);
 
 
 
@@ -2259,7 +2267,7 @@ int CALLBACK WinMain(
             KillTimer(window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
-        Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, global_loaded_video);
+        Update(&global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
 
     }
 
