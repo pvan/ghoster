@@ -50,16 +50,16 @@ double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 
 
 char *TEST_FILES[] = {
-	"D:/~phil/projects/ghoster/test-vids/sync3.mp4",
-	"D:/~phil/projects/ghoster/test-vids/sync1.mp4",
-	"D:/~phil/projects/ghoster/test-vids/test4.mp4",
-	"D:/~phil/projects/ghoster/test-vids/test.mp4",
-	"D:/~phil/projects/ghoster/test-vids/test3.avi",
-	"D:/~phil/projects/ghoster/test-vids/test.3gp",
-	"https://www.youtube.com/watch?v=RYbe-35_BaA",
-	"https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
-	"https://www.youtube.com/watch?v=tprMEs-zfQA",
-	"https://www.youtube.com/watch?v=NAvOdjRsOoI"
+    "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
+    "D:/~phil/projects/ghoster/test-vids/sync1.mp4",
+    "D:/~phil/projects/ghoster/test-vids/test4.mp4",
+    "D:/~phil/projects/ghoster/test-vids/test.mp4",
+    "D:/~phil/projects/ghoster/test-vids/test3.avi",
+    "D:/~phil/projects/ghoster/test-vids/test.3gp",
+    "https://www.youtube.com/watch?v=RYbe-35_BaA",
+    "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",
+    "https://www.youtube.com/watch?v=tprMEs-zfQA",
+    "https://www.youtube.com/watch?v=NAvOdjRsOoI"
 };
 
 
@@ -163,16 +163,16 @@ static bool vid_was_paused = false;
 
 struct SoundBuffer
 {
-	u8* data;
-	int size_in_bytes;
+    u8* data;
+    int size_in_bytes;
 
 };
 
 struct SDLStuff
 {
-	bool setup_at_least_once = false;
-	int desired_bytes_in_sdl_queue;
-	SDL_AudioDeviceID audio_device;
+    bool setup_at_least_once = false;
+    int desired_bytes_in_sdl_queue;
+    SDL_AudioDeviceID audio_device;
 };
 
 
@@ -270,13 +270,12 @@ int GetNextAudioFrame(
     AVFormatContext *fc,
     AVCodecContext *cc,
     int streamIndex,
-    // u8 *outBuffer,
     SoundBuffer outBuf,
     int requestedBytes,
     double msSinceStart)
 {
 
-	u8 *outBuffer = outBuf.data;
+    u8 *outBuffer = outBuf.data;
 
     // if (!swr)
     // {
@@ -343,17 +342,17 @@ int GetNextAudioFrame(
                     decodingPacket.data += packet_bytes_decoded;
 
 
-					int additional_bytes = frame->nb_samples *
-										   cc->channels *
-										   av_get_bytes_per_sample(cc->sample_fmt);
+                    int additional_bytes = frame->nb_samples *
+                                           cc->channels *
+                                           av_get_bytes_per_sample(cc->sample_fmt);
 
-                    // keep a check here so we don't overflow outBuffer?
-                    // (ie, in case we guessed when to quit wrong below)
-//                     if (bytes_written+additional_bytes > requestedBytes)
-//                     {
-// 4                    	assert(false); // for now we want to know if this ever happens
-//                     	return bytes_written;
-//                     }
+                    // // little fail-safe check so we don't overflow outBuffer
+                    // // (ie, in case we guessed when to quit wrong below)
+                    // if (bytes_written+additional_bytes > outBuf.size_in_bytes)
+                    // {
+                    //     assert(false); // for now we want to know if this ever happens
+                    //     return bytes_written;
+                    // }
 
 
                     // double msToPlayFrame = 1000 * frame->pts *
@@ -391,40 +390,40 @@ int GetNextAudioFrame(
                     // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
 
                     bool planar = false;
-					switch (cc->sample_fmt) {
-						case AV_SAMPLE_FMT_U8P:
-						case AV_SAMPLE_FMT_S16P:
-						case AV_SAMPLE_FMT_S32P:
-						case AV_SAMPLE_FMT_FLTP:
-						case AV_SAMPLE_FMT_DBLP: planar = true;
-					}
+                    switch (cc->sample_fmt) {
+                        case AV_SAMPLE_FMT_U8P:
+                        case AV_SAMPLE_FMT_S16P:
+                        case AV_SAMPLE_FMT_S32P:
+                        case AV_SAMPLE_FMT_FLTP:
+                        case AV_SAMPLE_FMT_DBLP: planar = true;
+                    }
 
-					if (!planar || cc->channels == 1)
-					{
-						memcpy(outBuffer, frame->data[0], additional_bytes);
-						outBuffer += additional_bytes;
-						bytes_written+=additional_bytes;
-					}
-					else
-					{
-						for (int sample = 0; sample < frame->nb_samples; sample++)
-						{
-							for (int channel = 0; channel < cc->channels; channel++)
-							{
-								u8 *thisChannel = frame->data[channel];
-								u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
-								for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
-								{
-									*outBuffer = *thisSample;
-									outBuffer++;
-									thisSample++;
-									bytes_written++;
-								}
-							}
-						}
-					}
-					// note bytes_written is total this call, not just this frame
-					// assert(bytes_written == additional_bytes); // only true on first loop
+                    if (!planar || cc->channels == 1)
+                    {
+                        memcpy(outBuffer, frame->data[0], additional_bytes);
+                        outBuffer += additional_bytes;
+                        bytes_written+=additional_bytes;
+                    }
+                    else
+                    {
+                        for (int sample = 0; sample < frame->nb_samples; sample++)
+                        {
+                            for (int channel = 0; channel < cc->channels; channel++)
+                            {
+                                u8 *thisChannel = frame->data[channel];
+                                u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
+                                for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
+                                {
+                                    *outBuffer = *thisSample;
+                                    outBuffer++;
+                                    thisSample++;
+                                    bytes_written++;
+                                }
+                            }
+                        }
+                    }
+                    // note bytes_written is total this call, not just this frame
+                    // assert(bytes_written == additional_bytes); // only true on first loop
 
 
 
@@ -699,20 +698,20 @@ void logFormatContextDuration(AVFormatContext *fc)
 
 
 void logSpec(SDL_AudioSpec *as) {
-	char format[1234];
-	switch(as->format) {
-		case AV_SAMPLE_FMT_U8:   sprintf(format, "AV_SAMPLE_FMT_U8");   break;
-		case AV_SAMPLE_FMT_U8P:  sprintf(format, "AV_SAMPLE_FMT_U8P");  break;
-		case AV_SAMPLE_FMT_S16:  sprintf(format, "AV_SAMPLE_FMT_S16");  break;
-		case AV_SAMPLE_FMT_S16P: sprintf(format, "AV_SAMPLE_FMT_S16P"); break;
-		case AV_SAMPLE_FMT_S32:  sprintf(format, "AV_SAMPLE_FMT_S32");  break;
-		case AV_SAMPLE_FMT_S32P: sprintf(format, "AV_SAMPLE_FMT_S32P"); break;
-		case AV_SAMPLE_FMT_FLT:  sprintf(format, "AV_SAMPLE_FMT_FLT");  break;
-		case AV_SAMPLE_FMT_FLTP: sprintf(format, "AV_SAMPLE_FMT_FLTP"); break;
-		case AV_SAMPLE_FMT_DBL:  sprintf(format, "AV_SAMPLE_FMT_DBL");  break;
-		case AV_SAMPLE_FMT_DBLP: sprintf(format, "AV_SAMPLE_FMT_DBLP"); break;
-		default: sprintf(format, "%5d", (int)as->format); break;
-	}
+    char format[1234];
+    switch(as->format) {
+        case AV_SAMPLE_FMT_U8:   sprintf(format, "AV_SAMPLE_FMT_U8");   break;
+        case AV_SAMPLE_FMT_U8P:  sprintf(format, "AV_SAMPLE_FMT_U8P");  break;
+        case AV_SAMPLE_FMT_S16:  sprintf(format, "AV_SAMPLE_FMT_S16");  break;
+        case AV_SAMPLE_FMT_S16P: sprintf(format, "AV_SAMPLE_FMT_S16P"); break;
+        case AV_SAMPLE_FMT_S32:  sprintf(format, "AV_SAMPLE_FMT_S32");  break;
+        case AV_SAMPLE_FMT_S32P: sprintf(format, "AV_SAMPLE_FMT_S32P"); break;
+        case AV_SAMPLE_FMT_FLT:  sprintf(format, "AV_SAMPLE_FMT_FLT");  break;
+        case AV_SAMPLE_FMT_FLTP: sprintf(format, "AV_SAMPLE_FMT_FLTP"); break;
+        case AV_SAMPLE_FMT_DBL:  sprintf(format, "AV_SAMPLE_FMT_DBL");  break;
+        case AV_SAMPLE_FMT_DBLP: sprintf(format, "AV_SAMPLE_FMT_DBLP"); break;
+        default: sprintf(format, "%5d", (int)as->format); break;
+    }
     char log[1024];
     sprintf(log,
         " freq______%5d\n"
@@ -736,26 +735,26 @@ void logSpec(SDL_AudioSpec *as) {
 SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
 {
 
-	// note: the av planar formats are converted to interleaved in the decoder
-	// sdl only likes interleaved
+    // note: the av planar formats are converted to interleaved in the decoder
+    // sdl only likes interleaved
 
-	int format;
-	switch (acc->sample_fmt) {
-		case AV_SAMPLE_FMT_U8:
-		case AV_SAMPLE_FMT_U8P:  format = AUDIO_U8; break;
-		case AV_SAMPLE_FMT_S16:
-		case AV_SAMPLE_FMT_S16P: format = AUDIO_S16; break;
-		case AV_SAMPLE_FMT_S32:
-		case AV_SAMPLE_FMT_S32P: format = AUDIO_S32; break;
-		case AV_SAMPLE_FMT_FLT:
-		case AV_SAMPLE_FMT_FLTP: format = AUDIO_F32; break;
-		case AV_SAMPLE_FMT_DBL:
-		case AV_SAMPLE_FMT_DBLP: // use float here and fix in decoder?
-		default:
-			char msg[1234];
-			sprintf(msg, "Audio format not supported yet.\n%i", acc->sample_fmt);
-			MsgBox(msg);
-	}
+    int format;
+    switch (acc->sample_fmt) {
+        case AV_SAMPLE_FMT_U8:
+        case AV_SAMPLE_FMT_U8P:  format = AUDIO_U8; break;
+        case AV_SAMPLE_FMT_S16:
+        case AV_SAMPLE_FMT_S16P: format = AUDIO_S16; break;
+        case AV_SAMPLE_FMT_S32:
+        case AV_SAMPLE_FMT_S32P: format = AUDIO_S32; break;
+        case AV_SAMPLE_FMT_FLT:
+        case AV_SAMPLE_FMT_FLTP: format = AUDIO_F32; break;
+        case AV_SAMPLE_FMT_DBL:
+        case AV_SAMPLE_FMT_DBLP: // use float here and fix in decoder?
+        default:
+            char msg[1234];
+            sprintf(msg, "Audio format not supported yet.\n%i", acc->sample_fmt);
+            MsgBox(msg);
+    }
 
 
     SDL_AudioSpec wanted_spec, spec;
@@ -1214,7 +1213,7 @@ static bool globalContextMenuOpen;
 // todo: what to do with this
 void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 {
-	// todo: remove the globals from this function (return an audio_buffer object?)
+    // todo: remove the globals from this function (return an audio_buffer object?)
 
     if (sdl_stuff->setup_at_least_once)
     {
@@ -1324,7 +1323,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 
     // get the string out of the pipe...
     // char *result = path; // huh??
-	int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
+    int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
     char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL);
 
     DWORD bytesRead;
@@ -1381,9 +1380,9 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 bool LoadVideoFile(char *path, VideoFile *loaded_video)
 {
 
-	char loadingMsg[1234];
-	sprintf(loadingMsg, "\nLoading %s\n", path);
-	OutputDebugString(loadingMsg);
+    char loadingMsg[1234];
+    sprintf(loadingMsg, "\nLoading %s\n", path);
+    OutputDebugString(loadingMsg);
 
     if (StringBeginsWith(path, "http"))
     {
@@ -1391,13 +1390,13 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
         char *audio_url;
         if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
         {
-        	*loaded_video = OpenVideoFileAV(video_url, audio_url);
-		}
-		else
-		{
-			MsgBox("Error loading file.");
-			return false;
-		}
+            *loaded_video = OpenVideoFileAV(video_url, audio_url);
+        }
+        else
+        {
+            MsgBox("Error loading file.");
+            return false;
+        }
     }
     else if (path[1] == ':')
     {
@@ -2087,8 +2086,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
-            	LoadVideoFile(TEST_FILES[wParam - 0x30], &global_loaded_video);
-            	// debugLoadTestVideo(wParam - 0x30);
+                LoadVideoFile(TEST_FILES[wParam - 0x30], &global_loaded_video);
+                // debugLoadTestVideo(wParam - 0x30);
             }
         } break;
 
