@@ -1205,7 +1205,7 @@ static VideoFile global_loaded_video;
 
 
 // todo: what to do with this
-void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound, SDLStuff *sdl_stuff)
+void SetupSDLSoundFor(AVCodecContext *acc, sound_stuff_rename_me *sound, SDLStuff *sdl_stuff)
 {
 	// todo: remove the globals from this function (return an audio_buffer object?)
 
@@ -1227,7 +1227,6 @@ void SetupSDLSoundFor(VideoFile thisVideo, sound_stuff_rename_me *sound, SDLStuf
         sdl_stuff->setup_at_least_once = true;
     }
 
-    AVCodecContext *acc = thisVideo.audio.codecContext;
     sdl_stuff->audio_device = CreateSDLAudioDeviceFor(acc);
 
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
@@ -1457,7 +1456,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(*loaded_video, &global_sound_stuff, &global_sdl_stuff);
+    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_sound_stuff, &global_sdl_stuff);
 
 
 
