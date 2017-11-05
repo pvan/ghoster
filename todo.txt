@@ -1,5 +1,13 @@
 
 
+[ ] separate app / movie / etc data
+
+[ ] split movie loading into sep thread to keep io responsive
+
+[ ] break code into files
+
+
+
 [ ] repeat toggle
 
 [ ] keep new loaded video same window size (maybe resize to new aspect ratio)
