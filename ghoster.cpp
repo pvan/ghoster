@@ -301,12 +301,17 @@ struct Stopwatch
 };
 
 
-struct Movie
+struct AVMovie
 {
     AVFormatContext *vfc;
     AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
+};
+
+struct Movie
+{
+    AVMovie av_movie;
 
     struct SwsContext *sws_context;
 
@@ -726,10 +731,10 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     return result;
 }
 
-Movie OpenMovieAV(char *videopath, char *audiopath)
+AVMovie OpenMovieAV(char *videopath, char *audiopath)
 {
 
-    Movie file;
+    AVMovie file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
     file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -1377,7 +1382,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 }
 
 // todo: peruse this for memory leaks. also: better name?
-bool LoadMovie(char *path, Movie *loaded_video)
+bool LoadMovie(char *path, Movie *newMovie)
 {
 
     char loadingMsg[1234];
@@ -1390,7 +1395,7 @@ bool LoadMovie(char *path, Movie *loaded_video)
         char *audio_url;
         if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
         {
-            *loaded_video = OpenMovieAV(video_url, audio_url);
+            newMovie->av_movie = OpenMovieAV(video_url, audio_url);
         }
         else
         {
@@ -1400,7 +1405,7 @@ bool LoadMovie(char *path, Movie *loaded_video)
     }
     else if (path[1] == ':')
     {
-        *loaded_video = OpenMovieAV(path, path);
+        newMovie->av_movie = OpenMovieAV(path, path);
     }
     else
     {
@@ -1409,6 +1414,7 @@ bool LoadMovie(char *path, Movie *loaded_video)
     }
 
 
+    AVMovie *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
     winWID = loaded_video->video.codecContext->width;
@@ -1418,7 +1424,7 @@ bool LoadMovie(char *path, Movie *loaded_video)
     //keep top left of window in same pos for now, change to keep center in same position?
     MoveWindow(window, winRect.left, winRect.top, winWID, winHEI, true);  // ever non-zero opening position? launch option?
 
-    loaded_video->vid_aspect = (double)winWID / (double)winHEI;
+    newMovie->vid_aspect = (double)winWID / (double)winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -1435,10 +1441,10 @@ bool LoadMovie(char *path, Movie *loaded_video)
     OutputDebugString("\naudio format ctx:\n");
     logFormatContextDuration(loaded_video->afc);
 
-    loaded_video->duration = (double)loaded_video->vfc->duration / (double)AV_TIME_BASE;
-    loaded_video->elapsed = 0;
+    newMovie->duration = (double)loaded_video->vfc->duration / (double)AV_TIME_BASE;
+    newMovie->elapsed = 0;
 
-    loaded_video->audio_stopwatch.ResetCompletely();
+    newMovie->audio_stopwatch.ResetCompletely();
 
 //asdf
 
@@ -1477,10 +1483,10 @@ bool LoadMovie(char *path, Movie *loaded_video)
     // MORE FFMPEG
 
     // AVFrame *
-    if (loaded_video->frame_output) av_frame_free(&loaded_video->frame_output);
-    loaded_video->frame_output = av_frame_alloc();  // just metadata
+    if (newMovie->frame_output) av_frame_free(&newMovie->frame_output);
+    newMovie->frame_output = av_frame_alloc();  // just metadata
 
-    if (!loaded_video->frame_output)
+    if (!newMovie->frame_output)
         { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
 
 
@@ -1490,15 +1496,15 @@ bool LoadMovie(char *path, Movie *loaded_video)
     vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
-    avpicture_fill((AVPicture *)loaded_video->frame_output, vid_buffer, AV_PIX_FMT_RGB32,
+    avpicture_fill((AVPicture *)newMovie->frame_output, vid_buffer, AV_PIX_FMT_RGB32,
         vidWID,
         vidHEI);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
     // could we use opengl for this instead and should we?
-    if (loaded_video->sws_context) sws_freeContext(loaded_video->sws_context);
-    loaded_video->sws_context = {0};
-    loaded_video->sws_context = sws_getContext(
+    if (newMovie->sws_context) sws_freeContext(newMovie->sws_context);
+    newMovie->sws_context = {0};
+    newMovie->sws_context = sws_getContext(
         loaded_video->video.codecContext->width,
         loaded_video->video.codecContext->height,
         loaded_video->video.codecContext->pix_fmt,
@@ -1581,9 +1587,9 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loade
             SDL_ClearQueuedAudio(sdl_stuff->audio_device);
 
             setSeek = false;
-            int seekPos = seekProportion * loaded_video->vfc->duration;
-            av_seek_frame(loaded_video->vfc, -1, seekPos, 0);
-            av_seek_frame(loaded_video->afc, -1, seekPos, 0);
+            int seekPos = seekProportion * loaded_video->av_movie.vfc->duration;
+            av_seek_frame(loaded_video->av_movie.vfc, -1, seekPos, 0);
+            av_seek_frame(loaded_video->av_movie.afc, -1, seekPos, 0);
 
             double realTime = (double)seekPos / (double)AV_TIME_BASE;
             int timeTicks = realTime * loaded_video->audio_stopwatch.timer.ticks_per_second;
@@ -1625,9 +1631,9 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loade
             // ideally a little bite of sound, every frame
             // todo: how to sync this right, pts dts?
             int bytes_queued_up = GetNextAudioFrame(
-                loaded_video->afc,
-                loaded_video->audio.codecContext,
-                loaded_video->audio.index,
+                loaded_video->av_movie.afc,
+                loaded_video->av_movie.audio.codecContext,
+                loaded_video->av_movie.audio.index,
                 *ffmpeg_to_sdl_buffer,
                 wanted_bytes,
                 loaded_video->audio_stopwatch.MsElapsed());
@@ -1660,10 +1666,10 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loade
         msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
         GetNextVideoFrame(
-            loaded_video->vfc,
-            loaded_video->video.codecContext,
+            loaded_video->av_movie.vfc,
+            loaded_video->av_movie.video.codecContext,
             loaded_video->sws_context,
-            loaded_video->video.index,
+            loaded_video->av_movie.video.index,
             loaded_video->frame_output,
             msSinceAudioStart,
             msAudioLatencyEstimate);
