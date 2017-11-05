@@ -304,12 +304,16 @@ struct Stopwatch
 // {
 // };
 
+
+
 struct Movie
 {
     AVFormatContext *vfc;
     AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
+
+    struct SwsContext *sws_context;
 
     double duration;
     double elapsed;
@@ -1183,7 +1187,6 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
 // todo: cleanup all these globals.. pass what you can and maybe an app global for some?
-static struct SwsContext *sws_context;
 static AVFrame *frame_output;
 
 static HWND window;
@@ -1384,7 +1387,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     return true;
 }
 
-// todo: peruse this for memory leaks. also: weird deja vu
+// todo: peruse this for memory leaks. also: better name?
 bool LoadMovie(char *path, Movie *loaded_video)
 {
 
@@ -1502,11 +1505,11 @@ bool LoadMovie(char *path, Movie *loaded_video)
         vidWID,
         vidHEI);
 
-    // for converting between frames i think
-    // struct SwsContext *
-    if (sws_context) sws_freeContext(sws_context);
-    sws_context = 0;
-    sws_context = sws_getContext(
+    // for converting frame from file to a standard color format buffer (size doesn't matter so much)
+    // could we use opengl for this instead and should we?
+    if (loaded_video->sws_context) sws_freeContext(loaded_video->sws_context);
+    loaded_video->sws_context = {0};
+    loaded_video->sws_context = sws_getContext(
         loaded_video->video.codecContext->width,
         loaded_video->video.codecContext->height,
         loaded_video->video.codecContext->pix_fmt,
@@ -1670,7 +1673,7 @@ void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loade
         GetNextVideoFrame(
             loaded_video->vfc,
             loaded_video->video.codecContext,
-            sws_context,
+            loaded_video->sws_context,
             loaded_video->video.index,
             frame_output,
             msSinceAudioStart,
