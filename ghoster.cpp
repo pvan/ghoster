@@ -1179,10 +1179,10 @@ static bool globalContextMenuOpen;
 // }
 
 
-struct sound_stuff_rename_me
+struct SoundBuffer
 {
-	u8* ffmpeg_to_sdl_buffer;
-	int bytes_in_this_buffer;
+	u8* data;
+	int size_in_bytes;
 
 };
 
@@ -1197,7 +1197,7 @@ struct SDLStuff
 // kind of rearranged this stuff but still all global..
 // problem is we need to call update() from wndproc
 // and update() needs to know about this stuff
-static sound_stuff_rename_me global_sound_stuff;
+static SoundBuffer global_sound_stuff;
 
 static SDLStuff global_sdl_stuff;
 
@@ -1236,7 +1236,7 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
     sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
 }
-void SetupSoundBuffer(AVCodecContext *acc, sound_stuff_rename_me *sound)
+void SetupSoundBuffer(AVCodecContext *acc, SoundBuffer *sound)
 {
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
 
@@ -1244,10 +1244,10 @@ void SetupSoundBuffer(AVCodecContext *acc, sound_stuff_rename_me *sound)
     // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
     int buffer_seconds = 1; // this is what limits how long we spend decoding audio each frame
     int samples_in_buffer = buffer_seconds * acc->sample_rate;
-    sound->bytes_in_this_buffer = samples_in_buffer * bytes_per_sample;
+    sound->size_in_bytes = samples_in_buffer * bytes_per_sample;
 
-    if (sound->ffmpeg_to_sdl_buffer) free(sound->ffmpeg_to_sdl_buffer);
-    sound->ffmpeg_to_sdl_buffer = (u8*)malloc(sound->bytes_in_this_buffer);
+    if (sound->data) free(sound->data);
+    sound->data = (u8*)malloc(sound->size_in_bytes);
 
 }
 
@@ -1511,7 +1511,7 @@ bool LoadVideoFile(char *path, VideoFile *loaded_video)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(sound_stuff_rename_me *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
+void Update(SoundBuffer *sound, SDLStuff *sdl_stuff, VideoFile loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
@@ -1604,13 +1604,13 @@ void Update(sound_stuff_rename_me *sound, SDLStuff *sdl_stuff, VideoFile loaded_
 
         if (wanted_bytes >= 0)
         {
-            if (wanted_bytes > sound->bytes_in_this_buffer)
+            if (wanted_bytes > sound->size_in_bytes)
             {
                 // char errq[256];
-                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, sound->bytes_in_this_buffer);
+                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, sound->size_in_bytes);
                 // OutputDebugString(errq);
 
-                wanted_bytes = sound->bytes_in_this_buffer;
+                wanted_bytes = sound->size_in_bytes;
             }
 
             // ideally a little bite of sound, every frame
@@ -1619,14 +1619,14 @@ void Update(sound_stuff_rename_me *sound, SDLStuff *sdl_stuff, VideoFile loaded_
                 loaded_video.afc,
                 loaded_video.audio.codecContext,
                 loaded_video.audio.index,
-                sound->ffmpeg_to_sdl_buffer,
+                sound->data,
                 wanted_bytes,
                 audio_stopwatch.MsElapsed());
 
 
             if (bytes_queued_up > 0)
             {
-                if (SDL_QueueAudio(sdl_stuff->audio_device, sound->ffmpeg_to_sdl_buffer, bytes_queued_up) < 0)
+                if (SDL_QueueAudio(sdl_stuff->audio_device, sound->data, bytes_queued_up) < 0)
                 {
                     char audioerr[256];
                     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
