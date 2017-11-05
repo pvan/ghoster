@@ -1307,6 +1307,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     {
         //OutputDebugString("Error creating youtube-dl process.");
         MsgBox("Error creating youtube-dl process.");
+        return false;
     }
 
     WaitForSingleObject(pi.hProcess, INFINITE);
@@ -1316,22 +1317,28 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     if (!CloseHandle(outWrite))
     {
         OutputDebugString("Error with CloseHandle()");
+        return false;
     }
 
 
     // get the string out of the pipe...
-    // char result[1024*8];
-    char *result = path;
+    // char *result = path; // huh??
+	int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
+    char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL);
 
     DWORD bytesRead;
     if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
     {
-        // too big
+        // too big?
+        MsgBox("Error reading pipe, not enough buffer space?");
+        return false;
     }
 
     if (bytesRead == 0)
     {
         // no output?
+        MsgBox("No data from reading pipe.");
+        return false;
     }
 
     // seem to get two urls, first video, second sound
@@ -1381,12 +1388,15 @@ bool LoadVideoFile(char *path)
     {
         char *video_url;
         char *audio_url;
-        FindAudioAndVideoUrls(path, &video_url, &audio_url);
-
-        loaded_video = OpenVideoFileAV(video_url, audio_url);
-
-        // return false;
-
+        if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
+        {
+        	loaded_video = OpenVideoFileAV(video_url, audio_url);
+		}
+		else
+		{
+			MsgBox("Error loading file.");
+			return false;
+		}
     }
     else if (path[1] == ':')
     {
@@ -1394,7 +1404,7 @@ bool LoadVideoFile(char *path)
     }
     else
     {
-        OutputDebugString("not full filepath or url\n");
+        MsgBox("not full filepath or url\n");
         return false;
     }
 
@@ -1758,14 +1768,15 @@ bool PasteClipboard()
     }
     h = GetClipboardData(CF_TEXT);
     if (!h) return false;
-    char tempcopy[1024*8]; // todo: what max to use here? also: malloc?
-    sprintf(tempcopy, "%s", (char*)h);
+    // char tempcopy[1024*8]; // todo: what max to use here? also: malloc?
+    int bigEnoughToHoldTypicalUrl = 1024 * 10;
+    char *clipboardContents = (char*)malloc(bigEnoughToHoldTypicalUrl);
+    sprintf(clipboardContents, "%s", (char*)h);
     CloseClipboard();
         char printit[MAX_PATH]; // should be +1
-        sprintf(printit, "%s\n", (char*)tempcopy);
+        sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    LoadVideoFile(tempcopy);
-    return true;
+    return LoadVideoFile(clipboardContents);
 }
 
 
