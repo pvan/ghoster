@@ -40,7 +40,6 @@ extern "C"
 
 
 
-const int samples_per_second = 44100;
 
 int progressBarH = 22;
 int progressBarB = 0;
@@ -55,7 +54,10 @@ double progressBarDisapearAfterThisManyMsOfInactivity = 1000;
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test4.mp4";
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.mp4";
 // char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test3.avi";
-char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp"; // proper audio resampler for this to work
+char *INPUT_FILE = "D:/~phil/projects/ghoster/test-vids/test.3gp";
+// char *INPUT_FILE = "https://www.youtube.com/watch?v=RYbe-35_BaA";
+// char *INPUT_FILE = "https://www.youtube.com/watch?v=ucZl6vQ_8Uo";
+// char *INPUT_FILE = "https://www.youtube.com/watch?v=tprMEs-zfQA";
 
 
 
@@ -213,13 +215,22 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 static SwrContext *swr;
 
-// note these should be the same
+// note this stuff should be the same / compatible
 // since we pass ffmpeg output directly to sdl
-#define FFMPEG_LAYOUT AV_CH_LAYOUT_STEREO
+// #define FFMPEG_LAYOUT AV_CH_LAYOUT_STEREO
+// #define FFMPEG_CHANNELS 2
+// #define SDL_CHANNELS 2
+#define FFMPEG_LAYOUT AV_CH_LAYOUT_MONO
+#define FFMPEG_CHANNELS 1
+#define SDL_CHANNELS 1
+
 #define FFMPEG_FORMAT AV_SAMPLE_FMT_FLT
-#define FFMPEG_CHANNELS 2
-#define SDL_CHANNELS 2
 #define SDL_FORMAT AUDIO_F32
+
+#define FFMPEG_SAMPLES_PER_SECOND 44100
+#define SDL_SAMPLES_PER_SECOND 44100
+
+// const int samples_per_second = 44100;
 
 
 // todo: decode with newest api?
@@ -241,17 +252,15 @@ int GetNextAudioFrame(
     if (!swr)
     {
         // todo: free this when loading new video? any other time?
-        // todo: support non-float format source?
-        // todo: pass output options in from when we use in CreateSDLAudioDeviceFor? qwer
-        swr = swr_alloc_set_opts(NULL,  // we're allocating a new context
-                    FFMPEG_LAYOUT,      // out_ch_layout   // AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
-                    FFMPEG_FORMAT,      // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
-                    samples_per_second, // out_sample_rate
-                    cc->channel_layout, // in_ch_layout
-                    cc->sample_fmt,     // in_sample_fmt
-                    cc->sample_rate,    // in_sample_rate
-                    0,                  // log_offset
-                    NULL);              // log_ctx
+        swr = swr_alloc_set_opts(NULL,         // we're allocating a new context
+                    FFMPEG_LAYOUT,             // out_ch_layout    AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+                    FFMPEG_FORMAT,             // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
+                    FFMPEG_SAMPLES_PER_SECOND, // out_sample_rate
+                    cc->channel_layout,        // in_ch_layout
+                    cc->sample_fmt,            // in_sample_fmt
+                    cc->sample_rate,           // in_sample_rate
+                    0,                         // log_offset
+                    NULL);                     // log_ctx
         swr_init(swr);
         if (!swr_is_initialized(swr)) {
             OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
@@ -313,9 +322,9 @@ int GetNextAudioFrame(
                     // }
 
 
-                    double msToPlayFrame = 1000 * frame->pts *
-                        fc->streams[streamIndex]->time_base.num /
-                        fc->streams[streamIndex]->time_base.den;
+                    // double msToPlayFrame = 1000 * frame->pts *
+                    //     fc->streams[streamIndex]->time_base.num /
+                    //     fc->streams[streamIndex]->time_base.den;
 
                     // char zxcv[123];
                     // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
@@ -349,10 +358,10 @@ int GetNextAudioFrame(
 
 
                     // resample frames
-                    float* buffer_this_frame;
-                    av_samples_alloc((u8**)&buffer_this_frame, NULL,
+                    u8* buffer_this_frame;
+                    av_samples_alloc(&buffer_this_frame, NULL,
                                      FFMPEG_CHANNELS, frame->nb_samples, FFMPEG_FORMAT, 0);
-                    int frame_count = swr_convert(
+                    int sample_count = swr_convert(
                         swr,
                         (u8**)&buffer_this_frame,
                         frame->nb_samples,
@@ -362,10 +371,51 @@ int GetNextAudioFrame(
                     // append resampled frames to data
                     int additional_bytes = frame->nb_samples *
                                            av_get_bytes_per_sample(cc->sample_fmt) *
-                                           FFMPEG_CHANNELS;
+                                           FFMPEG_CHANNELS; //  FFMPEG_CHANNELS  cc->channels  ?
+                    // memcpy(outBuffer, buffer_this_frame, additional_bytes);
                     memcpy(outBuffer, buffer_this_frame, additional_bytes);
                     outBuffer+=additional_bytes;
                     bytes_written+=additional_bytes;
+
+
+
+
+// int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
+//                 if (cc->sample_fmt == 8) {
+                        // float *out = (float*)outBuffer;
+                        // float *inL = (float*)frame->data[0];
+                        // float *inR = (float*)frame->data[1];
+                        // int j = 0;
+                        // for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
+                        // {
+                        //     out[j++] = inL[i];
+                        //     if (inR != 0) out[j++] = inR[i];  // even hacker way
+                        //     else out[j++] = inL[i];
+                        // }
+
+                        // additional_bytes = j*sizeof(float);
+//                 }
+//                 else {
+//                         float *out = (float*)outBuffer;
+//                         float *inL = (float*)frame->data[0];
+//                         int j = 0;
+//                         for (int i = 0; i < frame->nb_samples; i++) // todo: need all samples
+//                         {
+//                             out[j++] = inL[i];
+//                         }
+
+//                         additional_bytes = j*sizeof(float);
+// //                 }
+//                 outBuffer+=additional_bytes;
+//                 bytes_written+=additional_bytes;
+
+
+                    // // old method with no resampling.. (dropped R channel)
+                    //  memcpy(outBuffer, frame->data[0], additional_bytes);
+                    //  outBuffer+=additional_bytes;
+                    //  bytes_written+=additional_bytes;
+
+
 
 
                     // now try to guess when we're done based on the size of the last frame
@@ -377,7 +427,6 @@ int GetNextAudioFrame(
                         av_frame_free(&frame);
                         return bytes_written;
                     }
-
 
                     // // just one frame;
                     // return bytes_written;
@@ -477,7 +526,7 @@ bool GetNextVideoFrame(
                 // double msAudioLatencyEstimate = 50;
 
                 // this feels just a bit early? maybe we should double it? or more?
-                double msAudioLatencyEstimate = 1024.0 / samples_per_second * 1000.0;
+                double msAudioLatencyEstimate = 1024.0 / SDL_SAMPLES_PER_SECOND * 1000.0;
                 msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
 
@@ -632,7 +681,7 @@ VideoFile OpenVideoFileAV(char *videopath, char *audiopath)
 
 
 
-// adapted from ffmeg dump.c
+// adapted from ffmpeg dump.c
 void logFormatContextDuration(AVFormatContext *fc)
 {
     int methodEnum = fc->duration_estimation_method;
@@ -677,11 +726,11 @@ void logSpec(SDL_AudioSpec *as) {
 SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *audioContext)
 {
     SDL_AudioSpec wanted_spec, spec;
-    wanted_spec.freq = samples_per_second; // acc->sample_rate
+    wanted_spec.freq = SDL_SAMPLES_PER_SECOND; // acc->sample_rate
     wanted_spec.format = SDL_FORMAT; //AUDIO_F32 AUDIO_S16SYS
     wanted_spec.channels = SDL_CHANNELS; // acc->channels
     wanted_spec.silence = 0;
-    wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
+    wanted_spec.samples = 1024;//1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
     wanted_spec.callback = 0;  // none to set samples ourself
     wanted_spec.userdata = 0;
 
@@ -1115,6 +1164,9 @@ static double vid_aspect; // feels like it'd be better to store this as a ration
 static bool lock_aspect = true;
 
 
+static bool setSeek = false;
+static double seekProportion = 0;
+
 static Timer menuCloseTimer;
 static bool globalContextMenuOpen;
 
@@ -1131,8 +1183,22 @@ void SetupSDLSound()
 {
     if (sound_buffer)  // aint our first rodeo // better way to track this???
     {
-        SDL_PauseAudioDevice(audio_device, 1);
-        SDL_CloseAudioDevice(audio_device);
+        OutputDebugString("\n\nHERE\n\n");
+        SDL_PauseAudioDevice(audio_device, (int)true);
+        SDL_ClearQueuedAudio(audio_device);
+
+            // char queuesize[256];
+            // sprintf(queuesize, "sdl queue buffer amt: %u", SDL_GetQueuedAudioSize(audio_device));
+            // MsgBox(queuesize);
+
+        // free(sound_buffer);
+
+        // setSeek = true;
+
+            // char queuesize2[256];
+            // sprintf(queuesize2, "sound_buffer: %p", sound_buffer);
+            // MsgBox(queuesize2);
+        // SDL_CloseAudioDevice(audio_device);
     }
     else
     {
@@ -1144,30 +1210,30 @@ void SetupSDLSound()
             MsgBox(err);
             //return false;
         }
+    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
     }
 
-    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
 
-    AVCodecContext *acc = loaded_video.audio.codecContext;
+    // don't use this any more actually, since
+    // we're resampling everything anyway, use our SDL_* instead
+    // AVCodecContext *acc = loaded_video.audio.codecContext;
 
-    // try to keep this full
-    int audio_channels = acc->channels;
+    // todo: if we change from float format all these sizeof(floats) would need to change
 
     // how big of chunks do we want to decode and queue up at a time
-    int buffer_seconds = 2; // no reason not to just keep this big, right?
+    int buffer_seconds = 1; // no reason not to just keep this big, right?
     // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int samples_in_buffer = acc->sample_rate * buffer_seconds;
-    // int
-    bytes_in_buffer = samples_in_buffer * sizeof(float) * audio_channels;
+    int samples_in_buffer = SDL_SAMPLES_PER_SECOND * buffer_seconds;
+    bytes_in_buffer = samples_in_buffer * sizeof(float) * SDL_CHANNELS;
 
     if (sound_buffer) free(sound_buffer);  // is doing above better?
     sound_buffer = (void*)malloc(bytes_in_buffer);
 
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 4; // how far ahead in seconds do we queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+    int desired_seconds_in_queue = 1; // how far ahead in seconds do we queue sound data?
+    int desired_samples_in_queue = desired_seconds_in_queue * SDL_SAMPLES_PER_SECOND;
     // int
-    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * audio_channels;
+    desired_bytes_in_queue = desired_samples_in_queue * sizeof(float) * SDL_CHANNELS;
 }
 
 
@@ -1330,8 +1396,12 @@ bool LoadVideoFile(char *path)
         // OutputDebugString(rewq);
 
 
-    duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
+    OutputDebugString("\nvideo format ctx:\n");
     logFormatContextDuration(loaded_video.vfc);
+    OutputDebugString("\naudio format ctx:\n");
+    logFormatContextDuration(loaded_video.afc);
+
+    duration = (double)loaded_video.vfc->duration / (double)AV_TIME_BASE;
     elapsed = 0;
 
     audio_stopwatch.ResetCompletely();
@@ -1409,9 +1479,6 @@ bool LoadVideoFile(char *path)
 }
 
 
-bool setSeek = false;
-double seekProportion = 0;
-
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
 void Update()
@@ -1457,7 +1524,7 @@ void Update()
         if (!vid_was_paused)
         {
             audio_stopwatch.Pause();
-            SDL_PauseAudioDevice(audio_device, 1);
+            SDL_PauseAudioDevice(audio_device, (int)true);
         }
     }
     else
@@ -1465,11 +1532,16 @@ void Update()
         if (vid_was_paused || !audio_stopwatch.timer.started)
         {
             audio_stopwatch.Start();
-            SDL_PauseAudioDevice(audio_device, 0);
+            SDL_PauseAudioDevice(audio_device, (int)false);
         }
 
         if (setSeek)
         {//asdf
+
+            // for (int i = 0; i < bytes_in_buffer; i++)
+            // {
+            //     ((u8*)sound_buffer)[i] = 0;
+            // }
 
             //SetupSDLSound();
             SDL_ClearQueuedAudio(audio_device);
@@ -1495,23 +1567,23 @@ void Update()
         // SOUND
 
         int bytes_left_in_queue = SDL_GetQueuedAudioSize(audio_device);
-            // char msg[256];
-            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-            // OutputDebugString(msg);
+            char msg[256];
+            sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+            OutputDebugString(msg);
 
 
         int wanted_bytes = desired_bytes_in_queue - bytes_left_in_queue;
-            // char msg3[256];
-            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-            // OutputDebugString(msg3);
+            char msg3[256];
+            sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+            OutputDebugString(msg3);
 
         if (wanted_bytes >= 0)
         {
             if (wanted_bytes > bytes_in_buffer)
             {
-                // char errq[256];
-                // sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
-                // OutputDebugString(errq);
+                char errq[256];
+                sprintf(errq, "want to queue: %i, but only %i in buffer\n", wanted_bytes, bytes_in_buffer);
+                OutputDebugString(errq);
 
                 wanted_bytes = bytes_in_buffer;
             }
@@ -1533,15 +1605,15 @@ void Update()
 
             if (bytes_queued_up > 0)
             {
-                if (SDL_QueueAudio(audio_device, sound_buffer, wanted_bytes) < 0)
+                if (SDL_QueueAudio(audio_device, sound_buffer, bytes_queued_up) < 0)
                 {
                     char audioerr[256];
                     sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
                     OutputDebugString(audioerr);
                 }
-                   // char msg2[256];
-                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-                   // OutputDebugString(msg2);
+                   char msg2[256];
+                   sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                   OutputDebugString(msg2);
             }
         }
 
@@ -1567,11 +1639,11 @@ void Update()
 
     RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, percent, drawProgressBar);
 
-    // // DisplayAudioBuffer_FLOAT(secondary_buf, vidWID, vidHEI,
-    // //                    (float*)sound_buffer, bytes_in_buffer);
+    // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
+    //            (float*)sound_buffer, bytes_in_buffer);
     // static int increm = 0;
     // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
-    // RenderToScreenGL((void*)secondary_buf, vidWID, vidHEI, winWID, winHEI, window);
+    // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
     // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
 
 
