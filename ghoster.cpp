@@ -346,13 +346,13 @@ int GetNextAudioFrame(
                                            cc->channels *
                                            av_get_bytes_per_sample(cc->sample_fmt);
 
-                    // // little fail-safe check so we don't overflow outBuffer
-                    // // (ie, in case we guessed when to quit wrong below)
-                    // if (bytes_written+additional_bytes > outBuf.size_in_bytes)
-                    // {
-                    //     assert(false); // for now we want to know if this ever happens
-                    //     return bytes_written;
-                    // }
+                    // little fail-safe check so we don't overflow outBuffer
+                    // (ie, in case we guessed when to quit wrong below)
+                    if (bytes_written+additional_bytes > outBuf.size_in_bytes)
+                    {
+                        assert(false); // for now we want to know if this ever happens
+                        return bytes_written;
+                    }
 
 
                     // double msToPlayFrame = 1000 * frame->pts *
