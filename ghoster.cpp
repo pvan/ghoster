@@ -249,24 +249,24 @@ int GetNextAudioFrame(
 {
 
 
-    if (!swr)
-    {
-        // todo: free this when loading new video? any other time?
-        swr = swr_alloc_set_opts(NULL,         // we're allocating a new context
-                    FFMPEG_LAYOUT,             // out_ch_layout    AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
-                    FFMPEG_FORMAT,             // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
-                    FFMPEG_SAMPLES_PER_SECOND, // out_sample_rate
-                    cc->channel_layout,        // in_ch_layout
-                    cc->sample_fmt,            // in_sample_fmt
-                    cc->sample_rate,           // in_sample_rate
-                    0,                         // log_offset
-                    NULL);                     // log_ctx
-        swr_init(swr);
-        if (!swr_is_initialized(swr)) {
-            OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
-            return -1;
-        }
-    }
+    // if (!swr)
+    // {
+    //     // todo: free this when loading new video? any other time?
+    //     swr = swr_alloc_set_opts(NULL,         // we're allocating a new context
+    //                 FFMPEG_LAYOUT,             // out_ch_layout    AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+    //                 FFMPEG_FORMAT,             // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
+    //                 FFMPEG_SAMPLES_PER_SECOND, // out_sample_rate
+    //                 cc->channel_layout,        // in_ch_layout
+    //                 cc->sample_fmt,            // in_sample_fmt
+    //                 cc->sample_rate,           // in_sample_rate
+    //                 0,                         // log_offset
+    //                 NULL);                     // log_ctx
+    //     swr_init(swr);
+    //     if (!swr_is_initialized(swr)) {
+    //         OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
+    //         return -1;
+    //     }
+    // }
 
     // char tempy[123];
     // sprintf(tempy, "%lli\n", cc->sample_fmt);
@@ -357,28 +357,63 @@ int GetNextAudioFrame(
                     // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
 
 
-                    // resample frames
-                    u8* buffer_this_frame;
-                    av_samples_alloc(&buffer_this_frame, NULL,
-                                     FFMPEG_CHANNELS, frame->nb_samples, FFMPEG_FORMAT, 0);
-                    int sample_count = swr_convert(
-                        swr,
-                        (u8**)&buffer_this_frame,
-                        frame->nb_samples,
-                        (const u8**)&frame->data,  //extended_data ?
-                        frame->nb_samples);
+                    // // resample frames
+                    // u8* buffer_this_frame;
+                    // av_samples_alloc(&buffer_this_frame, NULL,
+                    //                  FFMPEG_CHANNELS, frame->nb_samples, FFMPEG_FORMAT, 0);
+                    // int sample_count = swr_convert(
+                    //     swr,
+                    //     (u8**)&buffer_this_frame,
+                    //     frame->nb_samples,
+                    //     (const u8**)&frame->data,  //extended_data ?
+                    //     frame->nb_samples);
 
-                    // append resampled frames to data
-                    int additional_bytes = frame->nb_samples *
-                                           av_get_bytes_per_sample(cc->sample_fmt) *
-                                           FFMPEG_CHANNELS; //  FFMPEG_CHANNELS  cc->channels  ?
+                    // // append resampled frames to data
+                    // int additional_bytes = frame->nb_samples *
+                    //                        av_get_bytes_per_sample(cc->sample_fmt) *
+                    //                        FFMPEG_CHANNELS; //  FFMPEG_CHANNELS  cc->channels  ?
+                    // // memcpy(outBuffer, buffer_this_frame, additional_bytes);
                     // memcpy(outBuffer, buffer_this_frame, additional_bytes);
-                    memcpy(outBuffer, buffer_this_frame, additional_bytes);
-                    outBuffer+=additional_bytes;
-                    bytes_written+=additional_bytes;
+                    // outBuffer+=additional_bytes;
+                    // bytes_written+=additional_bytes;
 
+                    bool planar;
+					switch (cc->sample_fmt) {
+						case AV_SAMPLE_FMT_U8P:
+						case AV_SAMPLE_FMT_S16P:
+						case AV_SAMPLE_FMT_S32P:
+						case AV_SAMPLE_FMT_FLTP:
+						case AV_SAMPLE_FMT_DBLP: {
+							planar = true;
+						}
+						default: {
+							planar = false;
+						}
+					}
 
-
+					int additional_bytes = frame->nb_samples *
+										   cc->channels *
+										   av_get_bytes_per_sample(cc->sample_fmt);
+					if (!planar)
+					{
+						memcpy(outBuffer, frame->data[0], additional_bytes);
+						outBuffer += additional_bytes;
+						bytes_written+=additional_bytes;
+					}
+					else
+					{
+						for (int sample = 0; sample < frame->nb_samples; sample++)
+						{
+							for (int channel = 0; cc->channels; channel++)
+							{
+								outBuffer[channel] = frame->data[channel][sample];
+							}
+							outBuffer += av_get_bytes_per_sample(cc->sample_fmt);
+							bytes_written += av_get_bytes_per_sample(cc->sample_fmt);
+						}
+					}
+					// note bytes_written is total this call, not just this frame
+					// assert(bytes_written == additional_bytes); // only true on first loop
 
 // int additional_bytes = frame->nb_samples * av_get_bytes_per_sample(cc->sample_fmt);
 //                 if (cc->sample_fmt == 8) {
@@ -723,14 +758,48 @@ void logSpec(SDL_AudioSpec *as) {
     OutputDebugString(log);
 }
 
-SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *audioContext)
+
+#define FFMPEG_LAYOUT AV_CH_LAYOUT_MONO
+#define FFMPEG_CHANNELS 1
+#define SDL_CHANNELS 1
+
+#define FFMPEG_FORMAT AV_SAMPLE_FMT_FLT
+#define SDL_FORMAT AUDIO_F32
+
+#define FFMPEG_SAMPLES_PER_SECOND 44100
+#define SDL_SAMPLES_PER_SECOND 44100
+
+SDL_AudioDeviceID CreateSDLAudioDeviceFor(AVCodecContext *acc)
 {
+
+	// note: the av planar formats are converted to interleaved in the decoder
+	// sdl only likes interleaved
+
+	int format;
+	switch (acc->sample_fmt) {
+		case AV_SAMPLE_FMT_U8:
+		case AV_SAMPLE_FMT_U8P:  format = AUDIO_U8; break;
+		case AV_SAMPLE_FMT_S16:
+		case AV_SAMPLE_FMT_S16P: format = AUDIO_S16; break;
+		case AV_SAMPLE_FMT_S32:
+		case AV_SAMPLE_FMT_S32P: format = AUDIO_S32; break;
+		case AV_SAMPLE_FMT_FLT:
+		case AV_SAMPLE_FMT_FLTP: format = AUDIO_F32; break;
+		case AV_SAMPLE_FMT_DBL:
+		case AV_SAMPLE_FMT_DBLP: // use float here and fix in decoder?
+		default:
+			char msg[1234];
+			sprintf(msg, "Audio format not supported yet.\n%i", acc->sample_fmt);
+			MsgBox(msg);
+	}
+
+
     SDL_AudioSpec wanted_spec, spec;
-    wanted_spec.freq = SDL_SAMPLES_PER_SECOND; // acc->sample_rate
-    wanted_spec.format = SDL_FORMAT; //AUDIO_F32 AUDIO_S16SYS
-    wanted_spec.channels = SDL_CHANNELS; // acc->channels
+    wanted_spec.freq = acc->sample_rate;
+    wanted_spec.format = format;
+    wanted_spec.channels = acc->channels;
     wanted_spec.silence = 0;
-    wanted_spec.samples = 1024;//1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
+    wanted_spec.samples = 1024; // SDL_AUDIO_BUFFER_SIZE // estimate latency based on this?
     wanted_spec.callback = 0;  // none to set samples ourself
     wanted_spec.userdata = 0;
 
@@ -1179,26 +1248,14 @@ static bool globalContextMenuOpen;
 
 
 // todo: what to do with this
-void SetupSDLSound()
+void SetupSDLSoundFor(VideoFile thisVideo)
 {
-    if (sound_buffer)  // aint our first rodeo // better way to track this???
+	// todo: remove the globals from this function (return an audio_buffer object?)
+
+    if (sound_buffer)  // todo: hacky way to check if we previously setup for a video
     {
-        OutputDebugString("\n\nHERE\n\n");
         SDL_PauseAudioDevice(audio_device, (int)true);
-        SDL_ClearQueuedAudio(audio_device);
-
-            // char queuesize[256];
-            // sprintf(queuesize, "sdl queue buffer amt: %u", SDL_GetQueuedAudioSize(audio_device));
-            // MsgBox(queuesize);
-
-        // free(sound_buffer);
-
-        // setSeek = true;
-
-            // char queuesize2[256];
-            // sprintf(queuesize2, "sound_buffer: %p", sound_buffer);
-            // MsgBox(queuesize2);
-        // SDL_CloseAudioDevice(audio_device);
+        SDL_CloseAudioDevice(audio_device);
     }
     else
     {
@@ -1210,9 +1267,9 @@ void SetupSDLSound()
             MsgBox(err);
             //return false;
         }
-    audio_device = CreateSDLAudioDeviceFor(loaded_video.audio.codecContext);
     }
 
+    audio_device = CreateSDLAudioDeviceFor(thisVideo.audio.codecContext);
 
     // don't use this any more actually, since
     // we're resampling everything anyway, use our SDL_* instead
@@ -1433,7 +1490,7 @@ bool LoadVideoFile(char *path)
 
     // // SDL, for sound atm
 
-    SetupSDLSound();
+    SetupSDLSoundFor(loaded_video);
 
 
 
