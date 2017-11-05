@@ -176,13 +176,6 @@ struct SDLStuff
 };
 
 
-struct StreamAV
-{
-    int index;
-    AVCodecContext *codecContext;
-    // AVCodec *codec;
-};
-
 struct Timer
 {
     i64 starting_ticks;
@@ -301,7 +294,15 @@ struct Stopwatch
 };
 
 
-struct AVMovie
+
+struct StreamAV
+{
+    int index;
+    AVCodecContext *codecContext;
+    // AVCodec *codec;
+};
+
+struct MovieAV
 {
     AVFormatContext *vfc;
     AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
@@ -309,12 +310,12 @@ struct AVMovie
     StreamAV audio;
 };
 
-struct Movie
+struct RunningMovie
 {
-    AVMovie av_movie;
+    MovieAV av_movie;
 
+    // better place for these?
     struct SwsContext *sws_context;
-
     AVFrame *frame_output;
 
     double duration;
@@ -332,7 +333,7 @@ static SoundBuffer global_ffmpeg_to_sdl_buffer;
 
 static SDLStuff global_sdl_stuff;
 
-static Movie global_loaded_video;
+static RunningMovie global_loaded_video;
 
 static Timer app_timer;
 
@@ -731,10 +732,10 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     return result;
 }
 
-AVMovie OpenMovieAV(char *videopath, char *audiopath)
+MovieAV OpenMovieAV(char *videopath, char *audiopath)
 {
 
-    AVMovie file;
+    MovieAV file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
     file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -1382,7 +1383,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 }
 
 // todo: peruse this for memory leaks. also: better name?
-bool LoadMovie(char *path, Movie *newMovie)
+bool LoadMovie(char *path, RunningMovie *newMovie)
 {
 
     char loadingMsg[1234];
@@ -1414,7 +1415,7 @@ bool LoadMovie(char *path, Movie *newMovie)
     }
 
 
-    AVMovie *loaded_video = &newMovie->av_movie;
+    MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
     winWID = loaded_video->video.codecContext->width;
@@ -1523,7 +1524,7 @@ bool LoadMovie(char *path, Movie *newMovie)
 
 // seems like we need to keep this sep if we want to
 // use HTCAPTION to drag the window around
-void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, Movie *loaded_video)
+void Update(SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie *loaded_video)
 {
 
     // TODO: option to update as fast as possible and hog cpu? hmmm
