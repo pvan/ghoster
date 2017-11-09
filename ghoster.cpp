@@ -146,8 +146,7 @@ struct GhosterWindow
 	RunningMovie loaded_video;
 
 
-	// seems like we need to keep this sep if we want to
-	// use HTCAPTION to drag the window around
+	// now running this on a sep thread from our msg loop so it's independent of mouse events / captures
 	void Update()
 	{
 
@@ -779,6 +778,10 @@ bool PasteClipboard()
 }
 
 
+
+// todo: what to do with this stuff??
+// move into ghosterwindow?
+
 POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
@@ -797,8 +800,8 @@ void onMouseUp()
             {
                 if (!wasNonClientHit)
                 {
-                    // OutputDebugString("false, pause\n");
-                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+                    // TODO: only if we aren't double clicking? see ;lkj
+                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
                 }
             }
         }
@@ -816,18 +819,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
-
         case WM_CLOSE: {
             global_ghoster.state.appRunning = false;
         } break;
 
-
         case WM_SIZE: {
-            // int w = LOWORD(lParam);
-            // int h = HIWORD(lParam);
-            // int lockedW = (int)((double)h * vid_aspect);
-            // int lockedH = (int)((double)w / vid_aspect);
-            // if
             global_ghoster.state.winWID = LOWORD(lParam);
             global_ghoster.state.winHEI = HIWORD(lParam);
             return 0;
@@ -899,15 +895,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             return HTCLIENT; // we now specifically call HTCAPTION in LBUTTONDOWN
         } break;
 
-        // case WM_PAINT: {
-        //  // Render();
-        //  SwapBuffers((HDC)wParam);
-        //     ValidateRect(hwnd, 0); // if we don't do this, we'll just keep getting wm_paint msgs
-        //     return 0;
-        // } break;
-
-
-        // case WM_MOUSELEAVE:  // need to call TrackMouseEvents for this? just check in our loop
 
         case WM_LBUTTONDOWN:{
             // OutputDebugString("DOWN\n");
@@ -919,32 +906,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 mDownPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
             {
                 double prop = (double)mDownPoint.x / (double)global_ghoster.state.winWID;
-                    // char propbuf[123];
-                    // sprintf(propbuf, "prop: %f\n", prop);
-                    // OutputDebugString(propbuf);
-                // OutputDebugString("clickingOnProgessBar true\n");
                 clickingOnProgessBar = true;
 
                 global_ghoster.state.setSeek = true;
                 global_ghoster.state.seekProportion = prop;
             }
-            // mDownTimer.Start();
-            // ReleaseCapture(); // still not sure if we should call this or not
-            // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
         } break;
         case WM_NCLBUTTONDOWN: {
             wasNonClientHit = true;
-            // OutputDebugString("DOWN\n");
-            // mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            // return 0;
         } break;
 
         case WM_MOUSEMOVE: {
             global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
             if (mDown)
             {
-                // OutputDebugString("MOUSEMOVE\n");
-
                 WINDOWPLACEMENT winpos;
                 winpos.length = sizeof(WINDOWPLACEMENT);
                 if (GetWindowPlacement(hwnd, &winpos))
@@ -1020,10 +995,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-        case WM_LBUTTONUP: //{
-        //     mDown = false;
-        //     onMouseUp();
-        // } break;
+        case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
             mDown = false;
             onMouseUp();
@@ -1107,9 +1079,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-
-
-
 int CALLBACK WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -1118,13 +1087,8 @@ int CALLBACK WinMain(
 )
 {
 
-
-
     // FFMPEG
-
     InitAV();  // basically just registers all codecs.. call when needed instead?
-
-
 
 
     // WINDOW
@@ -1176,26 +1140,15 @@ int CALLBACK WinMain(
         SetLayeredWindowAttributes(global_ghoster.state.window, 0, 122, LWA_ALPHA);
 
 
-
-
-
-
     // ENABLE DRAG DROP
-
     DragAcceptFiles(global_ghoster.state.window, true);
 
 
-
-
-
-
     // MAIN APP LOOP
-
     CreateThread(0, 0, RunMainLoop, 0, 0, 0);
 
 
     // MSG LOOP
-
     while (global_ghoster.state.appRunning)
     {
         MSG Message;
@@ -1209,7 +1162,6 @@ int CALLBACK WinMain(
             DispatchMessage(&Message);
         }
     }
-
 
     return 0;
 }
