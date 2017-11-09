@@ -787,6 +787,20 @@ bool PasteClipboard()
 // move into ghosterwindow?
 // track our own double clicks?
 
+/*
+struct mouseClickState
+{
+	POINT mDownPoint;
+	bool mDown;
+	bool itWasADrag;
+	bool clickingOnProgessBar;
+	bool wasNonClientHit;
+
+	bool ctrlDown;
+};
+*/
+
+
 POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
@@ -795,29 +809,189 @@ bool wasNonClientHit;
 
 bool ctrlDown;
 
-void onMouseUp()
+//Timer mDownTimerL;
+Timer timerSinceLastClickL;
+bool lastClickWasDoubleClick = false;
+
+double MAX_DOUBLE_CLICK_MS = 300;
+
+bool mouseHasMovedSinceDownL = false;
+
+void onDoubleClickL()
 {
-    if (!itWasADrag)
+    OutputDebugString("LDOUBLECLICK\n");
+
+    // // todo: only pause if we _aren't_ double clicking.. will be slower but i think better
+    // // TODO: only to undo the pause that happens otherwise see ;lkj
+    // // if we are paused, double clicking will play a split second of video when max/min-ing video
+    // // vid_paused = !vid_paused;
+
+    // WINDOWPLACEMENT winpos;
+    // winpos.length = sizeof(WINDOWPLACEMENT);
+    // if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    // {
+    //     if (winpos.showCmd == SW_MAXIMIZE)
+    //     {
+    //         ShowWindow(global_ghoster.state.window, SW_RESTORE);
+
+    //         // make this an option... (we might want to keep it in the corner eg)
+    //         // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+    //         // int mouseY = HIWORD(lParam);
+    //         // int winX = mouseX - winWID/2;
+    //         // int winY = mouseY - winHEI/2;
+    //         // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+    //     }
+    //     else
+    //     {
+    //         ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
+    //     }
+    // }
+
+}
+
+void togglePause()
+{
+    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
+}
+
+
+void onClickL()
+{
+    OutputDebugString("LCLICK\n");
+
+    // if (!itWasADrag)
+    // {
+    //     if (!global_ghoster.state.globalContextMenuOpen)
+    //     {
+    //         if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
+    //         {
+    //             if (!wasNonClientHit)
+    //             {
+    //                 // TODO: only if we aren't double clicking? see ;lkj
+    //                 global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
+    //             }
+    //         }
+    //     }
+    //     else
+    //     {
+    //         // OutputDebugString("true, skip\n");
+    //         global_ghoster.state.globalContextMenuOpen = false; // force skip rest of timer
+    //     }
+    // }
+    // // OutputDebugString("clickingOnProgessBar false\n");
+    // clickingOnProgessBar = false;
+}
+
+void drag(HWND hwnd, int x, int y)
+{
+    OutputDebugString("DRAG\n");
+
+    // WINDOWPLACEMENT winpos;
+    // winpos.length = sizeof(WINDOWPLACEMENT);
+    // if (GetWindowPlacement(hwnd, &winpos))
+    // {
+    //     if (winpos.showCmd == SW_MAXIMIZE)
+    //     {
+    //         ShowWindow(hwnd, SW_RESTORE);
+
+    //         int mouseX = x;
+    //         int mouseY = y;
+    //         int winX = mouseX - global_ghoster.state.winWID/2;
+    //         int winY = mouseY - global_ghoster.state.winHEI/2;
+    //         MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
+    //     }
+    // }
+
+    // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+}
+
+void onMouseMove(HWND hwnd, int x, int y)
+{
+    // msOfLastMouseMove is for progress bar timeout.. rename?
+    global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
+
+    if (mDown)
     {
-        if (!global_ghoster.state.globalContextMenuOpen)
+        // need to determine if click or drag here, not in buttonup
+        // because mousemove will trigger (i think) at the first pixel of movement
+        POINT mPos = { x, y };
+        double dx = (double)mPos.x - (double)mDownPoint.x;
+        double dy = (double)mPos.y - (double)mDownPoint.y;
+        double distance = sqrt(dx*dx + dy*dy);
+        double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
+        if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
         {
-            if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
-            {
-                if (!wasNonClientHit)
-                {
-                    // TODO: only if we aren't double clicking? see ;lkj
-                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
-                }
-            }
+            // itWasADrag = false;
         }
         else
         {
-            // OutputDebugString("true, skip\n");
-            global_ghoster.state.globalContextMenuOpen = false; // force skip rest of timer
+            mouseHasMovedSinceDownL = true;
+            drag(hwnd, x, y);
         }
     }
-    // OutputDebugString("clickingOnProgessBar false\n");
-    clickingOnProgessBar = false;
+}
+
+UINT timerID;
+VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+    KillTimer(0, timerID);
+    if (!lastClickWasDoubleClick)
+    {
+        onClickL();
+    }
+}
+
+void onMouseUp()
+{
+
+    mDown = false;
+
+    if (mouseHasMovedSinceDownL)
+    {
+        // it was a drag
+        lastClickWasDoubleClick = false;
+    }
+    else
+    {
+        if (timerSinceLastClickL.started &&
+            timerSinceLastClickL.MsSinceStart() <= MAX_DOUBLE_CLICK_MS &&
+            !lastClickWasDoubleClick)
+        {
+            onDoubleClickL();
+            lastClickWasDoubleClick = true;
+        }
+        else
+        {
+            timerID = SetTimer(NULL, 0, MAX_DOUBLE_CLICK_MS, &TimerProc);
+            // onClickL();
+            timerSinceLastClickL.Start();
+            lastClickWasDoubleClick = false;
+        }
+    }
+
+
+}
+
+
+void onMouseDownL(int x, int y, bool clientAreaHit)
+{
+    wasNonClientHit = !clientAreaHit;
+	if (!clientAreaHit)
+		return;
+
+    mDown = true;
+    itWasADrag = false;
+    mouseHasMovedSinceDownL = false;
+    mDownPoint = { x, y };
+    if (mDownPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+        mDownPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
+    {
+        double prop = (double)mDownPoint.x / (double)global_ghoster.state.winWID;
+        clickingOnProgessBar = true;
+
+        global_ghoster.state.setSeek = true;
+        global_ghoster.state.seekProportion = prop;
+    }
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -901,108 +1075,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
-        case WM_LBUTTONDOWN:{
-            // OutputDebugString("DOWN\n");
-            wasNonClientHit = false;
-            mDown = true;
-            itWasADrag = false;
-            mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            if (mDownPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-                mDownPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
-            {
-                double prop = (double)mDownPoint.x / (double)global_ghoster.state.winWID;
-                clickingOnProgessBar = true;
-
-                global_ghoster.state.setSeek = true;
-                global_ghoster.state.seekProportion = prop;
-            }
+        case WM_LBUTTONDOWN: {
+        	onMouseDownL(LOWORD(lParam), HIWORD(lParam), true);
         } break;
         case WM_NCLBUTTONDOWN: {
-            wasNonClientHit = true;
+        	onMouseDownL(LOWORD(lParam), HIWORD(lParam), false);
         } break;
 
         case WM_MOUSEMOVE: {
-            global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
-            if (mDown)
-            {
-                WINDOWPLACEMENT winpos;
-                winpos.length = sizeof(WINDOWPLACEMENT);
-                if (GetWindowPlacement(hwnd, &winpos))
-                {
-                    if (winpos.showCmd == SW_MAXIMIZE)
-                    {
-                        ShowWindow(hwnd, SW_RESTORE);
-
-                        int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-                        int mouseY = HIWORD(lParam);
-                        int winX = mouseX - global_ghoster.state.winWID/2;
-                        int winY = mouseY - global_ghoster.state.winHEI/2;
-                        MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
-                    }
-                }
-
-                // need to determine if click or drag here, not in buttonup
-                // because mousemove will trigger (i think) at the first pixel of movement
-                POINT mPos = { LOWORD(lParam), HIWORD(lParam) };
-                double dx = (double)mPos.x - (double)mDownPoint.x;
-                double dy = (double)mPos.y - (double)mDownPoint.y;
-                double distance = sqrt(dx*dx + dy*dy);
-                // not crazy about this...
-                // consider:
-                // -different m buttons for drag/pause
-                // -add time element (fast is always click? hmm maybe)
-                // -only 0 pixel movement allowed on pausing?
-                    // char msg[123];
-                    // sprintf(msg, "dist: %f\n", distance);
-                    // OutputDebugString(msg);
-                double MOVEMENT_ALLOWED_IN_CLICK = 2.5; // todo: another check to help with feel? speed?
-                if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
-                {
-                    // itWasADrag = false;
-                }
-                else
-                {
-                    itWasADrag = true;
-                    // ReleaseCapture(); // still not sure if we should call this or not
-                    SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
-                }
-            }
+            onMouseMove(hwnd, LOWORD(lParam), HIWORD(lParam));  // todo: GET_X_PARAM
         } break;
-
-        case WM_LBUTTONDBLCLK: {       // required CS_DBLCLKS window style
-
-            // TODO: only to undo the pause that happens otherwise see ;lkj
-            // if we are paused, double clicking will play a split second of video when max/min-ing video
-            // vid_paused = !vid_paused;
-
-            WINDOWPLACEMENT winpos;
-            winpos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(global_ghoster.state.window, &winpos))
-            {
-                if (winpos.showCmd == SW_MAXIMIZE)
-                {
-                    ShowWindow(global_ghoster.state.window, SW_RESTORE);
-
-                    // make this an option... (we might want to keep it in the corner eg)
-                    // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-                    // int mouseY = HIWORD(lParam);
-                    // int winX = mouseX - winWID/2;
-                    // int winY = mouseY - winHEI/2;
-                    // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
-                }
-                else
-                {
-                    ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
-                }
-            }
-
-        } break;
-
-
 
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
-            mDown = false;
             onMouseUp();
         } break;
 
@@ -1100,7 +1185,7 @@ int CALLBACK WinMain(
 
     // register wndproc
     WNDCLASS wc = {};
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;// | CS_DBLCLKS;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
