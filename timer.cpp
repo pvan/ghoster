@@ -1,5 +1,14 @@
 
 
+static bool global_set_timer_resolution = false;
+static void GlobalSet1MsResolution()
+{
+    if (timeBeginPeriod(1) != TIMERR_NOERROR) {
+        char err[256];
+        sprintf(err, "Unable to set resolution of Sleep to 1ms");
+        OutputDebugString(err);
+    }
+}
 
 struct Timer
 {
@@ -9,6 +18,7 @@ struct Timer
     bool started = false;
     void Start()
     {
+        if (!global_set_timer_resolution) GlobalSet1MsResolution();
         started = true;
         LARGE_INTEGER now;    // .QuadPart to get number as int64
         LARGE_INTEGER freq;

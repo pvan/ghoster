@@ -55,6 +55,23 @@ const double PROGRESS_BAR_TIMEOUT = 1000;
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
+// this is case sensitive
+bool StringBeginsWith(const char *str, const char *front)
+{
+    while (*front)
+    {
+        if (!*str)
+            return false;
+
+        if (*front != *str)
+            return false;
+
+        front++;
+        str++;
+    }
+    return true;
+}
+
 
 
 
@@ -340,118 +357,13 @@ struct GhosterWindow
 	void MouseUpL() {}
 	void MouseUpR() {}
 
+
+
+
 };
 
 
 static GhosterWindow global_ghoster;
-
-
-DWORD WINAPI RunMainLoop( LPVOID lpParam )
-{
-
-    // OPENGL
-
-    InitOpenGL(global_ghoster.state.window);
-
-
-    // seed our first frame dt
-    global_ghoster.state.app_timer.EndFrame();
-
-    while (global_ghoster.state.appRunning)
-    {
-    	global_ghoster.Update();
-    }
-
-    return 0;
-}
-
-
-// // kind of rearranged this stuff but still all global..
-// // problem is we need to call update() from wndproc
-// // and update() needs to know about this stuff
-
-// static AppState global_ghoster.state;
-
-// static SoundBuffer global_ghoster.ffmpeg_to_sdl_buffer;
-
-// static SDLStuff global_ghoster.sdl_stuff;
-
-// static RunningMovie global_ghoster.loaded_video;
-
-
-
-
-
-
-void SetWindowToAspectRatio(double vid_aspect)
-{
-    RECT winRect;
-    GetWindowRect(global_ghoster.state.window, &winRect);
-    int w = winRect.right - winRect.left;
-    int h = winRect.bottom - winRect.top;
-    // which to adjust tho?
-    int nw = (int)((double)h * vid_aspect);
-    int nh = (int)((double)w / vid_aspect);
-    // i guess always make smaller for now
-    if (nw < w)
-        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, nw, h, true);
-    else
-        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, w, nh, true);
-}
-
-
-
-// this is case sensitive
-bool StringBeginsWith(const char *str, const char *front)
-{
-    while (*front)
-    {
-        if (!*str)
-            return false;
-
-        if (*front != *str)
-            return false;
-
-        front++;
-        str++;
-    }
-    return true;
-}
-
-
-void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
-{
-    u8 r = 0;
-    u8 g = 0;
-    u8 b = 0;
-    for (int x = 0; x < wid; x++)
-    {
-        float audioSample = audio[x*5];
-        float audioScaled = audioSample * hei/2;
-        audioScaled += hei/2;
-        for (int y = 0; y < hei; y++)
-        {
-            if (y < hei/2) {
-                if (y < audioScaled) r = 0;
-                else r = 255;
-            } else {
-                if (y > audioScaled) r = 0;
-                else r = 255;
-            }
-            buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-        }
-    }
-    // for (int i = 0; i < 20; i++)
-    // {
-       //  char temp[256];
-       //  sprintf(temp, "value: %f\n", (float)audio[i]);
-       //  OutputDebugString(temp);
-    // }
-}
-
-
-
-
 
 
 
@@ -573,6 +485,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 
     return true;
 }
+
 
 // todo: peruse this for memory leaks. also: better name?
 bool LoadMovie(char *path, RunningMovie *newMovie)
@@ -714,6 +627,106 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
     return true;
 
 }
+
+
+
+
+DWORD WINAPI RunMainLoop( LPVOID lpParam )
+{
+
+    // OPENGL (note context is thread specific)
+    InitOpenGL(global_ghoster.state.window);
+
+
+    // LOAD FILE
+    LoadMovie(TEST_FILES[0], &global_ghoster.loaded_video);
+
+
+
+    global_ghoster.state.app_timer.Start();
+    global_ghoster.state.app_timer.EndFrame();  // seed our first frame dt
+
+    while (global_ghoster.state.appRunning)
+    {
+    	global_ghoster.Update();
+    }
+
+    return 0;
+}
+
+
+// // kind of rearranged this stuff but still all global..
+// // problem is we need to call update() from wndproc
+// // and update() needs to know about this stuff
+
+// static AppState global_ghoster.state;
+
+// static SoundBuffer global_ghoster.ffmpeg_to_sdl_buffer;
+
+// static SDLStuff global_ghoster.sdl_stuff;
+
+// static RunningMovie global_ghoster.loaded_video;
+
+
+
+
+
+
+void SetWindowToAspectRatio(double vid_aspect)
+{
+    RECT winRect;
+    GetWindowRect(global_ghoster.state.window, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
+    // which to adjust tho?
+    int nw = (int)((double)h * vid_aspect);
+    int nh = (int)((double)w / vid_aspect);
+    // i guess always make smaller for now
+    if (nw < w)
+        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, nw, h, true);
+    else
+        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, w, nh, true);
+}
+
+
+
+
+void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
+{
+    u8 r = 0;
+    u8 g = 0;
+    u8 b = 0;
+    for (int x = 0; x < wid; x++)
+    {
+        float audioSample = audio[x*5];
+        float audioScaled = audioSample * hei/2;
+        audioScaled += hei/2;
+        for (int y = 0; y < hei; y++)
+        {
+            if (y < hei/2) {
+                if (y < audioScaled) r = 0;
+                else r = 255;
+            } else {
+                if (y > audioScaled) r = 0;
+                else r = 255;
+            }
+            buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
+        }
+    }
+    // for (int i = 0; i < 20; i++)
+    // {
+       //  char temp[256];
+       //  sprintf(temp, "value: %f\n", (float)audio[i]);
+       //  OutputDebugString(temp);
+    // }
+}
+
+
+
+
+
+
+
 
 
 
@@ -1135,19 +1148,6 @@ int CALLBACK WinMain(
 {
 
 
-    // TIMER
-
-    if (timeBeginPeriod(1) != TIMERR_NOERROR) {
-        char err[256];
-        sprintf(err, "Unable to set resolution of Sleep to 1ms");
-        OutputDebugString(err);
-    }
-
-    // Timer timer;
-    global_ghoster.state.app_timer.Start();
-
-
-
 
     // FFMPEG
 
@@ -1215,9 +1215,6 @@ int CALLBACK WinMain(
 
 
 
-    // LOAD FILE
-
-    LoadMovie(TEST_FILES[0], &global_ghoster.loaded_video);
 
 
 
