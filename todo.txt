@@ -1,4 +1,22 @@
 
+
+bugs:
+
+[ ] pause then load new video
+
+
+(right now, could drift out sync over long durations since audio is not tied to clock in any way)
+[ ] dont use audio timer to track position but get actual audio bytes sent 
+[ ] alternative: correctly slow down and speed up audio to match the timer
+
+
+[ ] feels like sync issues when seeking youtube videos
+
+
+
+
+features:
+
 [ ] add black bars when aspect ratio is locked and full screen
 
 
@@ -15,9 +33,6 @@
 [ ] keep new loaded video same window size (maybe resize to new aspect ratio)
 
 
-(right now, could drift out sync over long durations since audio is not tied to clock in any way)
-[ ] dont use audio timer to track position but get actual audio bytes sent 
-[ ] alternative: correctly slow down and speed up audio to match the timer
 
 
 [ ] snap to screen edges
@@ -34,7 +49,6 @@
 
 [ ] looks like we need to dl a low quality version first or we'll lag on large files??
 
-[ ] feels like sync issues when seeking youtube videos
 
 [ ] look into how ffmpeg dls videos -- cache anywhere?
 

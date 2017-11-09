@@ -42,6 +42,16 @@ char *TEST_FILES[] = {
 
 
 
+// progress bar position
+const int PROGRESS_BAR_H = 22;
+const int PROGRESS_BAR_B = 0;
+
+// hide progress bar after this many ms
+const double PROGRESS_BAR_TIMEOUT = 1000;
+
+
+
+
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
@@ -105,31 +115,270 @@ struct AppState {
 };
 
 
-// kind of rearranged this stuff but still all global..
-// problem is we need to call update() from wndproc
-// and update() needs to know about this stuff
-
-static AppState global_app_state;
-
-static SoundBuffer global_ffmpeg_to_sdl_buffer;
-
-static SDLStuff global_sdl_stuff;
-
-static RunningMovie global_loaded_video;
-
-
-
-// progress bar position
-const int PROGRESS_BAR_H = 22;
-const int PROGRESS_BAR_B = 0;
-
-// hide progress bar after this many ms
-const double PROGRESS_BAR_TIMEOUT = 1000;
-
-
 
 #include "opengl.cpp"
 
+
+
+struct GhosterWindow
+{
+
+	AppState state;
+	SoundBuffer ffmpeg_to_sdl_buffer;
+	SDLStuff sdl_stuff;
+	RunningMovie loaded_video;
+
+
+	// seems like we need to keep this sep if we want to
+	// use HTCAPTION to drag the window around
+	void Update()
+	{
+
+	    // TODO: option to update as fast as possible and hog cpu? hmmm
+
+
+	    // if (dt < targetMsPerFrame)
+	    //     return;
+
+
+	    if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
+	    {
+	        state.globalContextMenuOpen = false;
+	    }
+
+
+	    if (state.app_timer.MsSinceStart() - state.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
+	    {
+	        state.drawProgressBar = false;
+	    }
+	    else
+	    {
+	        state.drawProgressBar = true;
+	    }
+
+	    POINT mPos;
+	    GetCursorPos(&mPos);
+	    RECT winRect;
+	    GetWindowRect(state.window, &winRect);
+	    if (!PtInRect(&winRect, mPos))
+	    {
+	        // OutputDebugString("mouse outside window\n");
+	        state.drawProgressBar = false;
+	    }
+
+
+	    // best place for this?
+	    loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+	    double percent = loaded_video.elapsed/loaded_video.duration;
+
+
+	    if (loaded_video.vid_paused)
+	    {
+	        if (!loaded_video.vid_was_paused)
+	        {
+	            loaded_video.audio_stopwatch.Pause();
+	            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
+	        }
+	    }
+	    else
+	    {
+	        if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
+	        {
+	            loaded_video.audio_stopwatch.Start();
+	            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
+	        }
+
+	        if (state.setSeek)
+	        {//asdf
+
+	            //SetupSDLSound();
+	            SDL_ClearQueuedAudio(sdl_stuff.audio_device);
+
+	            state.setSeek = false;
+	            int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
+	            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, 0);
+	            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, 0);
+
+	            double realTime = (double)seekPos / (double)AV_TIME_BASE;
+	            int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
+	            loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
+
+	        }
+
+	        loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+	        percent = loaded_video.elapsed/loaded_video.duration;
+	            // char durbuf[123];
+	            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+	            // OutputDebugString(durbuf);
+
+
+	        // SOUND
+
+	        int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
+	            // char msg[256];
+	            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+	            // OutputDebugString(msg);
+
+
+	        int wanted_bytes = sdl_stuff.desired_bytes_in_sdl_queue - bytes_left_in_queue;
+	            // char msg3[256];
+	            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+	            // OutputDebugString(msg3);
+
+	        if (wanted_bytes >= 0)
+	        {
+	            if (wanted_bytes > ffmpeg_to_sdl_buffer.size_in_bytes)
+	            {
+	                // char errq[256];
+	                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer.size_in_bytes);
+	                // OutputDebugString(errq);
+
+	                wanted_bytes = ffmpeg_to_sdl_buffer.size_in_bytes;
+	            }
+
+	            // ideally a little bite of sound, every frame
+	            // todo: how to sync this right, pts dts?
+	            int bytes_queued_up = GetNextAudioFrame(
+	                loaded_video.av_movie.afc,
+	                loaded_video.av_movie.audio.codecContext,
+	                loaded_video.av_movie.audio.index,
+	                ffmpeg_to_sdl_buffer,
+	                wanted_bytes,
+	                loaded_video.audio_stopwatch.MsElapsed());
+
+
+	            if (bytes_queued_up > 0)
+	            {
+	                if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
+	                {
+	                    char audioerr[256];
+	                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+	                    OutputDebugString(audioerr);
+	                }
+	                   // char msg2[256];
+	                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+	                   // OutputDebugString(msg2);
+	            }
+	        }
+
+
+
+
+
+	        // VIDEO
+
+	        double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
+
+	        // use twice the sdl buffer length for now
+	        double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
+	        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
+
+	        GetNextVideoFrame(
+	            loaded_video.av_movie.vfc,
+	            loaded_video.av_movie.video.codecContext,
+	            loaded_video.sws_context,
+	            loaded_video.av_movie.video.index,
+	            loaded_video.frame_output,
+	            msSinceAudioStart,
+	            msAudioLatencyEstimate);
+
+	    }
+	    loaded_video.vid_was_paused = loaded_video.vid_paused;
+
+
+	    RenderToScreenGL((void*)loaded_video.vid_buffer,
+	                    loaded_video.vidWID,
+	                    loaded_video.vidHEI,
+	                    state.winWID,
+	                    state.winHEI,
+	                    state.window,
+	                    percent, state.drawProgressBar);
+
+	    // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
+	    //            (float*)sound_buffer, bytes_in_buffer);
+	    // static int increm = 0;
+	    // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
+	    // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
+	    // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
+
+
+
+
+	    // HIT FPS
+
+	    // something seems off with this... ?
+	    double dt = state.app_timer.MsSinceLastFrame();
+
+	    if (dt < loaded_video.targetMsPerFrame)
+	    {
+	        double msToSleep = loaded_video.targetMsPerFrame - dt;
+	        Sleep(msToSleep);
+	        while (dt < loaded_video.targetMsPerFrame)  // is this weird?
+	        {
+	            dt = state.app_timer.MsSinceLastFrame();
+	        }
+	        // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
+	        // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
+	    }
+	    else
+	    {
+	        // todo: seems to happen a lot with just clicking a bunch?
+	        // missed fps target
+	        char msg[256];
+	        sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
+	                loaded_video.targetMsPerFrame, dt);
+	        OutputDebugString(msg);
+	    }
+	    state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+
+	}
+
+
+
+
+	void MouseDownL() {}
+	void MouseDownR() {}
+	void MouseUpL() {}
+	void MouseUpR() {}
+
+};
+
+static GhosterWindow global_ghoster;
+
+
+
+// // kind of rearranged this stuff but still all global..
+// // problem is we need to call update() from wndproc
+// // and update() needs to know about this stuff
+
+// static AppState global_ghoster.state;
+
+// static SoundBuffer global_ghoster.ffmpeg_to_sdl_buffer;
+
+// static SDLStuff global_ghoster.sdl_stuff;
+
+// static RunningMovie global_ghoster.loaded_video;
+
+
+
+
+
+
+void SetWindowToAspectRatio(double vid_aspect)
+{
+    RECT winRect;
+    GetWindowRect(global_ghoster.state.window, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
+    // which to adjust tho?
+    int nw = (int)((double)h * vid_aspect);
+    int nh = (int)((double)w / vid_aspect);
+    // i guess always make smaller for now
+    if (nw < w)
+        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, nw, h, true);
+    else
+        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, w, nh, true);
+}
 
 
 
@@ -344,14 +593,14 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
     // set window size on video source resolution
     newMovie->vidWID = loaded_video->video.codecContext->width;
     newMovie->vidHEI = loaded_video->video.codecContext->height;
-    global_app_state.winWID = newMovie->vidWID;
-    global_app_state.winHEI = newMovie->vidHEI;
+    global_ghoster.state.winWID = newMovie->vidWID;
+    global_ghoster.state.winHEI = newMovie->vidHEI;
     RECT winRect;
-    GetWindowRect(global_app_state.window, &winRect);
+    GetWindowRect(global_ghoster.state.window, &winRect);
     //keep top left of window in same pos for now, change to keep center in same position?
-    MoveWindow(global_app_state.window, winRect.left, winRect.top, global_app_state.winWID, global_app_state.winHEI, true);  // ever non-zero opening position? launch option?
+    MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);  // ever non-zero opening position? launch option?
 
-    newMovie->vid_aspect = (double)global_app_state.winWID / (double)global_app_state.winHEI;
+    newMovie->vid_aspect = (double)global_ghoster.state.winWID / (double)global_ghoster.state.winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -400,9 +649,9 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_sdl_stuff);
+    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_ghoster.sdl_stuff);
 
-    SetupSoundBuffer(loaded_video->audio.codecContext, &global_ffmpeg_to_sdl_buffer);
+    SetupSoundBuffer(loaded_video->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
 
 
 
@@ -448,228 +697,6 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
 }
 
 
-// seems like we need to keep this sep if we want to
-// use HTCAPTION to drag the window around
-void Update(AppState *state, SoundBuffer *ffmpeg_to_sdl_buffer, SDLStuff *sdl_stuff, RunningMovie *loaded_video)
-{
-
-    // TODO: option to update as fast as possible and hog cpu? hmmm
-
-
-    // if (dt < targetMsPerFrame)
-    //     return;
-
-
-    if (state->globalContextMenuOpen && state->menuCloseTimer.started && state->menuCloseTimer.MsSinceStart() > 150)
-    {
-        state->globalContextMenuOpen = false;
-    }
-
-
-    if (state->app_timer.MsSinceStart() - state->msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
-    {
-        state->drawProgressBar = false;
-    }
-    else
-    {
-        state->drawProgressBar = true;
-    }
-
-    POINT mPos;
-    GetCursorPos(&mPos);
-    RECT winRect;
-    GetWindowRect(state->window, &winRect);
-    if (!PtInRect(&winRect, mPos))
-    {
-        // OutputDebugString("mouse outside window\n");
-        state->drawProgressBar = false;
-    }
-
-
-    // best place for this?
-    loaded_video->elapsed = loaded_video->audio_stopwatch.MsElapsed() / 1000.0;
-    double percent = loaded_video->elapsed/loaded_video->duration;
-
-
-    if (loaded_video->vid_paused)
-    {
-        if (!loaded_video->vid_was_paused)
-        {
-            loaded_video->audio_stopwatch.Pause();
-            SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)true);
-        }
-    }
-    else
-    {
-        if (loaded_video->vid_was_paused || !loaded_video->audio_stopwatch.timer.started)
-        {
-            loaded_video->audio_stopwatch.Start();
-            SDL_PauseAudioDevice(sdl_stuff->audio_device, (int)false);
-        }
-
-        if (state->setSeek)
-        {//asdf
-
-            //SetupSDLSound();
-            SDL_ClearQueuedAudio(sdl_stuff->audio_device);
-
-            state->setSeek = false;
-            int seekPos = state->seekProportion * loaded_video->av_movie.vfc->duration;
-            av_seek_frame(loaded_video->av_movie.vfc, -1, seekPos, 0);
-            av_seek_frame(loaded_video->av_movie.afc, -1, seekPos, 0);
-
-            double realTime = (double)seekPos / (double)AV_TIME_BASE;
-            int timeTicks = realTime * loaded_video->audio_stopwatch.timer.ticks_per_second;
-            loaded_video->audio_stopwatch.timer.starting_ticks = loaded_video->audio_stopwatch.timer.TicksNow() - timeTicks;
-
-        }
-
-        loaded_video->elapsed = loaded_video->audio_stopwatch.MsElapsed() / 1000.0;
-        percent = loaded_video->elapsed/loaded_video->duration;
-            // char durbuf[123];
-            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-            // OutputDebugString(durbuf);
-
-
-        // SOUND
-
-        int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff->audio_device);
-            // char msg[256];
-            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-            // OutputDebugString(msg);
-
-
-        int wanted_bytes = sdl_stuff->desired_bytes_in_sdl_queue - bytes_left_in_queue;
-            // char msg3[256];
-            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-            // OutputDebugString(msg3);
-
-        if (wanted_bytes >= 0)
-        {
-            if (wanted_bytes > ffmpeg_to_sdl_buffer->size_in_bytes)
-            {
-                // char errq[256];
-                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer->size_in_bytes);
-                // OutputDebugString(errq);
-
-                wanted_bytes = ffmpeg_to_sdl_buffer->size_in_bytes;
-            }
-
-            // ideally a little bite of sound, every frame
-            // todo: how to sync this right, pts dts?
-            int bytes_queued_up = GetNextAudioFrame(
-                loaded_video->av_movie.afc,
-                loaded_video->av_movie.audio.codecContext,
-                loaded_video->av_movie.audio.index,
-                *ffmpeg_to_sdl_buffer,
-                wanted_bytes,
-                loaded_video->audio_stopwatch.MsElapsed());
-
-
-            if (bytes_queued_up > 0)
-            {
-                if (SDL_QueueAudio(sdl_stuff->audio_device, ffmpeg_to_sdl_buffer->data, bytes_queued_up) < 0)
-                {
-                    char audioerr[256];
-                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-                    OutputDebugString(audioerr);
-                }
-                   // char msg2[256];
-                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-                   // OutputDebugString(msg2);
-            }
-        }
-
-
-
-
-
-        // VIDEO
-
-        double msSinceAudioStart = loaded_video->audio_stopwatch.MsElapsed();
-
-        // use twice the sdl buffer length for now
-        double msAudioLatencyEstimate = sdl_stuff->spec.samples / sdl_stuff->spec.freq * 1000.0;
-        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
-
-        GetNextVideoFrame(
-            loaded_video->av_movie.vfc,
-            loaded_video->av_movie.video.codecContext,
-            loaded_video->sws_context,
-            loaded_video->av_movie.video.index,
-            loaded_video->frame_output,
-            msSinceAudioStart,
-            msAudioLatencyEstimate);
-
-    }
-    loaded_video->vid_was_paused = loaded_video->vid_paused;
-
-
-    RenderToScreenGL((void*)loaded_video->vid_buffer,
-                    loaded_video->vidWID,
-                    loaded_video->vidHEI,
-                    state->winWID,
-                    state->winHEI,
-                    state->window,
-                    percent, state->drawProgressBar);
-
-    // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
-    //            (float*)sound_buffer, bytes_in_buffer);
-    // static int increm = 0;
-    // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
-    // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
-    // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
-
-
-
-
-    // HIT FPS
-
-    // something seems off with this... ?
-    double dt = state->app_timer.MsSinceLastFrame();
-
-    if (dt < loaded_video->targetMsPerFrame)
-    {
-        double msToSleep = loaded_video->targetMsPerFrame - dt;
-        Sleep(msToSleep);
-        while (dt < loaded_video->targetMsPerFrame)  // is this weird?
-        {
-            dt = state->app_timer.MsSinceLastFrame();
-        }
-        // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
-        // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
-    }
-    else
-    {
-        // todo: seems to happen a lot with just clicking a bunch?
-        // missed fps target
-        char msg[256];
-        sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-                loaded_video->targetMsPerFrame, dt);
-        OutputDebugString(msg);
-    }
-    state->app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
-
-}
-
-
-
-void SetWindowToAspectRatio(double vid_aspect)
-{
-    RECT winRect;
-    GetWindowRect(global_app_state.window, &winRect);
-    int w = winRect.right - winRect.left;
-    int h = winRect.bottom - winRect.top;
-    // which to adjust tho?
-    int nw = (int)((double)h * vid_aspect);
-    int nh = (int)((double)w / vid_aspect);
-    // i guess always make smaller for now
-    if (nw < w)
-        MoveWindow(global_app_state.window, winRect.left, winRect.top, nw, h, true);
-    else
-        MoveWindow(global_app_state.window, winRect.left, winRect.top, w, nh, true);
-}
-
 
 
 
@@ -681,7 +708,7 @@ void SetWindowToAspectRatio(double vid_aspect)
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
-    UINT aspectChecked = global_app_state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
+    UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -691,10 +718,10 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
     SetForegroundWindow(hwnd);
 
-    global_app_state.globalContextMenuOpen = true;
-    global_app_state.menuCloseTimer.Stop();
+    global_ghoster.state.globalContextMenuOpen = true;
+    global_ghoster.state.menuCloseTimer.Stop();
     TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    global_app_state.menuCloseTimer.Start();
+    global_ghoster.state.menuCloseTimer.Start();
 }
 
 
@@ -715,7 +742,7 @@ bool PasteClipboard()
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    return LoadMovie(clipboardContents, &global_loaded_video);
+    return LoadMovie(clipboardContents, &global_ghoster.loaded_video);
 }
 
 
@@ -731,21 +758,21 @@ void onMouseUp()
 {
     if (!itWasADrag)
     {
-        if (!global_app_state.globalContextMenuOpen)
+        if (!global_ghoster.state.globalContextMenuOpen)
         {
             if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
             {
                 if (!wasNonClientHit)
                 {
                     // OutputDebugString("false, pause\n");
-                    global_loaded_video.vid_paused = !global_loaded_video.vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
+                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;  // TODO: only if we aren't double clicking? see ;lkj
                 }
             }
         }
         else
         {
             // OutputDebugString("true, skip\n");
-            global_app_state.globalContextMenuOpen = false; // force skip rest of timer
+            global_ghoster.state.globalContextMenuOpen = false; // force skip rest of timer
         }
     }
     // OutputDebugString("clickingOnProgessBar false\n");
@@ -758,7 +785,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     {
 
         case WM_CLOSE: {
-            global_app_state.appRunning = false;
+            global_ghoster.state.appRunning = false;
         } break;
 
 
@@ -768,19 +795,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // int lockedW = (int)((double)h * vid_aspect);
             // int lockedH = (int)((double)w / vid_aspect);
             // if
-            global_app_state.winWID = LOWORD(lParam);
-            global_app_state.winHEI = HIWORD(lParam);
+            global_ghoster.state.winWID = LOWORD(lParam);
+            global_ghoster.state.winHEI = HIWORD(lParam);
             return 0;
         }
 
         case WM_SIZING: {  // when dragging border
-            if (global_app_state.lock_aspect)
+            if (global_ghoster.state.lock_aspect)
             {
                 RECT rc = *(RECT*)lParam;
                 int w = rc.right - rc.left;
                 int h = rc.bottom - rc.top;
 
-                double vid_aspect = global_loaded_video.vid_aspect;
+                double vid_aspect = global_ghoster.loaded_video.vid_aspect;
 
                 switch (wParam)
                 {
@@ -855,18 +882,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             mDown = true;
             itWasADrag = false;
             mDownPoint = { LOWORD(lParam), HIWORD(lParam) };
-            if (mDownPoint.y >= global_app_state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-                mDownPoint.y <= global_app_state.winHEI-PROGRESS_BAR_B)
+            if (mDownPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+                mDownPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
             {
-                double prop = (double)mDownPoint.x / (double)global_app_state.winWID;
+                double prop = (double)mDownPoint.x / (double)global_ghoster.state.winWID;
                     // char propbuf[123];
                     // sprintf(propbuf, "prop: %f\n", prop);
                     // OutputDebugString(propbuf);
                 // OutputDebugString("clickingOnProgessBar true\n");
                 clickingOnProgessBar = true;
 
-                global_app_state.setSeek = true;
-                global_app_state.seekProportion = prop;
+                global_ghoster.state.setSeek = true;
+                global_ghoster.state.seekProportion = prop;
             }
             // mDownTimer.Start();
             // ReleaseCapture(); // still not sure if we should call this or not
@@ -880,7 +907,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
-            global_app_state.msOfLastMouseMove = global_app_state.app_timer.MsSinceStart();
+            global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
             if (mDown)
             {
                 // OutputDebugString("MOUSEMOVE\n");
@@ -895,9 +922,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                         int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
                         int mouseY = HIWORD(lParam);
-                        int winX = mouseX - global_app_state.winWID/2;
-                        int winY = mouseY - global_app_state.winHEI/2;
-                        MoveWindow(hwnd, winX, winY, global_app_state.winWID, global_app_state.winHEI, true);
+                        int winX = mouseX - global_ghoster.state.winWID/2;
+                        int winY = mouseY - global_ghoster.state.winHEI/2;
+                        MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
                     }
                 }
 
@@ -937,11 +964,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
             WINDOWPLACEMENT winpos;
             winpos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(global_app_state.window, &winpos))
+            if (GetWindowPlacement(global_ghoster.state.window, &winpos))
             {
                 if (winpos.showCmd == SW_MAXIMIZE)
                 {
-                    ShowWindow(global_app_state.window, SW_RESTORE);
+                    ShowWindow(global_ghoster.state.window, SW_RESTORE);
 
                     // make this an option... (we might want to keep it in the corner eg)
                     // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
@@ -952,7 +979,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 else
                 {
-                    ShowWindow(global_app_state.window, SW_MAXIMIZE);
+                    ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
                 }
             }
 
@@ -976,7 +1003,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // is this really the cannonical solution to this??
         case WM_TIMER: {
             // OutputDebugString("tick\n");
-            Update(&global_app_state, &global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
+            global_ghoster.Update();
         } break;
 
 
@@ -1031,7 +1058,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
-                LoadMovie(TEST_FILES[wParam - 0x30], &global_loaded_video);
+                LoadMovie(TEST_FILES[wParam - 0x30], &global_ghoster.loaded_video);
                 // debugLoadTestVideo(wParam - 0x30);
             }
         } break;
@@ -1040,14 +1067,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (wParam)
             {
                 case ID_EXIT:
-                    global_app_state.appRunning = false;
+                    global_ghoster.state.appRunning = false;
                     break;
                 case ID_PAUSE:
-                    global_loaded_video.vid_paused = !global_loaded_video.vid_paused;
+                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
                     break;
                 case ID_ASPECT:
-                    SetWindowToAspectRatio(global_loaded_video.vid_aspect);
-                    global_app_state.lock_aspect = !global_app_state.lock_aspect;
+                    SetWindowToAspectRatio(global_ghoster.loaded_video.vid_aspect);
+                    global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
                     break;
                 case ID_PASTE:
                     PasteClipboard();
@@ -1063,7 +1090,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
             {
                 // OutputDebugString(filePath);
-                LoadMovie(filePath, &global_loaded_video);
+                LoadMovie(filePath, &global_ghoster.loaded_video);
             }
             else
             {
@@ -1074,6 +1101,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
+
+
+
 
 
 
@@ -1095,7 +1125,7 @@ int CALLBACK WinMain(
     }
 
     // Timer timer;
-    global_app_state.app_timer.Start();
+    global_ghoster.state.app_timer.Start();
 
 
 
@@ -1118,11 +1148,11 @@ int CALLBACK WinMain(
     wc.lpszClassName = "best class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
-    global_app_state.winWID = 960;
-    global_app_state.winHEI = 720;
+    global_ghoster.state.winWID = 960;
+    global_ghoster.state.winHEI = 720;
     RECT neededRect = {};
-    neededRect.right = global_app_state.winWID;
-    neededRect.bottom = global_app_state.winHEI;
+    neededRect.right = global_ghoster.state.winWID;
+    neededRect.bottom = global_ghoster.state.winHEI;
     // adjust window size based on desired client size
     // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
 
@@ -1138,7 +1168,7 @@ int CALLBACK WinMain(
     if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
 
     // HWND
-    global_app_state.window = CreateWindowEx(
+    global_ghoster.state.window = CreateWindowEx(
         exStyles,
         wc.lpszClassName, "vid player",
         WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
@@ -1146,41 +1176,41 @@ int CALLBACK WinMain(
         neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
         0, 0, hInstance, 0);
 
-    if (!global_app_state.window)
+    if (!global_ghoster.state.window)
     {
         MsgBox("Couldn't open window.");
     }
 
     // set window transparent (if styles above are right)
     if (SEE_THROUGH || CLICK_THROUGH)
-        SetLayeredWindowAttributes(global_app_state.window, 0, 122, LWA_ALPHA);
+        SetLayeredWindowAttributes(global_ghoster.state.window, 0, 122, LWA_ALPHA);
 
 
 
     // OPENGL
 
-    InitOpenGL(global_app_state.window);
+    InitOpenGL(global_ghoster.state.window);
 
 
 
     // ENABLE DRAG DROP
 
-    DragAcceptFiles(global_app_state.window, true);
+    DragAcceptFiles(global_ghoster.state.window, true);
 
 
 
     // LOAD FILE
 
-    LoadMovie(TEST_FILES[0], &global_loaded_video);
+    LoadMovie(TEST_FILES[0], &global_ghoster.loaded_video);
 
 
 
     // MAIN LOOP
 
     // seed our first frame dt
-    global_app_state.app_timer.EndFrame();
+    global_ghoster.state.app_timer.EndFrame();
 
-    while (global_app_state.appRunning)
+    while (global_ghoster.state.appRunning)
     {
         MSG Message;
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
@@ -1192,10 +1222,10 @@ int CALLBACK WinMain(
             TranslateMessage(&Message);
             DispatchMessage(&Message);
 
-            KillTimer(global_app_state.window, 1);// if we ever get here, it means we have control back so we don't need this any more
+            KillTimer(global_ghoster.state.window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
 
-        Update(&global_app_state, &global_ffmpeg_to_sdl_buffer, &global_sdl_stuff, &global_loaded_video);
+        global_ghoster.Update();
 
     }
 
