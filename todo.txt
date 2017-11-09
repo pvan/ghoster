@@ -2,7 +2,10 @@
 
 bugs:
 
-[ ] pause then load new video
+[ ] seeking near begining or end triggers resize area
+
+
+[ ] pause then load new video displays memory
 
 
 (right now, could drift out sync over long durations since audio is not tied to clock in any way)
@@ -21,7 +24,10 @@ features:
 
 
 
-[ ] split movie loading into sep thread to keep io responsive
+[x] split movie loading into sep thread to keep io responsive
+[ ] split move loading into yet another thread so we can draw buffering animation
+
+[ ] buffering / waiting animation
 
 
 
@@ -51,9 +57,6 @@ features:
 
 
 [ ] volume! 
-
-
-[ ] buffering / waiting animation
 
 
 
