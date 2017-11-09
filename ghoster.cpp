@@ -325,6 +325,10 @@ struct GhosterWindow
 	    // something seems off with this... ?
 	    double dt = state.app_timer.MsSinceLastFrame();
 
+	    // todo: we actually don't want to hit a certain fps like a game,
+	    // but accurately track our continuous audio timer
+	    // (eg if we're late one frame, go early the next?)
+
 	    if (dt < loaded_video.targetMsPerFrame)
 	    {
 	        double msToSleep = loaded_video.targetMsPerFrame - dt;
@@ -781,6 +785,7 @@ bool PasteClipboard()
 
 // todo: what to do with this stuff??
 // move into ghosterwindow?
+// track our own double clicks?
 
 POINT mDownPoint;
 bool mDown;
