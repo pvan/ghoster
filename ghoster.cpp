@@ -11,12 +11,17 @@
 
 
 
+#define uint unsigned int
 
+#define u8  uint8_t
+#define u16 uint16_t
+#define u32 uint32_t
+#define u64 uint64_t
 
-void MsgBox(char* s) {
-    MessageBox(0, s, "vid player", MB_OK);
-}
-
+#define i8  int8_t
+#define i16 int16_t
+#define i32 int32_t
+#define i64 int64_t
 
 
 
@@ -37,17 +42,9 @@ char *TEST_FILES[] = {
 
 
 
-#define uint unsigned int
-
-#define u8  uint8_t
-#define u16 uint16_t
-#define u32 uint32_t
-#define u64 uint64_t
-
-#define i8  int8_t
-#define i16 int16_t
-#define i32 int32_t
-#define i64 int64_t
+void MsgBox(char* s) {
+    MessageBox(0, s, "vid player", MB_OK);
+}
 
 
 
@@ -193,7 +190,7 @@ void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
 
 bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 {
-    // to get the output from running youtube-dl,
+    // to get the output from running youtube-dl.exe,
     // we need to make a pipe to capture the stdout
 
     // setup our custom pipes...
