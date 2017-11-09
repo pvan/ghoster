@@ -328,7 +328,7 @@ bool GetNextVideoFrame(
                     !skipped_a_frame_already)
                 {
                     // OutputDebugString("skipped a frame\n");
-                    skipped_a_frame_already = true;
+                    // skipped_a_frame_already = true;
 
                     // seems like we'd want this here right?
                     av_packet_unref(&packet);
