@@ -821,31 +821,31 @@ void onDoubleClickL()
 {
     OutputDebugString("LDOUBLECLICK\n");
 
-    // // todo: only pause if we _aren't_ double clicking.. will be slower but i think better
-    // // TODO: only to undo the pause that happens otherwise see ;lkj
-    // // if we are paused, double clicking will play a split second of video when max/min-ing video
-    // // vid_paused = !vid_paused;
+    // todo: only pause if we _aren't_ double clicking.. will be slower but i think better
+    // TODO: only to undo the pause that happens otherwise see ;lkj
+    // if we are paused, double clicking will play a split second of video when max/min-ing video
+    // vid_paused = !vid_paused;
 
-    // WINDOWPLACEMENT winpos;
-    // winpos.length = sizeof(WINDOWPLACEMENT);
-    // if (GetWindowPlacement(global_ghoster.state.window, &winpos))
-    // {
-    //     if (winpos.showCmd == SW_MAXIMIZE)
-    //     {
-    //         ShowWindow(global_ghoster.state.window, SW_RESTORE);
+    WINDOWPLACEMENT winpos;
+    winpos.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    {
+        if (winpos.showCmd == SW_MAXIMIZE)
+        {
+            ShowWindow(global_ghoster.state.window, SW_RESTORE);
 
-    //         // make this an option... (we might want to keep it in the corner eg)
-    //         // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-    //         // int mouseY = HIWORD(lParam);
-    //         // int winX = mouseX - winWID/2;
-    //         // int winY = mouseY - winHEI/2;
-    //         // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
-    //     }
-    //     else
-    //     {
-    //         ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
-    //     }
-    // }
+            // make this an option... (we might want to keep it in the corner eg)
+            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+            // int mouseY = HIWORD(lParam);
+            // int winX = mouseX - winWID/2;
+            // int winY = mouseY - winHEI/2;
+            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+        }
+        else
+        {
+            ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
+        }
+    }
 
 }
 
@@ -859,6 +859,7 @@ void onClickL()
 {
     OutputDebugString("LCLICK\n");
 
+    togglePause();
     // if (!itWasADrag)
     // {
     //     if (!global_ghoster.state.globalContextMenuOpen)
@@ -886,23 +887,23 @@ void drag(HWND hwnd, int x, int y)
 {
     OutputDebugString("DRAG\n");
 
-    // WINDOWPLACEMENT winpos;
-    // winpos.length = sizeof(WINDOWPLACEMENT);
-    // if (GetWindowPlacement(hwnd, &winpos))
-    // {
-    //     if (winpos.showCmd == SW_MAXIMIZE)
-    //     {
-    //         ShowWindow(hwnd, SW_RESTORE);
+    WINDOWPLACEMENT winpos;
+    winpos.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(hwnd, &winpos))
+    {
+        if (winpos.showCmd == SW_MAXIMIZE)
+        {
+            ShowWindow(hwnd, SW_RESTORE);
 
-    //         int mouseX = x;
-    //         int mouseY = y;
-    //         int winX = mouseX - global_ghoster.state.winWID/2;
-    //         int winY = mouseY - global_ghoster.state.winHEI/2;
-    //         MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
-    //     }
-    // }
+            int mouseX = x;
+            int mouseY = y;
+            int winX = mouseX - global_ghoster.state.winWID/2;
+            int winY = mouseY - global_ghoster.state.winHEI/2;
+            MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
+        }
+    }
 
-    // SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+    SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
 void onMouseMove(HWND hwnd, int x, int y)
