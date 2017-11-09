@@ -859,7 +859,10 @@ void onClickL()
 {
     OutputDebugString("LCLICK\n");
 
-    togglePause();
+    if (!clickingOnProgessBar)
+    {
+        togglePause();
+    }
     // if (!itWasADrag)
     // {
     //     if (!global_ghoster.state.globalContextMenuOpen)
@@ -880,13 +883,24 @@ void onClickL()
     //     }
     // }
     // // OutputDebugString("clickingOnProgessBar false\n");
-    // clickingOnProgessBar = false;
+    clickingOnProgessBar = false;
 }
 
-void drag(HWND hwnd, int x, int y)
+void dragProgressBar(int x, int y)
 {
-    OutputDebugString("DRAG\n");
+    if (y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+        y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
+    {
+        double prop = (double)x / (double)global_ghoster.state.winWID;
+        clickingOnProgessBar = true;
 
+        global_ghoster.state.setSeek = true;
+        global_ghoster.state.seekProportion = prop;
+    }
+}
+
+void dragWindow(HWND hwnd, int x, int y)
+{
     WINDOWPLACEMENT winpos;
     winpos.length = sizeof(WINDOWPLACEMENT);
     if (GetWindowPlacement(hwnd, &winpos))
@@ -904,6 +918,20 @@ void drag(HWND hwnd, int x, int y)
     }
 
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
+}
+
+void onMouseDrag(HWND hwnd, int x, int y)
+{
+    OutputDebugString("DRAG\n");
+
+    if (clickingOnProgessBar)
+    {
+        dragProgressBar(x, y);
+    }
+    else
+    {
+        dragWindow(hwnd, x, y);
+    }
 }
 
 void onMouseMove(HWND hwnd, int x, int y)
@@ -927,7 +955,7 @@ void onMouseMove(HWND hwnd, int x, int y)
         else
         {
             mouseHasMovedSinceDownL = true;
-            drag(hwnd, x, y);
+            onMouseDrag(hwnd, x, y);
         }
     }
 }
@@ -974,6 +1002,7 @@ void onMouseUp()
 }
 
 
+
 void onMouseDownL(int x, int y, bool clientAreaHit)
 {
     wasNonClientHit = !clientAreaHit;
@@ -981,18 +1010,10 @@ void onMouseDownL(int x, int y, bool clientAreaHit)
 		return;
 
     mDown = true;
-    itWasADrag = false;
     mouseHasMovedSinceDownL = false;
-    mDownPoint = { x, y };
-    if (mDownPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-        mDownPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
-    {
-        double prop = (double)mDownPoint.x / (double)global_ghoster.state.winWID;
-        clickingOnProgessBar = true;
 
-        global_ghoster.state.setSeek = true;
-        global_ghoster.state.seekProportion = prop;
-    }
+    mDownPoint = { x, y };
+    dragProgressBar(x, y);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
