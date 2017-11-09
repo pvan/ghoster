@@ -805,21 +805,31 @@ POINT mDownPoint;
 bool mDown;
 bool itWasADrag;
 bool clickingOnProgessBar;
-bool wasNonClientHit;
+bool lastClickWasOnProgressBar; // need to know this for our single click timer event
+//bool wasNonClientHit;
 
 bool ctrlDown;
 
 //Timer mDownTimerL;
 Timer timerSinceLastClickL;
-bool lastClickWasDoubleClick = false;
+bool lastClickWasEndOfDoubleClick = false;  // better/clearer name / method of tracking this?
 
-double MAX_DOUBLE_CLICK_MS = 300;
+
+// wait less time than total double click before executing single click
+// we have to comprimise somewhere, 500ms is too long too wait for an input response
+// if we double click in less time than SINGLE_CLICK_AFTER, everything works great
+// if we double click slower than MAX_DOUBLE_CLICK_MS, it's two clicks
+// but if we double click in between them, it will register as a single and a double
+// therefore todo: if we double click slowly, consider undo the single click effect (like the old way)
+double MAX_DOUBLE_CLICK_MS = 500; // todo: use system default?
+double SINGLE_CLICK_AFTER = 200;
+
 
 bool mouseHasMovedSinceDownL = false;
 
 void onDoubleClickL()
 {
-    OutputDebugString("LDOUBLECLICK\n");
+    // OutputDebugString("LDOUBLECLICK\n");
 
     // todo: only pause if we _aren't_ double clicking.. will be slower but i think better
     // TODO: only to undo the pause that happens otherwise see ;lkj
@@ -857,7 +867,7 @@ void togglePause()
 
 void onClickL()
 {
-    OutputDebugString("LCLICK\n");
+    // OutputDebugString("LCLICK\n");
 
     if (!clickingOnProgessBar)
     {
@@ -922,7 +932,7 @@ void dragWindow(HWND hwnd, int x, int y)
 
 void onMouseDrag(HWND hwnd, int x, int y)
 {
-    OutputDebugString("DRAG\n");
+    // OutputDebugString("DRAG\n");
 
     if (clickingOnProgessBar)
     {
@@ -961,10 +971,10 @@ void onMouseMove(HWND hwnd, int x, int y)
 }
 
 UINT timerID;
-VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
     KillTimer(0, timerID);
-    if (!lastClickWasDoubleClick)
+    if (!lastClickWasEndOfDoubleClick && !lastClickWasOnProgressBar)
     {
         onClickL();
     }
@@ -972,40 +982,39 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 
 void onMouseUp()
 {
-
     mDown = false;
+    lastClickWasOnProgressBar = clickingOnProgessBar;
+    clickingOnProgessBar = false;
 
     if (mouseHasMovedSinceDownL)
     {
         // it was a drag
-        lastClickWasDoubleClick = false;
+        lastClickWasEndOfDoubleClick = false;
     }
     else
     {
         if (timerSinceLastClickL.started &&
             timerSinceLastClickL.MsSinceStart() <= MAX_DOUBLE_CLICK_MS &&
-            !lastClickWasDoubleClick)
+            !lastClickWasEndOfDoubleClick)
         {
             onDoubleClickL();
-            lastClickWasDoubleClick = true;
+            lastClickWasEndOfDoubleClick = true;
         }
         else
         {
-            timerID = SetTimer(NULL, 0, MAX_DOUBLE_CLICK_MS, &TimerProc);
+            timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER, &onSingleClickL);
             // onClickL();
             timerSinceLastClickL.Start();
-            lastClickWasDoubleClick = false;
+            lastClickWasEndOfDoubleClick = false;
         }
     }
-
-
 }
 
 
 
 void onMouseDownL(int x, int y, bool clientAreaHit)
 {
-    wasNonClientHit = !clientAreaHit;
+    // wasNonClientHit = !clientAreaHit;
 	if (!clientAreaHit)
 		return;
 
