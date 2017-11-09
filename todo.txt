@@ -20,11 +20,8 @@ features:
 [ ] add black bars when aspect ratio is locked and full screen
 
 
-[x] separate app / movie / etc data
 
 [ ] split movie loading into sep thread to keep io responsive
-
-[x] break code into files
 
 
 
@@ -74,8 +71,6 @@ drag with middle mouse button?
 auto crop black bars
 (or do manually by resize borders keeping window same)
 
-
-look at avconv as alternative to ffmpeg
 
 when playing url...
 ..d/l asyn high quality
