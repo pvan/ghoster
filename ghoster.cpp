@@ -487,8 +487,17 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
 }
 
 
+static char global_file_to_load[1024];
+static bool global_load_new_file = false;
+
+static void GlobalLoadMovie(char *path)
+{
+	strcpy_s(global_file_to_load, 1024, path);
+	global_load_new_file = true;
+}
+
 // todo: peruse this for memory leaks. also: better name?
-bool LoadMovie(char *path, RunningMovie *newMovie)
+bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
 
     char loadingMsg[1234];
@@ -609,7 +618,6 @@ bool LoadMovie(char *path, RunningMovie *newMovie)
         newMovie->vidHEI);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
-    // could we use opengl for this instead and should we?
     if (newMovie->sws_context) sws_freeContext(newMovie->sws_context);
     newMovie->sws_context = {0};
     newMovie->sws_context = sws_getContext(
@@ -639,7 +647,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 
     // LOAD FILE
-    LoadMovie(TEST_FILES[0], &global_ghoster.loaded_video);
+    GlobalLoadMovie(TEST_FILES[0]);
 
 
 
@@ -648,6 +656,12 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
     while (global_ghoster.state.appRunning)
     {
+    	if (global_load_new_file)
+    	{
+    		CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
+    		global_load_new_file = false;
+    	}
+
     	global_ghoster.Update();
     }
 
@@ -774,7 +788,8 @@ bool PasteClipboard()
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    return LoadMovie(clipboardContents, &global_ghoster.loaded_video);
+    GlobalLoadMovie(clipboardContents);
+    return true; // todo: do we need a result from loadmovie?
 }
 
 
@@ -1090,7 +1105,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
-                LoadMovie(TEST_FILES[wParam - 0x30], &global_ghoster.loaded_video);
+                GlobalLoadMovie(TEST_FILES[wParam - 0x30]);
                 // debugLoadTestVideo(wParam - 0x30);
             }
         } break;
@@ -1122,7 +1137,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
             {
                 // OutputDebugString(filePath);
-                LoadMovie(filePath, &global_ghoster.loaded_video);
+                GlobalLoadMovie(filePath);
             }
             else
             {
