@@ -333,8 +333,7 @@ struct GhosterWindow
 
 	}
 
-
-
+	void Run();
 
 	void MouseDownL() {}
 	void MouseDownR() {}
@@ -343,8 +342,28 @@ struct GhosterWindow
 
 };
 
+
 static GhosterWindow global_ghoster;
 
+
+DWORD WINAPI RunMainLoop( LPVOID lpParam )
+{
+
+    // OPENGL
+
+    InitOpenGL(global_ghoster.state.window);
+
+
+    // seed our first frame dt
+    global_ghoster.state.app_timer.EndFrame();
+
+    while (global_ghoster.state.appRunning)
+    {
+    	global_ghoster.Update();
+    }
+
+    return 0;
+}
 
 
 // // kind of rearranged this stuff but still all global..
@@ -987,33 +1006,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-        // timer to keep updating while dragging / resizing
-        // feels a bit awkward, plus our framerate dips
-        // because we're waiting our target Ms at minimum
-        // (any calculation time is added on top)
-        case WM_ENTERSIZEMOVE: {
-            // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nose-dives
-            // 10 keeps our framerate fine but lags the window behind the mouse.. why?
-            SetTimer(hwnd, 1, 10, NULL);
-        } break;
+        // // timer to keep updating while dragging / resizing
+        // // feels a bit awkward, plus our framerate dips
+        // // because we're waiting our target Ms at minimum
+        // // (any calculation time is added on top)
+        // case WM_ENTERSIZEMOVE: {
+        //     // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nose-dives
+        //     // 10 keeps our framerate fine but lags the window behind the mouse.. why?
+        //     SetTimer(hwnd, 1, 10, NULL);
+        // } break;
 
-        // basically a backdoor into our update loop
-        // for when we're stuck in a blocking DefWindowProc call
-        // (such as a drag/resize/menu open)
-        // is this really the cannonical solution to this??
-        case WM_TIMER: {
-            // OutputDebugString("tick\n");
-            global_ghoster.Update();
-        } break;
+        // // basically a backdoor into our update loop
+        // // for when we're stuck in a blocking DefWindowProc call
+        // // (such as a drag/resize/menu open)
+        // // is this really the cannonical solution to this??
+        // case WM_TIMER: {
+        //     // OutputDebugString("tick\n");
+        //     global_ghoster.Update();
+        // } break;
 
 
 
-        case WM_EXITSIZEMOVE: {
-            KillTimer(hwnd, 1); // this apparently is not the only exit point, had to add to end of msg pump
+        // case WM_EXITSIZEMOVE: {
+        //     KillTimer(hwnd, 1); // this apparently is not the only exit point, had to add to end of msg pump
 
-            mDown = false;  // LBUTTONUP not triggering when captured
-            onMouseUp();
-        } break;
+        //     mDown = false;  // LBUTTONUP not triggering when captured
+        //     onMouseUp();
+        // } break;
 
         case WM_LBUTTONUP: //{
         //     mDown = false;
@@ -1187,9 +1206,6 @@ int CALLBACK WinMain(
 
 
 
-    // OPENGL
-
-    InitOpenGL(global_ghoster.state.window);
 
 
 
@@ -1205,10 +1221,12 @@ int CALLBACK WinMain(
 
 
 
-    // MAIN LOOP
+    // MAIN APP LOOP
 
-    // seed our first frame dt
-    global_ghoster.state.app_timer.EndFrame();
+    CreateThread(0, 0, RunMainLoop, 0, 0, 0);
+
+
+    // MSG LOOP
 
     while (global_ghoster.state.appRunning)
     {
@@ -1224,9 +1242,6 @@ int CALLBACK WinMain(
 
             KillTimer(global_ghoster.state.window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
-
-        global_ghoster.Update();
-
     }
 
 
