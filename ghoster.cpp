@@ -669,20 +669,6 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 }
 
 
-// // kind of rearranged this stuff but still all global..
-// // problem is we need to call update() from wndproc
-// // and update() needs to know about this stuff
-
-// static AppState global_ghoster.state;
-
-// static SoundBuffer global_ghoster.ffmpeg_to_sdl_buffer;
-
-// static SDLStuff global_ghoster.sdl_stuff;
-
-// static RunningMovie global_ghoster.loaded_video;
-
-
-
 
 
 
@@ -1034,34 +1020,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
-        // // timer to keep updating while dragging / resizing
-        // // feels a bit awkward, plus our framerate dips
-        // // because we're waiting our target Ms at minimum
-        // // (any calculation time is added on top)
-        // case WM_ENTERSIZEMOVE: {
-        //     // targetMsPerFrame locks us in pretty good to the mouse, but our framerate nose-dives
-        //     // 10 keeps our framerate fine but lags the window behind the mouse.. why?
-        //     SetTimer(hwnd, 1, 10, NULL);
-        // } break;
-
-        // // basically a backdoor into our update loop
-        // // for when we're stuck in a blocking DefWindowProc call
-        // // (such as a drag/resize/menu open)
-        // // is this really the cannonical solution to this??
-        // case WM_TIMER: {
-        //     // OutputDebugString("tick\n");
-        //     global_ghoster.Update();
-        // } break;
-
-
-
-        // case WM_EXITSIZEMOVE: {
-        //     KillTimer(hwnd, 1); // this apparently is not the only exit point, had to add to end of msg pump
-
-        //     mDown = false;  // LBUTTONUP not triggering when captured
-        //     onMouseUp();
-        // } break;
-
         case WM_LBUTTONUP: //{
         //     mDown = false;
         //     onMouseUp();
@@ -1074,12 +1032,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
             ClientToScreen(hwnd, &openPoint);
-            SetTimer(hwnd, 1, 10, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
-            SetTimer(hwnd, 1, 10, NULL);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
@@ -1251,8 +1207,6 @@ int CALLBACK WinMain(
 
             TranslateMessage(&Message);
             DispatchMessage(&Message);
-
-            KillTimer(global_ghoster.state.window, 1);// if we ever get here, it means we have control back so we don't need this any more
         }
     }
 

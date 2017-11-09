@@ -107,7 +107,7 @@ struct Stopwatch
             }
             else
             {
-                OutputDebugString("Stopwatch: tried starting an already running stopwatch.");
+                OutputDebugString("Stopwatch: Tried starting an already running stopwatch.");
             }
         }
         else
