@@ -27,7 +27,7 @@
 
 
 char *TEST_FILES[] = {
-    "D:/~phil/projects/ghoster/test-vids/testcounter.mp4",
+    "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
     // "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
     "D:/~phil/projects/ghoster/test-vids/sync1.mp4",
     "D:/~phil/projects/ghoster/test-vids/test4.mp4",
@@ -204,8 +204,11 @@ struct GhosterWindow
         i64 framePTS;
 
         // use twice the sdl buffer length for now
-        double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
+        double msAudioLatencyEstimate = sdl_stuff.estimated_audio_latency_ms; //sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
         msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
+                // char mslat[123];
+                // sprintf(mslat, "msAudioLatencyEstimate: %f\n", msAudioLatencyEstimate);
+                // OutputDebugString(mslat);
 
 
         if (state.setSeek)
@@ -263,18 +266,22 @@ struct GhosterWindow
                     msAudioLatencyEstimate,
                     &framePTS);
 
-            	// currentTS = {framePTS, AV_TIME_BASE, videoFPS};
+                i64 streamIndex = loaded_video.av_movie.video.index;
+                i64 base_num = loaded_video.av_movie.vfc->streams[streamIndex]->time_base.num;
+                i64 base_den = loaded_video.av_movie.vfc->streams[streamIndex]->time_base.den;
+
+            	currentTS = {framePTS * base_num, base_den, videoFPS};
 
 
                 // int timeTicks = currentTS.seconds() * loaded_video.audio_stopwatch.timer.ticks_per_second;
                 // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
 
-                // double totalFrameCount = (loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)videoFPS;
+                double totalFrameCount = (loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)videoFPS;
 
-                // char ptsbuf[123];
-                // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.frame(), targetTS.frame(), totalFrameCount);
-                // // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
-                // OutputDebugString(ptsbuf);
+                char ptsbuf[123];
+                sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.frame(), targetTS.frame(), totalFrameCount);
+                // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
+                OutputDebugString(ptsbuf);
             // }
 
 
@@ -283,9 +290,9 @@ struct GhosterWindow
         // best place for this?
         loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
         double percent = loaded_video.elapsed/loaded_video.duration;
-            char durbuf[123];
-            sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
-            OutputDebugString(durbuf);
+            // char durbuf[123];
+            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
+            // OutputDebugString(durbuf);
 
 
         if (loaded_video.vid_paused)

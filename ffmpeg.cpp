@@ -303,7 +303,7 @@ bool GetNextVideoFrame(
             {
 
                 // todo: is variable frame rate possible? (eg some frames shown twice?)
-                // todo: is it possible to get these not in pts order?
+                // todo: is it possible to get these not in pts order? (doesn't seem like it)
 
                 // char temp[123];
                 // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
@@ -312,18 +312,22 @@ bool GetNextVideoFrame(
                 double msToPlayFrame = 1000 * frame->pts /
                     fc->streams[streamIndex]->time_base.den;
 
-                // char zxcv[123];
-                // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f\n",
-                //         msToPlayFrame,
-                //         msSinceStart
-                //         );
-                // OutputDebugString(zxcv);
+
+                double msDelayAllowed = 20;
+
+
+                char zxcv[123];
+                sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
+                        msToPlayFrame,
+                        msSinceStart,
+                        msAudioLatencyEstimate + msDelayAllowed
+                        );
+                OutputDebugString(zxcv);
 
 
                 // skip frame if too far off
                 if (msAudioLatencyEstimate != 0)  // todo: i guess for now use this as code to not skip frames
                 {
-                    double msDelayAllowed = 20;
                     if (msToPlayFrame +
                         msAudioLatencyEstimate +
                         msDelayAllowed <
@@ -351,14 +355,19 @@ bool GetNextVideoFrame(
                     frame->height,
                     outFrame->data,
                     outFrame->linesize);
+
+                // as far as i can tell, these need to be freed before leaving
+                // AND they need to be unref'd before every use below
+                av_free_packet(&packet);
+                av_frame_free(&frame);
+
+                // for now try only returning when frame_finished,
+                // before it was every avcodec_decode_video2
+                // even if we didn't get a compelte frame
+                return true;
             }
 
-            // as far as i can tell, these need to be freed before leaving
-            // AND they need to be unref'd before every use below
-            av_free_packet(&packet);
-            av_frame_free(&frame);
 
-            return true; // todo: or only when frame_finished??
         }
         // call these before reuse in avcodec_decode_video2 or av_read_frame
         av_packet_unref(&packet);

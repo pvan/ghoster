@@ -14,7 +14,8 @@ struct SDLStuff
     bool setup_at_least_once = false;
     int desired_bytes_in_sdl_queue;
     SDL_AudioDeviceID audio_device;
-    SDL_AudioSpec spec;
+    // SDL_AudioSpec spec;
+    double estimated_audio_latency_ms;
 };
 
 
@@ -90,7 +91,9 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 
     sdl_stuff->audio_device = SDL_OpenAudioDevice(0, 0, &wanted_spec, &spec, SDL_AUDIO_ALLOW_FORMAT_CHANGE);
 
-    sdl_stuff->spec = spec;
+    // sdl_stuff->spec = spec;
+    // for now use twice the buffer length, seems about right (but haven't tried changing the buffer length)
+    sdl_stuff->estimated_audio_latency_ms = (double)spec.samples / (double)spec.freq * 1000.0;
 
     if (sdl_stuff->audio_device == 0)
     {
