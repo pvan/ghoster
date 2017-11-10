@@ -94,6 +94,7 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     // sdl_stuff->spec = spec;
     // for now use twice the buffer length, seems about right (but haven't tried changing the buffer length)
     sdl_stuff->estimated_audio_latency_ms = (double)spec.samples / (double)spec.freq * 1000.0;
+    sdl_stuff->estimated_audio_latency_ms *= 2;
 
     if (sdl_stuff->audio_device == 0)
     {

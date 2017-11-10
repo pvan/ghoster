@@ -259,7 +259,6 @@ bool ctrlDown;
 bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
 
 
-
 struct GhosterWindow
 {
 
@@ -311,15 +310,6 @@ struct GhosterWindow
         }
 
 
-        i64 framePTS;
-
-        // use twice the sdl buffer length for now
-        double msAudioLatencyEstimate = sdl_stuff.estimated_audio_latency_ms; //sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
-        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
-                // char mslat[123];
-                // sprintf(mslat, "msAudioLatencyEstimate: %f\n", msAudioLatencyEstimate);
-                // OutputDebugString(mslat);
-
 
         if (state.setSeek)
         {
@@ -335,9 +325,8 @@ struct GhosterWindow
                 // OutputDebugString(fpsbuf);
 
             timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
-            // ts.AddMs(msAudioLatencyEstimate);
 
-            HardSeekToFrameForTimestamp(&loaded_video, ts, msAudioLatencyEstimate);
+            HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
 
         }
 
@@ -421,14 +410,16 @@ struct GhosterWindow
 
             // VIDEO
 
+            i64 ptsNotUsedHere;
+
             GetNextVideoFrame(
                 loaded_video.av_movie.vfc,
                 loaded_video.av_movie.video.codecContext,
                 loaded_video.sws_context,
                 loaded_video.av_movie.video.index,
                 loaded_video.frame_output,
-                loaded_video.audio_stopwatch.MsElapsed() - msAudioLatencyEstimate,
-                &framePTS);
+                loaded_video.audio_stopwatch.MsElapsed() - sdl_stuff.estimated_audio_latency_ms,
+                &ptsNotUsedHere);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;
@@ -758,6 +749,9 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
         SWS_BILINEAR,
         0, 0, 0);
 
+
+    // get first frame in case we are paused
+    HardSeekToFrameForTimestamp(newMovie, {0,1,targetFPS}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
 
 
     return true;

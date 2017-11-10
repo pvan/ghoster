@@ -5,7 +5,7 @@ bugs:
 [x] seeking near begining or end triggers resize area
 
 
-[ ] pause then load new video displays memory
+[x] pause then load new video displays memory
 
 
 (right now, could drift out sync over long durations since audio is not tied to clock in any way)
@@ -60,7 +60,7 @@ features:
 
 
 
-[ ] more precise seeking:
+[x] more precise seeking:
 av_seek_frame(fc, ?, 0.15, flag_any | flag_backw)
 first i frame before desired frame
 read forward w/o using till we get to desired time
@@ -69,10 +69,14 @@ read forward w/o using till we get to desired time
 
 ---consider-----
 
-drag with middle mouse button?
+step forward and backwards by a single frame?
 
-auto crop black bars
-(or do manually by resize borders keeping window same)
+
+drag with middle mouse button? na
+
+
+auto crop black bars?
+(or do manually by resize borders keeping window same, maybe with middle mouse button)
 
 
 when playing url...
