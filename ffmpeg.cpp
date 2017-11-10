@@ -294,11 +294,11 @@ bool GetNextVideoFrame(
                 // OutputDebugString(temp2);
 
 
-    i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
-        char frambuf2[123];
-        sprintf(frambuf2, "want: %lli \n", frame_want+1);
-        OutputDebugString(frambuf2);
-    bool displayedSkipMsg = false;
+    // i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
+    //     char frambuf2[123];
+    //     sprintf(frambuf2, "want: %lli \n", frame_want+1);
+    //     OutputDebugString(frambuf2);
+    // bool displayedSkipMsg = false;
 
 
 
@@ -348,13 +348,13 @@ bool GetNextVideoFrame(
                     // but we should limit by time actually, right?
                     // skipped_a_frame_already = true;
 
-                    if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
+                    // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
 
-                    double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
-                    i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
-                        char frambuf[123];
-                        sprintf(frambuf, "%lli ", frame_count+1);
-                        OutputDebugString(frambuf);
+                    // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
+                    // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
+                    //     char frambuf[123];
+                    //     sprintf(frambuf, "%lli ", frame_count+1);
+                    //     OutputDebugString(frambuf);
 
                     // seems like we'd want this here right?
                     av_packet_unref(&packet);
@@ -362,7 +362,7 @@ bool GetNextVideoFrame(
 
                     continue;
                 }
-                OutputDebugString("\n");
+                // OutputDebugString("\n");
 
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);

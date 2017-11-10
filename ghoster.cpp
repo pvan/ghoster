@@ -185,12 +185,12 @@ void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *
 	// todo: what if we seek right to an I-frame? i think that would still work,
 	// we'd have to pull at least 1 frame to have something to display anyway
 
-    double realTime = (double)seekPos / (double)AV_TIME_BASE;
+    double realTime = ts.seconds() * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
     movie->audio_stopwatch.SetMsElapsedFromSeconds(realTime);
-    double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
-        char msbuf[123];
-        sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
-        OutputDebugString(msbuf);
+    // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
+        // char msbuf[123];
+        // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
+        // OutputDebugString(msbuf);
 
     i64 framePTS = 0;
 
@@ -201,51 +201,42 @@ void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *
         movie->sws_context,
         movie->av_movie.video.index,
         movie->frame_output,
-        ts.seconds() * 1000.0,
+        realTime,
         0,
         &framePTS);
-    // GetNextVideoFrame(
-    //     movie->av_movie.afc,
-    //     movie->av_movie.video.codecContext,
-    //     movie->sws_context,
-    //     movie->av_movie.video.index,
-    //     movie->frame_output,
-    //     msSinceAudioStart,
-    //     0,
-    //     &framePTS);
+    GetNextVideoFrame(
+        movie->av_movie.afc,
+        movie->av_movie.video.codecContext,
+        movie->sws_context,
+        movie->av_movie.video.index,
+        movie->frame_output,
+        realTime,
+        0,
+        &framePTS);
 
     i64 streamIndex = movie->av_movie.video.index;
     i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
     i64 base_den = movie->av_movie.vfc->streams[streamIndex]->time_base.den;
-
 	timestamp currentTS = {framePTS * base_num, base_den, ts.framesPerSecond};
 
-
-    // int timeTicks = currentTS.seconds() * loaded_video.audio_stopwatch.timer.ticks_per_second;
-    // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
-
-
-    char morebuf2[123];
-    sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
-    OutputDebugString(morebuf2);
-
-
     double totalFrameCount = (movie->av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
-
-
 	double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
-    char morebuf[123];
-    sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
-    OutputDebugString(morebuf);
+
+	    // char morebuf[123];
+	    // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
+	    // OutputDebugString(morebuf);
+
+	    // char morebuf2[123];
+	    // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
+	    // OutputDebugString(morebuf2);
 
 
-    char ptsbuf[123];
-    sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
-            nearestI64(currentTS.frame())+1,
-            nearestI64(ts.frame())+1,
-            nearestI64(totalFrameCount));
-    // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
-    OutputDebugString(ptsbuf);
+	    // char ptsbuf[123];
+	    // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
+	    //         nearestI64(currentTS.frame())+1,
+	    //         nearestI64(ts.frame())+1,
+	    //         nearestI64(totalFrameCount));
+	    // OutputDebugString(ptsbuf);
 }
 
 
