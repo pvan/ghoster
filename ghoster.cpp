@@ -859,44 +859,24 @@ void onDoubleClickL()
 
 }
 
-void togglePause()
+void appTogglePause()
 {
     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
 }
 
 
-void onClickL()
+void appClickClientL()
 {
     // OutputDebugString("LCLICK\n");
 
     if (!clickingOnProgessBar)
     {
-        togglePause();
+        appTogglePause();
     }
-    // if (!itWasADrag)
-    // {
-    //     if (!global_ghoster.state.globalContextMenuOpen)
-    //     {
-    //         if (!clickingOnProgessBar) // starting to feel messy, maybe proper mouse event handlers? w/ timers etc?
-    //         {
-    //             if (!wasNonClientHit)
-    //             {
-    //                 // TODO: only if we aren't double clicking? see ;lkj
-    //                 global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
-    //             }
-    //         }
-    //     }
-    //     else
-    //     {
-    //         // OutputDebugString("true, skip\n");
-    //         global_ghoster.state.globalContextMenuOpen = false; // force skip rest of timer
-    //     }
-    // }
-    // // OutputDebugString("clickingOnProgessBar false\n");
     clickingOnProgessBar = false;
 }
 
-void dragProgressBar(int x, int y)
+void appDragProgressBar(int x, int y)
 {
     if (y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
         y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
@@ -909,7 +889,7 @@ void dragProgressBar(int x, int y)
     }
 }
 
-void dragWindow(HWND hwnd, int x, int y)
+void appDragWindow(HWND hwnd, int x, int y)
 {
     WINDOWPLACEMENT winpos;
     winpos.length = sizeof(WINDOWPLACEMENT);
@@ -930,23 +910,25 @@ void dragWindow(HWND hwnd, int x, int y)
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
-void onMouseDrag(HWND hwnd, int x, int y)
+void appOnMouseDrag(HWND hwnd, int x, int y)
 {
     // OutputDebugString("DRAG\n");
 
     if (clickingOnProgessBar)
     {
-        dragProgressBar(x, y);
+        appDragProgressBar(x, y);
     }
     else
     {
-        dragWindow(hwnd, x, y);
+        appDragWindow(hwnd, x, y);
     }
 }
 
+
+
 void onMouseMove(HWND hwnd, int x, int y)
 {
-    // msOfLastMouseMove is for progress bar timeout.. rename?
+    // msOfLastMouseMove is for progress bar timeout.. rename/move?
     global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
 
     if (mDown)
@@ -965,7 +947,7 @@ void onMouseMove(HWND hwnd, int x, int y)
         else
         {
             mouseHasMovedSinceDownL = true;
-            onMouseDrag(hwnd, x, y);
+            appOnMouseDrag(hwnd, x, y);
         }
     }
 }
@@ -976,11 +958,11 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     KillTimer(0, timerID);
     if (!lastClickWasEndOfDoubleClick && !lastClickWasOnProgressBar)
     {
-        onClickL();
+        appClickClientL();
     }
 }
 
-void onMouseUp()
+void onMouseUpL()
 {
     mDown = false;
     lastClickWasOnProgressBar = clickingOnProgessBar;
@@ -988,7 +970,7 @@ void onMouseUp()
 
     if (mouseHasMovedSinceDownL)
     {
-        // it was a drag
+        // end of a drag
         lastClickWasEndOfDoubleClick = false;
     }
     else
@@ -1010,20 +992,19 @@ void onMouseUp()
     }
 }
 
-
-
 void onMouseDownL(int x, int y, bool clientAreaHit)
 {
-    // wasNonClientHit = !clientAreaHit;
+    // basically app can ignore if not in client area
 	if (!clientAreaHit)
 		return;
 
     mDown = true;
     mouseHasMovedSinceDownL = false;
 
-    mDownPoint = { x, y };
-    dragProgressBar(x, y);
+    mDownPoint = {x, y};
+    appDragProgressBar(x, y);
 }
+
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -1119,7 +1100,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_LBUTTONUP:
         case WM_NCLBUTTONUP: {
-            onMouseUp();
+            onMouseUpL();
         } break;
 
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
