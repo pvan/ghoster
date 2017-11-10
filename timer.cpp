@@ -126,5 +126,11 @@ struct Stopwatch
     {
         return (double)(TicksElapsed()*1000) / (double)timer.ticks_per_second;
     }
+    void SetMsElapsedFromSeconds(double seconds)
+    {
+        int timeInTicks = seconds * timer.ticks_per_second; // how many ticks to "back set" the timer
+        timer.starting_ticks = timer.TicksNow() - timeInTicks;
+        ticks_elapsed_at_pause = timer.TicksElapsedSinceStart(); // set this too in case we are currently paused
+    }
 };
 

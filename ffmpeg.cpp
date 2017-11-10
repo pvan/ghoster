@@ -321,21 +321,24 @@ bool GetNextVideoFrame(
 
 
                 // skip frame if too far off
-                double msDelayAllowed = 20;
-                if (msToPlayFrame +
-                    msAudioLatencyEstimate +
-                    msDelayAllowed <
-                    msSinceStart &&
-                    !skipped_a_frame_already)
+                if (msAudioLatencyEstimate != 0)  // todo: i guess for now use this as code to not skip frames
                 {
-                    // OutputDebugString("skipped a frame\n");
-                    // skipped_a_frame_already = true;
+                    double msDelayAllowed = 20;
+                    if (msToPlayFrame +
+                        msAudioLatencyEstimate +
+                        msDelayAllowed <
+                        msSinceStart &&
+                        !skipped_a_frame_already)
+                    {
+                        OutputDebugString("skipped a frame\n");
+                        // skipped_a_frame_already = true;
 
-                    // seems like we'd want this here right?
-                    av_packet_unref(&packet);
-                    av_frame_unref(frame);
+                        // seems like we'd want this here right?
+                        av_packet_unref(&packet);
+                        av_frame_unref(frame);
 
-                    continue;
+                        continue;
+                    }
                 }
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);

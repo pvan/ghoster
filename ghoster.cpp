@@ -27,7 +27,8 @@
 
 
 char *TEST_FILES[] = {
-    "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
+    "D:/~phil/projects/ghoster/test-vids/testcounter.mp4",
+    // "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
     "D:/~phil/projects/ghoster/test-vids/sync1.mp4",
     "D:/~phil/projects/ghoster/test-vids/test4.mp4",
     "D:/~phil/projects/ghoster/test-vids/test.mp4",
@@ -138,6 +139,24 @@ struct AppState {
 
 
 
+struct timestamp
+{
+	i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
+	i64 timeBase;
+	double framesPerSecond;
+
+	double seconds()
+	{
+		return (double)secondsInTimeBase / (double)timeBase;
+	}
+	double frame()
+	{
+		return seconds() * framesPerSecond;
+	}
+};
+
+
+
 struct GhosterWindow
 {
 
@@ -200,19 +219,38 @@ struct GhosterWindow
             state.setSeek = false;
             int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
 
-            // find first I frame before our seek position
-            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos-1, AVSEEK_FLAG_BACKWARD);
-            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos-1, AVSEEK_FLAG_BACKWARD);
+            // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
+            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+
+
+            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+                char fpsbuf[123];
+                sprintf(fpsbuf, "fps: %f\n", videoFPS);
+                OutputDebugString(fpsbuf);
+
+            timestamp currentTS = {0, AV_TIME_BASE, videoFPS};
+            timestamp targetTS = {seekPos, AV_TIME_BASE, videoFPS};
+
+            // basically how close will we consider a "success"
+            double secondsInHalfFrame = (loaded_video.targetMsPerFrame / 1000.0) / 2.0;
 
             // todo: special if at start of file?
 
-            framePTS = 0;
-            while (framePTS < seekPos-1) { // todo: failsafe exists (end of file, timeout)
-                double realTime = (double)seekPos / (double)AV_TIME_BASE;
-                int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
-                loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
+ 			// todo: failsafe exits (end of file, timeout)
+            // while (targetTS.seconds() - currentTS.seconds() > secondsInHalfFrame) {
 
+            	// todo: what if we seek right to an I-frame? i think that would still work,
+            	// we'd have to pull at least 1 frame to have something to display anyway
+
+                double realTime = (double)seekPos / (double)AV_TIME_BASE;
+                loaded_video.audio_stopwatch.SetMsElapsedFromSeconds(realTime);
+                // int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
+                // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
                 double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
+	                char msbuf[123];
+	                sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
+	                OutputDebugString(msbuf);
 
                 // step through video frames for both contexts until we reach our desired timestamp
                 GetNextVideoFrame(
@@ -224,28 +262,20 @@ struct GhosterWindow
                     msSinceAudioStart,
                     msAudioLatencyEstimate,
                     &framePTS);
-                // GetNextVideoFrame(
-                //     loaded_video.av_movie.afc,
-                //     loaded_video.av_movie.video.codecContext,
-                //     loaded_video.sws_context,
-                //     loaded_video.av_movie.video.index,
-                //     loaded_video.frame_output,
-                //     msSinceAudioStart,
-                //     msAudioLatencyEstimate,
-                //     &framePTS);
+
+            	// currentTS = {framePTS, AV_TIME_BASE, videoFPS};
 
 
-                // double timestamp = frame->pts / loaded_video.av_movie.vfc->streams[streamIndex]->time_base.den;
-                double realsomething = (double)framePTS *
-                                 ((double)loaded_video.av_movie.vfc->streams[loaded_video.av_movie.video.index]->time_base.num /
-                                 (double)loaded_video.av_movie.vfc->streams[loaded_video.av_movie.video.index]->time_base.den);
+                // int timeTicks = currentTS.seconds() * loaded_video.audio_stopwatch.timer.ticks_per_second;
+                // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
 
-                framePTS = realsomething * (double)AV_TIME_BASE;
+                // double totalFrameCount = (loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)videoFPS;
 
-                char ptsbuf[123];
-                sprintf(ptsbuf, "pts: %lli / want: %i of %lli\n", framePTS, seekPos, loaded_video.av_movie.vfc->duration);
-                OutputDebugString(ptsbuf);
-            }
+                // char ptsbuf[123];
+                // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.frame(), targetTS.frame(), totalFrameCount);
+                // // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
+                // OutputDebugString(ptsbuf);
+            // }
 
 
         }
@@ -253,9 +283,9 @@ struct GhosterWindow
         // best place for this?
         loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
         double percent = loaded_video.elapsed/loaded_video.duration;
-            // char durbuf[123];
-            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-            // OutputDebugString(durbuf);
+            char durbuf[123];
+            sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
+            OutputDebugString(durbuf);
 
 
         if (loaded_video.vid_paused)
@@ -366,7 +396,7 @@ struct GhosterWindow
 
         // HIT FPS
 
-        // something seems off with this... ?
+        // something seems off with this... ? i guess it's, it's basically ms since END of last frame
         double dt = state.app_timer.MsSinceLastFrame();
 
         // todo: we actually don't want to hit a certain fps like a game,
@@ -616,9 +646,9 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 
     // SET FPS BASED ON LOADED VIDEO
 
-    double targetFPS = (loaded_video->video.codecContext->time_base.den /
-                        loaded_video->video.codecContext->time_base.num) /
-                        loaded_video->video.codecContext->ticks_per_frame;
+    double targetFPS = ((double)loaded_video->video.codecContext->time_base.den /
+                        (double)loaded_video->video.codecContext->time_base.num) /
+                        (double)loaded_video->video.codecContext->ticks_per_frame;
 
     char vidfps[123];
     sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
@@ -629,8 +659,8 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     );
     OutputDebugString(vidfps);
 
-    // double
-    newMovie->targetMsPerFrame = 1000 / targetFPS;
+
+    newMovie->targetMsPerFrame = 1000.0 / targetFPS;
 
 
 
