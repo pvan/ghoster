@@ -64,7 +64,8 @@ int GetNextAudioFrame(
     int streamIndex,
     SoundBuffer outBuf,
     int requestedBytes,
-    double msSinceStart)
+    double msSinceStart,
+    i64 *outPTS)
 {
 
     u8 *outBuffer = outBuf.data;
@@ -222,6 +223,8 @@ int GetNextAudioFrame(
                     // now try to guess when we're done based on the size of the last frame
                     if (bytes_written+additional_bytes > requestedBytes)
                     {
+                        *outPTS = av_frame_get_best_effort_timestamp(frame);
+
                         // av_free_packet(&readingPacket);
                         // av_free_packet(&decodingPacket);
                         av_free_packet(&readingPacket);

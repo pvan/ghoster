@@ -153,6 +153,10 @@ struct timestamp
     {
         return (double)secondsInTimeBase / (double)timeBase;
     }
+    double ms()
+    {
+        return seconds() * 1000.0;
+    }
     double frame()
     {
         return seconds() * framesPerSecond;
@@ -160,6 +164,13 @@ struct timestamp
     double i64InUnits(i64 base)
     {
         return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
+    }
+
+    static timestamp FromPTS(i64 pts, RunningMovie movie, int streamIndex)
+    {
+        i64 base_num = movie.av_movie.vfc->streams[streamIndex]->time_base.num;
+        i64 base_den = movie.av_movie.vfc->streams[streamIndex]->time_base.den;
+        return {pts * base_num, base_den, movie.targetMsPerFrame};
     }
 };
 
@@ -311,6 +322,10 @@ struct GhosterWindow
 
 
 
+        i64 ptsOfVideo;
+        i64 ptsOfAudio;
+
+
         if (state.setSeek)
         {
             SDL_ClearQueuedAudio(sdl_stuff.audio_device);
@@ -387,7 +402,8 @@ struct GhosterWindow
                     loaded_video.av_movie.audio.index,
                     ffmpeg_to_sdl_buffer,
                     wanted_bytes,
-                    loaded_video.audio_stopwatch.MsElapsed());
+                    loaded_video.audio_stopwatch.MsElapsed(),
+                    &ptsOfAudio);
 
 
                 if (bytes_queued_up > 0)
@@ -406,11 +422,15 @@ struct GhosterWindow
 
 
 
+            int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
+            double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
+            double seconds_left_in_queue = bytes_per_second / (double)bytes_left;
+                // char secquebuf[123];
+                // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
+                // OutputDebugString(secquebuf);
 
 
             // VIDEO
-
-            i64 ptsNotUsedHere;
 
             GetNextVideoFrame(
                 loaded_video.av_movie.vfc,
@@ -419,7 +439,31 @@ struct GhosterWindow
                 loaded_video.av_movie.video.index,
                 loaded_video.frame_output,
                 loaded_video.audio_stopwatch.MsElapsed() - sdl_stuff.estimated_audio_latency_ms,
-                &ptsNotUsedHere);
+                &ptsOfVideo);
+
+
+            timestamp ts_video = timestamp::FromPTS(ptsOfVideo, loaded_video, loaded_video.av_movie.video.index);
+            timestamp ts_audio = timestamp::FromPTS(ptsOfAudio, loaded_video, loaded_video.av_movie.audio.index);
+
+            // when should this frame be shown (according to the ffmpeg stream)
+            double vid_seconds = ts_video.seconds();
+
+            // assuming we've filled the sdl buffer, we are 1 second ahead
+            // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
+            // and how consistently do we pull audio data? is it sometimes more than others?
+            double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
+
+            // how far ahead is the sound?
+            double delta_ms = (aud_seconds - vid_seconds) * 1000.0;
+
+            // the real audio being transmitted is sdl's write buffer which will be a little behind
+            double aud_sec_corrected = aud_seconds - sdl_stuff.estimated_audio_latency_ms/1000.0;
+            double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
+
+            char ptsbuf[123];
+            sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+                    vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+            OutputDebugString(ptsbuf);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;
