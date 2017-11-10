@@ -52,6 +52,7 @@ const double PROGRESS_BAR_TIMEOUT = 1000;
 
 
 
+
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
@@ -367,6 +368,9 @@ struct GhosterWindow
 
 
 static GhosterWindow global_ghoster;
+
+
+
 
 
 
@@ -827,7 +831,24 @@ double SINGLE_CLICK_AFTER = 200;
 
 bool mouseHasMovedSinceDownL = false;
 
-void onDoubleClickL()
+
+bool clientPointIsOnProgressBar(int x, int y)
+{
+    return y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+           y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
+}
+bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
+{
+    POINT newPoint = {x, y};
+    ScreenToClient(hwnd, &newPoint);
+    return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
+    // return newPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+    //        newPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
+}
+
+
+
+void appOnDoubleClickL()
 {
     // OutputDebugString("LDOUBLECLICK\n");
 
@@ -876,19 +897,6 @@ void appClickClientL()
     clickingOnProgessBar = false;
 }
 
-bool clientPointIsOnProgressBar(int x, int y)
-{
-    return y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-           y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
-}
-bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
-{
-    POINT newPoint = {x, y};
-    ScreenToClient(hwnd, &newPoint);
-    return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
-    // return newPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-    //        newPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
-}
 
 void appDragProgressBar(int x, int y)
 {
@@ -992,7 +1000,7 @@ void onMouseUpL()
             timerSinceLastClickL.MsSinceStart() <= MAX_DOUBLE_CLICK_MS &&
             !lastClickWasEndOfDoubleClick)
         {
-            onDoubleClickL();
+            appOnDoubleClickL();
             lastClickWasEndOfDoubleClick = true;
         }
         else
