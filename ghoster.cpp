@@ -920,23 +920,28 @@ struct mouseClickState
 
 POINT mDownPoint;
 bool mDown;
-bool clickingOnProgessBar;  // not a fan of this flag.. way to simplify usage?
-bool lastClickWasOnProgressBar; // need to know this for our single click timer event
+// bool clickingOnProgessBar;  // not a fan of this flag.. way to simplify usage?
+// bool lastClickWasOnProgressBar; // need to know this for our single click timer event
 
 bool ctrlDown;
 
-Timer timerSinceLastClickL;
-bool lastClickWasEndOfDoubleClick = false;  // better/clearer name / method of tracking this?
+// Timer timerSinceLastClickL;
+// bool nextClickCouldBeDoubleClick = false;
 
 
-// wait less time than total double click before executing single click
-// we have to comprimise somewhere, 500ms is too long too wait for an input response
-// if we double click in less time than SINGLE_CLICK_AFTER_MS, everything works great
-// if we double click slower than MAX_DOUBLE_CLICK_MS, it's two clicks
-// but if we double click in between them, it will register as a single and a double
-// therefore todo: if we double click slowly, consider undo the single click effect (like the old way)
-double MAX_DOUBLE_CLICK_MS = 500; // todo: use system default?
-double SINGLE_CLICK_AFTER_MS = 200;
+// // wait less time than total double click before executing single click
+// // we have to comprimise somewhere, 500ms is too long too wait for an input response
+// // if we double click in less time than SINGLE_CLICK_AFTER_MS, everything works great
+// // if we double click slower than MAX_DOUBLE_CLICK_MS, it's two clicks
+// // but if we double click in between them, it will register as a single and a double
+// // therefore todo: if we double click slowly, consider undo the single click effect (like the old way)
+// // ok, how about this for a better way?
+// // instant single click effect, but cache the state of the video on the first click
+// // then, if it turns out to be a double click, restore that state after the second click
+// // that way we can play/pause instantly, but double click still has no (lasting) effect
+// // (though play/pause too fast and we maximize.. hmmm.. maybe step forward back arrows?)
+// double MAX_DOUBLE_CLICK_MS = 500; // todo: use system default?
+// double SINGLE_CLICK_AFTER_MS = 200;
 
 
 bool mouseHasMovedSinceDownL = false;
@@ -958,60 +963,17 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 
 
 
-void appOnDoubleClickL()
-{
-    // OutputDebugString("LDOUBLECLICK\n");
-
-    if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
-        return;
-
-    WINDOWPLACEMENT winpos;
-    winpos.length = sizeof(WINDOWPLACEMENT);
-    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
-    {
-        if (winpos.showCmd == SW_MAXIMIZE)
-        {
-            ShowWindow(global_ghoster.state.window, SW_RESTORE);
-
-            // make this an option... (we might want to keep it in the corner eg)
-            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-            // int mouseY = HIWORD(lParam);
-            // int winX = mouseX - winWID/2;
-            // int winY = mouseY - winHEI/2;
-            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
-        }
-        else
-        {
-            ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
-        }
-    }
-
-}
-
 void appTogglePause()
 {
     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
 }
 
-
-void appClickClientL()
+void appSetProgressBar(int clientX, int clientY)
 {
-    // OutputDebugString("LCLICK\n");
-
-    if (!clickingOnProgessBar)
+    if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
     {
-        appTogglePause();
-    }
-    clickingOnProgessBar = false;
-}
-
-
-void appDragProgressBar(int x, int y)
-{
-    if (clientPointIsOnProgressBar(x,y))
-    {
-        double prop = (double)x / (double)global_ghoster.state.winWID;
-        clickingOnProgessBar = true;
+        double prop = (double)clientX / (double)global_ghoster.state.winWID;
+        // clickingOnProgessBar = true;
 
         global_ghoster.state.setSeek = true;
         global_ghoster.state.seekProportion = prop;
@@ -1041,106 +1003,126 @@ void appDragWindow(HWND hwnd, int x, int y)
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
-void appOnMouseDrag(HWND hwnd, int x, int y)
+
+
+void onMouseMove(HWND hwnd, int clientX, int clientY)
 {
-    // OutputDebugString("DRAG\n");
-
-    if (clickingOnProgessBar)
-    {
-        appDragProgressBar(x, y);
-    }
-    else
-    {
-        appDragWindow(hwnd, x, y);
-    }
-}
-
-
-
-void onMouseMove(HWND hwnd, int x, int y)
-{
-    // msOfLastMouseMove is for progress bar timeout.. rename/move?
+    // this is for progress bar timeout.. rename/move?
     global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
 
     if (mDown)
     {
-        // need to determine if click or drag here, not in buttonup
-        // because mousemove will trigger (i think) at the first pixel of movement
-        POINT mPos = { x, y };
-        double dx = (double)mPos.x - (double)mDownPoint.x;
-        double dy = (double)mPos.y - (double)mDownPoint.y;
-        double distance = sqrt(dx*dx + dy*dy);
-        double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
-        if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
-        {
-            // itWasADrag = false;
-        }
-        else
-        {
-            mouseHasMovedSinceDownL = true;
-            appOnMouseDrag(hwnd, x, y);
-        }
+
+	    // need to determine if click or drag here, not in buttonup
+	    // because mousemove will trigger (i think) at the first pixel of movement
+	    POINT mPos = { clientX, clientY };
+	    double dx = (double)mPos.x - (double)mDownPoint.x;
+	    double dy = (double)mPos.y - (double)mDownPoint.y;
+	    double distance = sqrt(dx*dx + dy*dy);
+	    double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
+	    if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
+	    {
+	        // we haven't moved enough to be considered a drag
+	        // or to eliminate a double click possibility
+	    }
+	    else
+	    {
+	    	// if (mDown)
+	    	// {
+	        mouseHasMovedSinceDownL = true;
+
+	        if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+		    {
+		        appSetProgressBar(clientX, clientY);
+		    }
+		    else
+		    {
+		        appDragWindow(hwnd, clientX, clientY);
+		    }
+	        // }
+	    }
+
     }
 }
 
-UINT timerID;
-VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
-{
-    KillTimer(0, timerID);
-    if (!lastClickWasEndOfDoubleClick && !lastClickWasOnProgressBar)
-    {
-        appClickClientL();
-    }
-}
+
 
 void onMouseUpL()
 {
+    OutputDebugString("LUP\n");
+
     mDown = false;
-    lastClickWasOnProgressBar = clickingOnProgessBar;
-    clickingOnProgessBar = false;
 
     if (mouseHasMovedSinceDownL)
     {
         // end of a drag
-        lastClickWasEndOfDoubleClick = false;
     }
     else
     {
-        if (timerSinceLastClickL.started &&
-            timerSinceLastClickL.MsSinceStart() <= MAX_DOUBLE_CLICK_MS &&
-            !lastClickWasEndOfDoubleClick)
+	    if (!clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+    		appTogglePause();
+    }
+    // clickingOnProgessBar = false;
+    mouseHasMovedSinceDownL = false;
+}
+
+// void setMouseHitFlags()
+// {
+
+// }
+
+void onDoubleClickDownL()
+{
+    OutputDebugString("LDOUBLECLICK\n");
+
+    if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+    {
+    	OutputDebugString("on bar d\n");
+        return;
+    }
+
+    WINDOWPLACEMENT winpos;
+    winpos.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    {
+        if (winpos.showCmd == SW_MAXIMIZE)
         {
-            appOnDoubleClickL();
-            lastClickWasEndOfDoubleClick = true;
+            ShowWindow(global_ghoster.state.window, SW_RESTORE);
+
+            // make this an option... (we might want to keep it in the corner eg)
+            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+            // int mouseY = HIWORD(lParam);
+            // int winX = mouseX - winWID/2;
+            // int winY = mouseY - winHEI/2;
+            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
         }
         else
         {
-            if (!global_ghoster.state.globalContextMenuOpen)
-            {
-                timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER_MS, &onSingleClickL);
-            }
-            // onClickL();
-            timerSinceLastClickL.Start();
-            lastClickWasEndOfDoubleClick = false;
+            ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
         }
     }
+
 }
 
-void onMouseDownL(int x, int y, bool clientAreaHit)
+void onMouseDownL(int clientX, int clientY)
 {
-    // basically app can ignore if not in client area
-    if (!clientAreaHit)
-        return;
+    OutputDebugString("LDOWN\n");
 
-    // i think we also can just ignore if context menu is open
+    // i think we can just ignore if context menu is open
     if (global_ghoster.state.globalContextMenuOpen)
         return;
 
+    // mouse state / info about click...
     mDown = true;
     mouseHasMovedSinceDownL = false;
+    // clickingOnProgessBar = clientPointIsOnProgressBar(clientX, clientY);
+    mDownPoint = {clientX, clientY};
 
-    mDownPoint = {x, y};
-    appDragProgressBar(x, y);
+    if (clientPointIsOnProgressBar(clientX, clientY))
+    {
+    	OutputDebugString("on bar\n");
+    	appSetProgressBar(clientX, clientY);  // in this case
+    }
 }
 
 
@@ -1229,10 +1211,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_LBUTTONDOWN: {
-            onMouseDownL(LOWORD(lParam), HIWORD(lParam), true);
+            onMouseDownL(LOWORD(lParam), HIWORD(lParam));
         } break;
-        case WM_NCLBUTTONDOWN: {
-            onMouseDownL(LOWORD(lParam), HIWORD(lParam), false);
+        // case WM_NCLBUTTONDOWN: {
+        // } break;
+        case WM_LBUTTONDBLCLK: {
+        	onDoubleClickDownL();
         } break;
 
         case WM_MOUSEMOVE: {
@@ -1338,7 +1322,7 @@ int CALLBACK WinMain(
 
     // register wndproc
     WNDCLASS wc = {};
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;// | CS_DBLCLKS;
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
