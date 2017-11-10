@@ -140,225 +140,225 @@ struct AppState {
 struct GhosterWindow
 {
 
-	AppState state;
-	SoundBuffer ffmpeg_to_sdl_buffer;
-	SDLStuff sdl_stuff;
-	RunningMovie loaded_video;
+    AppState state;
+    SoundBuffer ffmpeg_to_sdl_buffer;
+    SDLStuff sdl_stuff;
+    RunningMovie loaded_video;
 
 
-	// now running this on a sep thread from our msg loop so it's independent of mouse events / captures
-	void Update()
-	{
+    // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
+    void Update()
+    {
 
-	    // TODO: option to update as fast as possible and hog cpu? hmmm
-
-
-	    // if (dt < targetMsPerFrame)
-	    //     return;
+        // TODO: option to update as fast as possible and hog cpu? hmmm
 
 
-	    if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
-	    {
-	        state.globalContextMenuOpen = false;
-	    }
+        // if (dt < targetMsPerFrame)
+        //     return;
 
 
-	    if (state.app_timer.MsSinceStart() - state.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
-	    {
-	        state.drawProgressBar = false;
-	    }
-	    else
-	    {
-	        state.drawProgressBar = true;
-	    }
-
-	    POINT mPos;
-	    GetCursorPos(&mPos);
-	    RECT winRect;
-	    GetWindowRect(state.window, &winRect);
-	    if (!PtInRect(&winRect, mPos))
-	    {
-	        // OutputDebugString("mouse outside window\n");
-	        state.drawProgressBar = false;
-	    }
+        if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
+        {
+            state.globalContextMenuOpen = false;
+        }
 
 
-	    // best place for this?
-	    loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-	    double percent = loaded_video.elapsed/loaded_video.duration;
+        if (state.app_timer.MsSinceStart() - state.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
+        {
+            state.drawProgressBar = false;
+        }
+        else
+        {
+            state.drawProgressBar = true;
+        }
+
+        POINT mPos;
+        GetCursorPos(&mPos);
+        RECT winRect;
+        GetWindowRect(state.window, &winRect);
+        if (!PtInRect(&winRect, mPos))
+        {
+            // OutputDebugString("mouse outside window\n");
+            state.drawProgressBar = false;
+        }
 
 
-	    if (loaded_video.vid_paused)
-	    {
-	        if (!loaded_video.vid_was_paused)
-	        {
-	            loaded_video.audio_stopwatch.Pause();
-	            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
-	        }
-	    }
-	    else
-	    {
-	        if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
-	        {
-	            loaded_video.audio_stopwatch.Start();
-	            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
-	        }
-
-	        if (state.setSeek)
-	        {//asdf
-
-	            //SetupSDLSound();
-	            SDL_ClearQueuedAudio(sdl_stuff.audio_device);
-
-	            state.setSeek = false;
-	            int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
-	            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, 0);
-	            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, 0);
-
-	            double realTime = (double)seekPos / (double)AV_TIME_BASE;
-	            int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
-	            loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
-
-	        }
-
-	        loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-	        percent = loaded_video.elapsed/loaded_video.duration;
-	            // char durbuf[123];
-	            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-	            // OutputDebugString(durbuf);
+        // best place for this?
+        loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+        double percent = loaded_video.elapsed/loaded_video.duration;
 
 
-	        // SOUND
+        if (loaded_video.vid_paused)
+        {
+            if (!loaded_video.vid_was_paused)
+            {
+                loaded_video.audio_stopwatch.Pause();
+                SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
+            }
+        }
+        else
+        {
+            if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
+            {
+                loaded_video.audio_stopwatch.Start();
+                SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
+            }
 
-	        int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
-	            // char msg[256];
-	            // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-	            // OutputDebugString(msg);
+            if (state.setSeek)
+            {//asdf
 
+                //SetupSDLSound();
+                SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
-	        int wanted_bytes = sdl_stuff.desired_bytes_in_sdl_queue - bytes_left_in_queue;
-	            // char msg3[256];
-	            // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-	            // OutputDebugString(msg3);
+                state.setSeek = false;
+                int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
+                av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, 0);
+                av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, 0);
 
-	        if (wanted_bytes >= 0)
-	        {
-	            if (wanted_bytes > ffmpeg_to_sdl_buffer.size_in_bytes)
-	            {
-	                // char errq[256];
-	                // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer.size_in_bytes);
-	                // OutputDebugString(errq);
+                double realTime = (double)seekPos / (double)AV_TIME_BASE;
+                int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
+                loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
 
-	                wanted_bytes = ffmpeg_to_sdl_buffer.size_in_bytes;
-	            }
+            }
 
-	            // ideally a little bite of sound, every frame
-	            // todo: how to sync this right, pts dts?
-	            int bytes_queued_up = GetNextAudioFrame(
-	                loaded_video.av_movie.afc,
-	                loaded_video.av_movie.audio.codecContext,
-	                loaded_video.av_movie.audio.index,
-	                ffmpeg_to_sdl_buffer,
-	                wanted_bytes,
-	                loaded_video.audio_stopwatch.MsElapsed());
-
-
-	            if (bytes_queued_up > 0)
-	            {
-	                if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
-	                {
-	                    char audioerr[256];
-	                    sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-	                    OutputDebugString(audioerr);
-	                }
-	                   // char msg2[256];
-	                   // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
-	                   // OutputDebugString(msg2);
-	            }
-	        }
+            loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+            percent = loaded_video.elapsed/loaded_video.duration;
+                // char durbuf[123];
+                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+                // OutputDebugString(durbuf);
 
 
+            // SOUND
+
+            int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
+                // char msg[256];
+                // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+                // OutputDebugString(msg);
 
 
+            int wanted_bytes = sdl_stuff.desired_bytes_in_sdl_queue - bytes_left_in_queue;
+                // char msg3[256];
+                // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+                // OutputDebugString(msg3);
 
-	        // VIDEO
+            if (wanted_bytes >= 0)
+            {
+                if (wanted_bytes > ffmpeg_to_sdl_buffer.size_in_bytes)
+                {
+                    // char errq[256];
+                    // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer.size_in_bytes);
+                    // OutputDebugString(errq);
 
-	        double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
+                    wanted_bytes = ffmpeg_to_sdl_buffer.size_in_bytes;
+                }
 
-	        // use twice the sdl buffer length for now
-	        double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
-	        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
-
-	        GetNextVideoFrame(
-	            loaded_video.av_movie.vfc,
-	            loaded_video.av_movie.video.codecContext,
-	            loaded_video.sws_context,
-	            loaded_video.av_movie.video.index,
-	            loaded_video.frame_output,
-	            msSinceAudioStart,
-	            msAudioLatencyEstimate);
-
-	    }
-	    loaded_video.vid_was_paused = loaded_video.vid_paused;
+                // ideally a little bite of sound, every frame
+                // todo: how to sync this right, pts dts?
+                int bytes_queued_up = GetNextAudioFrame(
+                    loaded_video.av_movie.afc,
+                    loaded_video.av_movie.audio.codecContext,
+                    loaded_video.av_movie.audio.index,
+                    ffmpeg_to_sdl_buffer,
+                    wanted_bytes,
+                    loaded_video.audio_stopwatch.MsElapsed());
 
 
-	    RenderToScreenGL((void*)loaded_video.vid_buffer,
-	                    loaded_video.vidWID,
-	                    loaded_video.vidHEI,
-	                    state.winWID,
-	                    state.winHEI,
-	                    state.window,
-	                    percent, state.drawProgressBar);
-
-	    // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
-	    //            (float*)sound_buffer, bytes_in_buffer);
-	    // static int increm = 0;
-	    // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
-	    // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
-	    // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
+                if (bytes_queued_up > 0)
+                {
+                    if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
+                    {
+                        char audioerr[256];
+                        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                        OutputDebugString(audioerr);
+                    }
+                       // char msg2[256];
+                       // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                       // OutputDebugString(msg2);
+                }
+            }
 
 
 
 
-	    // HIT FPS
 
-	    // something seems off with this... ?
-	    double dt = state.app_timer.MsSinceLastFrame();
+            // VIDEO
 
-	    // todo: we actually don't want to hit a certain fps like a game,
-	    // but accurately track our continuous audio timer
-	    // (eg if we're late one frame, go early the next?)
+            double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
 
-	    if (dt < loaded_video.targetMsPerFrame)
-	    {
-	        double msToSleep = loaded_video.targetMsPerFrame - dt;
-	        Sleep(msToSleep);
-	        while (dt < loaded_video.targetMsPerFrame)  // is this weird?
-	        {
-	            dt = state.app_timer.MsSinceLastFrame();
-	        }
-	        // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
-	        // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
-	    }
-	    else
-	    {
-	        // todo: seems to happen a lot with just clicking a bunch?
-	        // missed fps target
-	        char msg[256];
-	        sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-	                loaded_video.targetMsPerFrame, dt);
-	        OutputDebugString(msg);
-	    }
-	    state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+            // use twice the sdl buffer length for now
+            double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
+            msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
 
-	}
+            GetNextVideoFrame(
+                loaded_video.av_movie.vfc,
+                loaded_video.av_movie.video.codecContext,
+                loaded_video.sws_context,
+                loaded_video.av_movie.video.index,
+                loaded_video.frame_output,
+                msSinceAudioStart,
+                msAudioLatencyEstimate);
 
-	void Run();
+        }
+        loaded_video.vid_was_paused = loaded_video.vid_paused;
 
-	void MouseDownL() {}
-	void MouseDownR() {}
-	void MouseUpL() {}
-	void MouseUpR() {}
+
+        RenderToScreenGL((void*)loaded_video.vid_buffer,
+                        loaded_video.vidWID,
+                        loaded_video.vidHEI,
+                        state.winWID,
+                        state.winHEI,
+                        state.window,
+                        percent, state.drawProgressBar);
+
+        // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
+        //            (float*)sound_buffer, bytes_in_buffer);
+        // static int increm = 0;
+        // RenderWeird(secondary_buf, vidWID, vidHEI, increm++);
+        // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
+        // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
+
+
+
+
+        // HIT FPS
+
+        // something seems off with this... ?
+        double dt = state.app_timer.MsSinceLastFrame();
+
+        // todo: we actually don't want to hit a certain fps like a game,
+        // but accurately track our continuous audio timer
+        // (eg if we're late one frame, go early the next?)
+
+        if (dt < loaded_video.targetMsPerFrame)
+        {
+            double msToSleep = loaded_video.targetMsPerFrame - dt;
+            Sleep(msToSleep);
+            while (dt < loaded_video.targetMsPerFrame)  // is this weird?
+            {
+                dt = state.app_timer.MsSinceLastFrame();
+            }
+            // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
+            // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
+        }
+        else
+        {
+            // todo: seems to happen a lot with just clicking a bunch?
+            // missed fps target
+            char msg[256];
+            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
+                    loaded_video.targetMsPerFrame, dt);
+            OutputDebugString(msg);
+        }
+        state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
+
+    }
+
+    void Run();
+
+    void MouseDownL() {}
+    void MouseDownR() {}
+    void MouseUpL() {}
+    void MouseUpR() {}
 
 
 
@@ -495,8 +495,8 @@ static bool global_load_new_file = false;
 
 static void GlobalLoadMovie(char *path)
 {
-	strcpy_s(global_file_to_load, 1024, path);
-	global_load_new_file = true;
+    strcpy_s(global_file_to_load, 1024, path);
+    global_load_new_file = true;
 }
 
 // todo: peruse this for memory leaks. also: better name?
@@ -659,13 +659,13 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
     while (global_ghoster.state.appRunning)
     {
-    	if (global_load_new_file)
-    	{
-    		CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
-    		global_load_new_file = false;
-    	}
+        if (global_load_new_file)
+        {
+            CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
+            global_load_new_file = false;
+        }
 
-    	global_ghoster.Update();
+        global_ghoster.Update();
     }
 
     return 0;
@@ -790,13 +790,13 @@ bool PasteClipboard()
 /*
 struct mouseClickState
 {
-	POINT mDownPoint;
-	bool mDown;
-	bool itWasADrag;
-	bool clickingOnProgessBar;
-	bool wasNonClientHit;
+    POINT mDownPoint;
+    bool mDown;
+    bool itWasADrag;
+    bool clickingOnProgessBar;
+    bool wasNonClientHit;
 
-	bool ctrlDown;
+    bool ctrlDown;
 };
 */
 
@@ -876,10 +876,23 @@ void appClickClientL()
     clickingOnProgessBar = false;
 }
 
+bool clientPointIsOnProgressBar(int x, int y)
+{
+    return y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+           y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
+}
+bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
+{
+    POINT newPoint = {x, y};
+    ScreenToClient(hwnd, &newPoint);
+    return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
+    // return newPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+    //        newPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
+}
+
 void appDragProgressBar(int x, int y)
 {
-    if (y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-        y <= global_ghoster.state.winHEI-PROGRESS_BAR_B)
+    if (clientPointIsOnProgressBar(x,y))
     {
         double prop = (double)x / (double)global_ghoster.state.winWID;
         clickingOnProgessBar = true;
@@ -998,8 +1011,8 @@ void onMouseUpL()
 void onMouseDownL(int x, int y, bool clientAreaHit)
 {
     // basically app can ignore if not in client area
-	if (!clientAreaHit)
-		return;
+    if (!clientAreaHit)
+        return;
 
     // i think we also can just ignore if context menu is open
     if (global_ghoster.state.globalContextMenuOpen)
@@ -1095,10 +1108,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_LBUTTONDOWN: {
-        	onMouseDownL(LOWORD(lParam), HIWORD(lParam), true);
+            onMouseDownL(LOWORD(lParam), HIWORD(lParam), true);
         } break;
         case WM_NCLBUTTONDOWN: {
-        	onMouseDownL(LOWORD(lParam), HIWORD(lParam), false);
+            onMouseDownL(LOWORD(lParam), HIWORD(lParam), false);
         } break;
 
         case WM_MOUSEMOVE: {
