@@ -116,8 +116,9 @@ struct RunningMovie
 
 struct AppState {
     bool appRunning = true;
+
     double msOfLastMouseMove = -1000;
-    bool drawProgressBar = false;
+    bool clickingOnProgressBar = false;
 
     Timer menuCloseTimer;
     bool globalContextMenuOpen;
@@ -273,13 +274,15 @@ struct GhosterWindow
         }
 
 
-        if (state.app_timer.MsSinceStart() - state.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
+        bool drawProgressBar;
+        if (state.app_timer.MsSinceStart() - state.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT
+            && !state.clickingOnProgressBar)
         {
-            state.drawProgressBar = false;
+            drawProgressBar = false;
         }
         else
         {
-            state.drawProgressBar = true;
+            drawProgressBar = true;
         }
 
         POINT mPos;
@@ -289,7 +292,7 @@ struct GhosterWindow
         if (!PtInRect(&winRect, mPos))
         {
             // OutputDebugString("mouse outside window\n");
-            state.drawProgressBar = false;
+            drawProgressBar = false;
 
         }
 
@@ -423,7 +426,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         state.window,
-                        percent, state.drawProgressBar);
+                        percent, drawProgressBar);
 
         // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
         //            (float*)sound_buffer, bytes_in_buffer);
@@ -1014,6 +1017,7 @@ void onMouseUpL()
     		appTogglePause();
     }
     mouseHasMovedSinceDownL = false;
+    global_ghoster.state.clickingOnProgressBar = false;
 }
 
 void onDoubleClickDownL()
@@ -1023,6 +1027,7 @@ void onDoubleClickDownL()
     if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
     {
     	// OutputDebugString("on bar dbl\n");
+    	global_ghoster.state.clickingOnProgressBar = true;
         return;
     }
 
@@ -1065,6 +1070,7 @@ void onMouseDownL(int clientX, int clientY)
     if (clientPointIsOnProgressBar(clientX, clientY))
     {
     	// OutputDebugString("on bar\n");
+    	global_ghoster.state.clickingOnProgressBar = true;
     	appSetProgressBar(clientX, clientY);
     }
 }
