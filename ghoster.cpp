@@ -77,7 +77,7 @@ bool StringBeginsWith(const char *str, const char *front)
 
 i64 nearestI64(double in)
 {
-	return floor(in + 0.5);
+    return floor(in + 0.5);
 }
 
 
@@ -145,22 +145,22 @@ struct AppState {
 
 struct timestamp
 {
-	i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
-	i64 timeBase;
-	double framesPerSecond;
+    i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
+    i64 timeBase;
+    double framesPerSecond;
 
-	double seconds()
-	{
-		return (double)secondsInTimeBase / (double)timeBase;
-	}
-	double frame()
-	{
-		return seconds() * framesPerSecond;
-	}
-	double i64InUnits(i64 base)
-	{
-		return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
-	}
+    double seconds()
+    {
+        return (double)secondsInTimeBase / (double)timeBase;
+    }
+    double frame()
+    {
+        return seconds() * framesPerSecond;
+    }
+    double i64InUnits(i64 base)
+    {
+        return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
+    }
 };
 
 
@@ -183,8 +183,8 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
     // todo: special if at start of file?
 
-	// todo: what if we seek right to an I-frame? i think that would still work,
-	// we'd have to pull at least 1 frame to have something to display anyway
+    // todo: what if we seek right to an I-frame? i think that would still work,
+    // we'd have to pull at least 1 frame to have something to display anyway
 
     double realTimeMs = ts.seconds() * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
     // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
@@ -229,26 +229,35 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
     i64 streamIndex = movie->av_movie.video.index;
     i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
     i64 base_den = movie->av_movie.vfc->streams[streamIndex]->time_base.den;
-	timestamp currentTS = {framePTS * base_num, base_den, ts.framesPerSecond};
+    timestamp currentTS = {framePTS * base_num, base_den, ts.framesPerSecond};
 
     double totalFrameCount = (movie->av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
-	double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
+    double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
 
-	    // char morebuf[123];
-	    // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
-	    // OutputDebugString(morebuf);
+        // char morebuf[123];
+        // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
+        // OutputDebugString(morebuf);
 
-	    // char morebuf2[123];
-	    // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
-	    // OutputDebugString(morebuf2);
+        // char morebuf2[123];
+        // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
+        // OutputDebugString(morebuf2);
 
-	    // char ptsbuf[123];
-	    // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
-	    //         nearestI64(currentTS.frame())+1,
-	    //         nearestI64(ts.frame())+1,
-	    //         nearestI64(totalFrameCount));
-	    // OutputDebugString(ptsbuf);
+        // char ptsbuf[123];
+        // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
+        //         nearestI64(currentTS.frame())+1,
+        //         nearestI64(ts.frame())+1,
+        //         nearestI64(totalFrameCount));
+        // OutputDebugString(ptsbuf);
 }
+
+
+// todo: what to do with this stuff??
+// move into ghosterwindow?
+POINT mDownPoint;
+bool mDown;
+bool ctrlDown;
+bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
+
 
 
 struct GhosterWindow
@@ -294,6 +303,11 @@ struct GhosterWindow
             // OutputDebugString("mouse outside window\n");
             drawProgressBar = false;
 
+            // if we mouse up while not on window all our mdown etc flags will be wrong
+            // so we just force an "end of click" when we leave the window
+            mDown = false;
+            mouseHasMovedSinceDownL = false;
+            state.clickingOnProgressBar = false;
         }
 
 
@@ -315,10 +329,10 @@ struct GhosterWindow
             int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
 
 
-		    double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
-		        // char fpsbuf[123];
-		        // sprintf(fpsbuf, "fps: %f\n", videoFPS);
-		        // OutputDebugString(fpsbuf);
+            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+                // char fpsbuf[123];
+                // sprintf(fpsbuf, "fps: %f\n", videoFPS);
+                // OutputDebugString(fpsbuf);
 
             timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
             // ts.AddMs(msAudioLatencyEstimate);
@@ -470,15 +484,6 @@ struct GhosterWindow
         state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
     }
-
-    void Run();
-
-    void MouseDownL() {}
-    void MouseDownR() {}
-    void MouseUpL() {}
-    void MouseUpR() {}
-
-
 
 
 };
@@ -903,14 +908,7 @@ bool PasteClipboard()
 
 
 
-// todo: what to do with this stuff??
-// move into ghosterwindow?
-
-POINT mDownPoint;
-bool mDown;
-bool ctrlDown;
-
-bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
+// todo: what to do with this assortment of functions?
 
 
 bool clientPointIsOnProgressBar(int x, int y)
@@ -973,31 +971,31 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 
     if (mDown)
     {
-	    // need to determine if click or drag here, not in buttonup
-	    // because mousemove will trigger (i think) at the first pixel of movement
-	    POINT mPos = { clientX, clientY };
-	    double dx = (double)mPos.x - (double)mDownPoint.x;
-	    double dy = (double)mPos.y - (double)mDownPoint.y;
-	    double distance = sqrt(dx*dx + dy*dy);
-	    double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
-	    if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
-	    {
-	        // we haven't moved enough to be considered a drag
-	        // or to eliminate a double click possibility
-	    }
-	    else
-	    {
-	        mouseHasMovedSinceDownL = true;
+        // need to determine if click or drag here, not in buttonup
+        // because mousemove will trigger (i think) at the first pixel of movement
+        POINT mPos = { clientX, clientY };
+        double dx = (double)mPos.x - (double)mDownPoint.x;
+        double dy = (double)mPos.y - (double)mDownPoint.y;
+        double distance = sqrt(dx*dx + dy*dy);
+        double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
+        if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
+        {
+            // we haven't moved enough to be considered a drag
+            // or to eliminate a double click possibility
+        }
+        else
+        {
+            mouseHasMovedSinceDownL = true;
 
-	        if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
-		    {
-		        appSetProgressBar(clientX, clientY);
-		    }
-		    else
-		    {
-		        appDragWindow(hwnd, clientX, clientY);
-		    }
-	    }
+            if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+            {
+                appSetProgressBar(clientX, clientY);
+            }
+            else
+            {
+                appDragWindow(hwnd, clientX, clientY);
+            }
+        }
     }
 }
 
@@ -1013,8 +1011,8 @@ void onMouseUpL()
     }
     else
     {
-	    if (!clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
-    		appTogglePause();
+        if (!clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+            appTogglePause();
     }
     mouseHasMovedSinceDownL = false;
     global_ghoster.state.clickingOnProgressBar = false;
@@ -1026,8 +1024,8 @@ void onDoubleClickDownL()
 
     if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
     {
-    	// OutputDebugString("on bar dbl\n");
-    	global_ghoster.state.clickingOnProgressBar = true;
+        // OutputDebugString("on bar dbl\n");
+        global_ghoster.state.clickingOnProgressBar = true;
         return;
     }
 
@@ -1069,9 +1067,9 @@ void onMouseDownL(int clientX, int clientY)
 
     if (clientPointIsOnProgressBar(clientX, clientY))
     {
-    	// OutputDebugString("on bar\n");
-    	global_ghoster.state.clickingOnProgressBar = true;
-    	appSetProgressBar(clientX, clientY);
+        // OutputDebugString("on bar\n");
+        global_ghoster.state.clickingOnProgressBar = true;
+        appSetProgressBar(clientX, clientY);
     }
 }
 
@@ -1166,7 +1164,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         // case WM_NCLBUTTONDOWN: {
         // } break;
         case WM_LBUTTONDBLCLK: {
-        	onDoubleClickDownL();
+            onDoubleClickDownL();
         } break;
 
         case WM_MOUSEMOVE: {
