@@ -182,9 +182,80 @@ struct GhosterWindow
         }
 
 
+        i64 framePTS;
+
+        // use twice the sdl buffer length for now
+        double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
+        msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
+
+
+        if (state.setSeek)
+        {
+            SDL_ClearQueuedAudio(sdl_stuff.audio_device);
+
+            // not entirely sure if this flush usage is right
+            avcodec_flush_buffers(loaded_video.av_movie.video.codecContext);
+            avcodec_flush_buffers(loaded_video.av_movie.audio.codecContext);
+
+            state.setSeek = false;
+            int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
+
+            // find first I frame before our seek position
+            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos-1, AVSEEK_FLAG_BACKWARD);
+            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos-1, AVSEEK_FLAG_BACKWARD);
+
+            // todo: special if at start of file?
+
+            framePTS = 0;
+            while (framePTS < seekPos-1) { // todo: failsafe exists (end of file, timeout)
+                double realTime = (double)seekPos / (double)AV_TIME_BASE;
+                int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
+                loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
+
+                double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
+
+                // step through video frames for both contexts until we reach our desired timestamp
+                GetNextVideoFrame(
+                    loaded_video.av_movie.vfc,
+                    loaded_video.av_movie.video.codecContext,
+                    loaded_video.sws_context,
+                    loaded_video.av_movie.video.index,
+                    loaded_video.frame_output,
+                    msSinceAudioStart,
+                    msAudioLatencyEstimate,
+                    &framePTS);
+                // GetNextVideoFrame(
+                //     loaded_video.av_movie.afc,
+                //     loaded_video.av_movie.video.codecContext,
+                //     loaded_video.sws_context,
+                //     loaded_video.av_movie.video.index,
+                //     loaded_video.frame_output,
+                //     msSinceAudioStart,
+                //     msAudioLatencyEstimate,
+                //     &framePTS);
+
+
+                // double timestamp = frame->pts / loaded_video.av_movie.vfc->streams[streamIndex]->time_base.den;
+                double realsomething = (double)framePTS *
+                                 ((double)loaded_video.av_movie.vfc->streams[loaded_video.av_movie.video.index]->time_base.num /
+                                 (double)loaded_video.av_movie.vfc->streams[loaded_video.av_movie.video.index]->time_base.den);
+
+                framePTS = realsomething * (double)AV_TIME_BASE;
+
+                char ptsbuf[123];
+                sprintf(ptsbuf, "pts: %lli / want: %i of %lli\n", framePTS, seekPos, loaded_video.av_movie.vfc->duration);
+                OutputDebugString(ptsbuf);
+            }
+
+
+        }
+
         // best place for this?
         loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
         double percent = loaded_video.elapsed/loaded_video.duration;
+            // char durbuf[123];
+            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
+            // OutputDebugString(durbuf);
 
 
         if (loaded_video.vid_paused)
@@ -202,29 +273,6 @@ struct GhosterWindow
                 loaded_video.audio_stopwatch.Start();
                 SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
             }
-
-            if (state.setSeek)
-            {//asdf
-
-                //SetupSDLSound();
-                SDL_ClearQueuedAudio(sdl_stuff.audio_device);
-
-                state.setSeek = false;
-                int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
-                av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, 0);
-                av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, 0);
-
-                double realTime = (double)seekPos / (double)AV_TIME_BASE;
-                int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
-                loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
-
-            }
-
-            loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-            percent = loaded_video.elapsed/loaded_video.duration;
-                // char durbuf[123];
-                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", elapsed, duration, percent*100);
-                // OutputDebugString(durbuf);
 
 
             // SOUND
@@ -284,10 +332,6 @@ struct GhosterWindow
 
             double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
 
-            // use twice the sdl buffer length for now
-            double msAudioLatencyEstimate = sdl_stuff.spec.samples / sdl_stuff.spec.freq * 1000.0;
-            msAudioLatencyEstimate *= 2; // feels just about right todo: could measure with screen recording?
-
             GetNextVideoFrame(
                 loaded_video.av_movie.vfc,
                 loaded_video.av_movie.video.codecContext,
@@ -295,7 +339,8 @@ struct GhosterWindow
                 loaded_video.av_movie.video.index,
                 loaded_video.frame_output,
                 msSinceAudioStart,
-                msAudioLatencyEstimate);
+                msAudioLatencyEstimate,
+                &framePTS);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;
@@ -568,7 +613,6 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 
     newMovie->audio_stopwatch.ResetCompletely();
 
-//asdf
 
     // SET FPS BASED ON LOADED VIDEO
 

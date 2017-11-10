@@ -2,7 +2,7 @@
 
 bugs:
 
-[ ] seeking near begining or end triggers resize area
+[x] seeking near begining or end triggers resize area
 
 
 [ ] pause then load new video displays memory

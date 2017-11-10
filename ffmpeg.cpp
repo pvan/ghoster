@@ -273,7 +273,8 @@ bool GetNextVideoFrame(
     int streamIndex,
     AVFrame *outFrame,
     double msSinceStart,
-    double msAudioLatencyEstimate)
+    double msAudioLatencyEstimate,
+    i64 *outPTS)
 {
     AVPacket packet;
 
@@ -336,6 +337,8 @@ bool GetNextVideoFrame(
 
                     continue;
                 }
+
+                *outPTS = av_frame_get_best_effort_timestamp(frame);
 
                 sws_scale(
                     sws_context,
