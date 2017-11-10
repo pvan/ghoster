@@ -756,7 +756,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     global_ghoster.state.globalContextMenuOpen = true;
     global_ghoster.state.menuCloseTimer.Stop();
     TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    global_ghoster.state.menuCloseTimer.Start();
+    global_ghoster.state.menuCloseTimer.Start(); // we only get past TrackPopupMenu once the menu is closed
 }
 
 
@@ -984,7 +984,10 @@ void onMouseUpL()
         }
         else
         {
-            timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER, &onSingleClickL);
+            if (!global_ghoster.state.globalContextMenuOpen)
+            {
+                timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER, &onSingleClickL);
+            }
             // onClickL();
             timerSinceLastClickL.Start();
             lastClickWasEndOfDoubleClick = false;
@@ -997,6 +1000,10 @@ void onMouseDownL(int x, int y, bool clientAreaHit)
     // basically app can ignore if not in client area
 	if (!clientAreaHit)
 		return;
+
+    // i think we also can just ignore if context menu is open
+    if (global_ghoster.state.globalContextMenuOpen)
+        return;
 
     mDown = true;
     mouseHasMovedSinceDownL = false;
