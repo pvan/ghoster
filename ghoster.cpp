@@ -151,9 +151,6 @@ struct GhosterWindow
     void Update()
     {
 
-        // TODO: option to update as fast as possible and hog cpu? hmmm
-
-
         // if (dt < targetMsPerFrame)
         //     return;
 
@@ -181,6 +178,7 @@ struct GhosterWindow
         {
             // OutputDebugString("mouse outside window\n");
             state.drawProgressBar = false;
+
         }
 
 
@@ -807,26 +805,23 @@ struct mouseClickState
 
 POINT mDownPoint;
 bool mDown;
-bool itWasADrag;
-bool clickingOnProgessBar;
+bool clickingOnProgessBar;  // not a fan of this flag.. way to simplify usage?
 bool lastClickWasOnProgressBar; // need to know this for our single click timer event
-//bool wasNonClientHit;
 
 bool ctrlDown;
 
-//Timer mDownTimerL;
 Timer timerSinceLastClickL;
 bool lastClickWasEndOfDoubleClick = false;  // better/clearer name / method of tracking this?
 
 
 // wait less time than total double click before executing single click
 // we have to comprimise somewhere, 500ms is too long too wait for an input response
-// if we double click in less time than SINGLE_CLICK_AFTER, everything works great
+// if we double click in less time than SINGLE_CLICK_AFTER_MS, everything works great
 // if we double click slower than MAX_DOUBLE_CLICK_MS, it's two clicks
 // but if we double click in between them, it will register as a single and a double
 // therefore todo: if we double click slowly, consider undo the single click effect (like the old way)
 double MAX_DOUBLE_CLICK_MS = 500; // todo: use system default?
-double SINGLE_CLICK_AFTER = 200;
+double SINGLE_CLICK_AFTER_MS = 200;
 
 
 bool mouseHasMovedSinceDownL = false;
@@ -925,6 +920,8 @@ void appDragWindow(HWND hwnd, int x, int y)
             int winX = mouseX - global_ghoster.state.winWID/2;
             int winY = mouseY - global_ghoster.state.winHEI/2;
             MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
+
+            // clickingOnProgessBar = false; // maybe necessary
         }
     }
 
@@ -1007,7 +1004,7 @@ void onMouseUpL()
         {
             if (!global_ghoster.state.globalContextMenuOpen)
             {
-                timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER, &onSingleClickL);
+                timerID = SetTimer(NULL, 0, SINGLE_CLICK_AFTER_MS, &onSingleClickL);
             }
             // onClickL();
             timerSinceLastClickL.Start();
