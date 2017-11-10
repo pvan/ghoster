@@ -902,49 +902,12 @@ bool PasteClipboard()
 
 // todo: what to do with this stuff??
 // move into ghosterwindow?
-// track our own double clicks?
-
-/*
-struct mouseClickState
-{
-    POINT mDownPoint;
-    bool mDown;
-    bool itWasADrag;
-    bool clickingOnProgessBar;
-    bool wasNonClientHit;
-
-    bool ctrlDown;
-};
-*/
-
 
 POINT mDownPoint;
 bool mDown;
-// bool clickingOnProgessBar;  // not a fan of this flag.. way to simplify usage?
-// bool lastClickWasOnProgressBar; // need to know this for our single click timer event
-
 bool ctrlDown;
 
-// Timer timerSinceLastClickL;
-// bool nextClickCouldBeDoubleClick = false;
-
-
-// // wait less time than total double click before executing single click
-// // we have to comprimise somewhere, 500ms is too long too wait for an input response
-// // if we double click in less time than SINGLE_CLICK_AFTER_MS, everything works great
-// // if we double click slower than MAX_DOUBLE_CLICK_MS, it's two clicks
-// // but if we double click in between them, it will register as a single and a double
-// // therefore todo: if we double click slowly, consider undo the single click effect (like the old way)
-// // ok, how about this for a better way?
-// // instant single click effect, but cache the state of the video on the first click
-// // then, if it turns out to be a double click, restore that state after the second click
-// // that way we can play/pause instantly, but double click still has no (lasting) effect
-// // (though play/pause too fast and we maximize.. hmmm.. maybe step forward back arrows?)
-// double MAX_DOUBLE_CLICK_MS = 500; // todo: use system default?
-// double SINGLE_CLICK_AFTER_MS = 200;
-
-
-bool mouseHasMovedSinceDownL = false;
+bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
 
 
 bool clientPointIsOnProgressBar(int x, int y)
@@ -957,8 +920,6 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
     POINT newPoint = {x, y};
     ScreenToClient(hwnd, &newPoint);
     return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
-    // return newPoint.y >= global_ghoster.state.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-    //        newPoint.y <= global_ghoster.state.winHEI-PROGRESS_BAR_B;
 }
 
 
@@ -973,7 +934,6 @@ void appSetProgressBar(int clientX, int clientY)
     if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
     {
         double prop = (double)clientX / (double)global_ghoster.state.winWID;
-        // clickingOnProgessBar = true;
 
         global_ghoster.state.setSeek = true;
         global_ghoster.state.seekProportion = prop;
@@ -995,8 +955,6 @@ void appDragWindow(HWND hwnd, int x, int y)
             int winX = mouseX - global_ghoster.state.winWID/2;
             int winY = mouseY - global_ghoster.state.winHEI/2;
             MoveWindow(hwnd, winX, winY, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);
-
-            // clickingOnProgessBar = false; // maybe necessary
         }
     }
 
@@ -1012,7 +970,6 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 
     if (mDown)
     {
-
 	    // need to determine if click or drag here, not in buttonup
 	    // because mousemove will trigger (i think) at the first pixel of movement
 	    POINT mPos = { clientX, clientY };
@@ -1027,8 +984,6 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 	    }
 	    else
 	    {
-	    	// if (mDown)
-	    	// {
 	        mouseHasMovedSinceDownL = true;
 
 	        if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
@@ -1039,17 +994,13 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 		    {
 		        appDragWindow(hwnd, clientX, clientY);
 		    }
-	        // }
 	    }
-
     }
 }
 
-
-
 void onMouseUpL()
 {
-    OutputDebugString("LUP\n");
+    // OutputDebugString("LUP\n");
 
     mDown = false;
 
@@ -1062,22 +1013,16 @@ void onMouseUpL()
 	    if (!clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
     		appTogglePause();
     }
-    // clickingOnProgessBar = false;
     mouseHasMovedSinceDownL = false;
 }
 
-// void setMouseHitFlags()
-// {
-
-// }
-
 void onDoubleClickDownL()
 {
-    OutputDebugString("LDOUBLECLICK\n");
+    // OutputDebugString("LDOUBLECLICK\n");
 
     if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
     {
-    	OutputDebugString("on bar d\n");
+    	// OutputDebugString("on bar dbl\n");
         return;
     }
 
@@ -1106,7 +1051,7 @@ void onDoubleClickDownL()
 
 void onMouseDownL(int clientX, int clientY)
 {
-    OutputDebugString("LDOWN\n");
+    // OutputDebugString("LDOWN\n");
 
     // i think we can just ignore if context menu is open
     if (global_ghoster.state.globalContextMenuOpen)
@@ -1115,13 +1060,12 @@ void onMouseDownL(int clientX, int clientY)
     // mouse state / info about click...
     mDown = true;
     mouseHasMovedSinceDownL = false;
-    // clickingOnProgessBar = clientPointIsOnProgressBar(clientX, clientY);
     mDownPoint = {clientX, clientY};
 
     if (clientPointIsOnProgressBar(clientX, clientY))
     {
-    	OutputDebugString("on bar\n");
-    	appSetProgressBar(clientX, clientY);  // in this case
+    	// OutputDebugString("on bar\n");
+    	appSetProgressBar(clientX, clientY);
     }
 }
 
