@@ -1141,7 +1141,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             bool bottom = pos.y > win.bottom - pad.y -1;
 
             // little hack to allow us to use progress bar all the way out to the edge
-            if (screenPointIsOnProgressBar(hwnd, pos.x, pos.y)) { left = false; right = false; }
+            if (screenPointIsOnProgressBar(hwnd, pos.x, pos.y) && !bottom) { left = false; right = false; }
 
             if (top && left)     return HTTOPLEFT;
             if (top && right)    return HTTOPRIGHT;
