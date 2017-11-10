@@ -164,7 +164,7 @@ struct timestamp
 
 
 // called "hard" because we flush the buffers and may have to grab a few frames to get the right one
-void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *outBufferNotUsedATM)
+void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAudioLatencyEstimate)
 {
     // not entirely sure if this flush usage is right
     avcodec_flush_buffers(movie->av_movie.video.codecContext);
@@ -177,16 +177,15 @@ void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *
     av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
 
-    // basically how close will we consider a "success"
-    double secondsInHalfFrame = (movie->targetMsPerFrame / 1000.0) / 2.0;
+    // // basically how close will we consider a "success"
+    // double secondsInHalfFrame = (movie->targetMsPerFrame / 1000.0) / 2.0;
 
     // todo: special if at start of file?
 
 	// todo: what if we seek right to an I-frame? i think that would still work,
 	// we'd have to pull at least 1 frame to have something to display anyway
 
-    double realTime = ts.seconds() * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
-    movie->audio_stopwatch.SetMsElapsedFromSeconds(realTime);
+    double realTimeMs = ts.seconds() * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
     // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
         // char msbuf[123];
         // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
@@ -195,24 +194,36 @@ void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *
     i64 framePTS = 0;
 
     // step through video frames for both contexts until we reach our desired timestamp
-    GetNextVideoFrame(
-        movie->av_movie.vfc,
-        movie->av_movie.video.codecContext,
-        movie->sws_context,
-        movie->av_movie.video.index,
-        movie->frame_output,
-        realTime,
-        0,
-        &framePTS);
+
+    // todo: replace this will getnextaudioframe?
     GetNextVideoFrame(
         movie->av_movie.afc,
         movie->av_movie.video.codecContext,
         movie->sws_context,
         movie->av_movie.video.index,
         movie->frame_output,
-        realTime,
-        0,
+        realTimeMs,
+        // 0,
         &framePTS);
+    // int bytes_queued_up = GetNextAudioFrame(
+    //     loaded_video.av_movie.afc,
+    //     loaded_video.av_movie.audio.codecContext,
+    //     loaded_video.av_movie.audio.index,
+    //     ffmpeg_to_sdl_buffer,
+    //     wanted_bytes,
+    //     loaded_video.audio_stopwatch.MsElapsed());
+
+    movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
+
+    GetNextVideoFrame(
+        movie->av_movie.vfc,
+        movie->av_movie.video.codecContext,
+        movie->sws_context,
+        movie->av_movie.video.index,
+        movie->frame_output,
+        movie->audio_stopwatch.MsElapsed() - msAudioLatencyEstimate,
+        &framePTS);
+
 
     i64 streamIndex = movie->av_movie.video.index;
     i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
@@ -229,7 +240,6 @@ void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *
 	    // char morebuf2[123];
 	    // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
 	    // OutputDebugString(morebuf2);
-
 
 	    // char ptsbuf[123];
 	    // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
@@ -303,14 +313,14 @@ struct GhosterWindow
 
 
 		    double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
-		        char fpsbuf[123];
-		        sprintf(fpsbuf, "fps: %f\n", videoFPS);
-		        OutputDebugString(fpsbuf);
+		        // char fpsbuf[123];
+		        // sprintf(fpsbuf, "fps: %f\n", videoFPS);
+		        // OutputDebugString(fpsbuf);
 
             timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
             // ts.AddMs(msAudioLatencyEstimate);
 
-            HardExtractVideoFrameForTimestamp(&loaded_video, ts, loaded_video.vid_buffer);
+            HardSeekToFrameForTimestamp(&loaded_video, ts, msAudioLatencyEstimate);
 
         }
 
@@ -394,16 +404,13 @@ struct GhosterWindow
 
             // VIDEO
 
-            double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
-
             GetNextVideoFrame(
                 loaded_video.av_movie.vfc,
                 loaded_video.av_movie.video.codecContext,
                 loaded_video.sws_context,
                 loaded_video.av_movie.video.index,
                 loaded_video.frame_output,
-                msSinceAudioStart,
-                msAudioLatencyEstimate,
+                loaded_video.audio_stopwatch.MsElapsed() - msAudioLatencyEstimate,
                 &framePTS);
 
         }

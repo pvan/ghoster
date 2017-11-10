@@ -276,8 +276,8 @@ bool GetNextVideoFrame(
     SwsContext *sws_context,
     int streamIndex,
     AVFrame *outFrame,
-    double msSinceStart,
-    double msAudioLatencyEstimate,
+    double msOfDesiredFrame,
+    // double msDelayBehindTimeByThisMuch,
     i64 *outPTS)
 {
     AVPacket packet;
@@ -321,7 +321,7 @@ bool GetNextVideoFrame(
                 // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
                 // OutputDebugString(temp);
 
-                double msToPlayFrame = 1000 * frame->pts /
+                double msToPlayThisFrame = 1000 * frame->pts /
                     fc->streams[streamIndex]->time_base.den;
 
 
@@ -339,7 +339,7 @@ bool GetNextVideoFrame(
                 // OutputDebugString(zxcv);
 
 
-                if (msToPlayFrame + msAudioLatencyEstimate + msDelayAllowed < msSinceStart
+                if (msToPlayThisFrame < msOfDesiredFrame - msDelayAllowed /*+ msAudioLatencyEstimate + msDelayAllowed*/
                     && !skipped_a_frame_already)
                 {
                     // OutputDebugString("skipped a frame\n");
