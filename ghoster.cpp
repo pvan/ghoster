@@ -891,10 +891,8 @@ void appOnDoubleClickL()
 {
     // OutputDebugString("LDOUBLECLICK\n");
 
-    // todo: only pause if we _aren't_ double clicking.. will be slower but i think better
-    // TODO: only to undo the pause that happens otherwise see ;lkj
-    // if we are paused, double clicking will play a split second of video when max/min-ing video
-    // vid_paused = !vid_paused;
+    if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+        return;
 
     WINDOWPLACEMENT winpos;
     winpos.length = sizeof(WINDOWPLACEMENT);
