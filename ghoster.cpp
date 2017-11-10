@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include <stdint.h> // types
 #include <assert.h>
 #include <math.h>
 
@@ -74,7 +75,10 @@ bool StringBeginsWith(const char *str, const char *front)
     return true;
 }
 
-
+i64 nearestI64(double in)
+{
+	return floor(in + 0.5);
+}
 
 
 #include "ffmpeg.cpp"
@@ -138,7 +142,6 @@ struct AppState {
 #include "opengl.cpp"
 
 
-
 struct timestamp
 {
 	i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
@@ -153,8 +156,97 @@ struct timestamp
 	{
 		return seconds() * framesPerSecond;
 	}
+	double i64InUnits(i64 base)
+	{
+		return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
+	}
 };
 
+
+// called "hard" because we flush the buffers and may have to grab a few frames to get the right one
+void HardExtractVideoFrameForTimestamp(RunningMovie *movie, timestamp ts, void *outBufferNotUsedATM)
+{
+    // not entirely sure if this flush usage is right
+    avcodec_flush_buffers(movie->av_movie.video.codecContext);
+    avcodec_flush_buffers(movie->av_movie.audio.codecContext);
+
+    i64 seekPos = ts.i64InUnits(AV_TIME_BASE);
+
+    // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
+    av_seek_frame(movie->av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+
+
+    // basically how close will we consider a "success"
+    double secondsInHalfFrame = (movie->targetMsPerFrame / 1000.0) / 2.0;
+
+    // todo: special if at start of file?
+
+	// todo: what if we seek right to an I-frame? i think that would still work,
+	// we'd have to pull at least 1 frame to have something to display anyway
+
+    double realTime = (double)seekPos / (double)AV_TIME_BASE;
+    movie->audio_stopwatch.SetMsElapsedFromSeconds(realTime);
+    double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
+        char msbuf[123];
+        sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
+        OutputDebugString(msbuf);
+
+    i64 framePTS = 0;
+
+    // step through video frames for both contexts until we reach our desired timestamp
+    GetNextVideoFrame(
+        movie->av_movie.vfc,
+        movie->av_movie.video.codecContext,
+        movie->sws_context,
+        movie->av_movie.video.index,
+        movie->frame_output,
+        ts.seconds() * 1000.0,
+        0,
+        &framePTS);
+    // GetNextVideoFrame(
+    //     movie->av_movie.afc,
+    //     movie->av_movie.video.codecContext,
+    //     movie->sws_context,
+    //     movie->av_movie.video.index,
+    //     movie->frame_output,
+    //     msSinceAudioStart,
+    //     0,
+    //     &framePTS);
+
+    i64 streamIndex = movie->av_movie.video.index;
+    i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
+    i64 base_den = movie->av_movie.vfc->streams[streamIndex]->time_base.den;
+
+	timestamp currentTS = {framePTS * base_num, base_den, ts.framesPerSecond};
+
+
+    // int timeTicks = currentTS.seconds() * loaded_video.audio_stopwatch.timer.ticks_per_second;
+    // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
+
+
+    char morebuf2[123];
+    sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
+    OutputDebugString(morebuf2);
+
+
+    double totalFrameCount = (movie->av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
+
+
+	double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
+    char morebuf[123];
+    sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
+    OutputDebugString(morebuf);
+
+
+    char ptsbuf[123];
+    sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
+            nearestI64(currentTS.frame())+1,
+            nearestI64(ts.frame())+1,
+            nearestI64(totalFrameCount));
+    // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
+    OutputDebugString(ptsbuf);
+}
 
 
 struct GhosterWindow
@@ -215,75 +307,19 @@ struct GhosterWindow
         {
             SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
-            // not entirely sure if this flush usage is right
-            avcodec_flush_buffers(loaded_video.av_movie.video.codecContext);
-            avcodec_flush_buffers(loaded_video.av_movie.audio.codecContext);
-
             state.setSeek = false;
             int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
 
-            // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
-            av_seek_frame(loaded_video.av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-            av_seek_frame(loaded_video.av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
+		    double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+		        char fpsbuf[123];
+		        sprintf(fpsbuf, "fps: %f\n", videoFPS);
+		        OutputDebugString(fpsbuf);
 
-            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
-                char fpsbuf[123];
-                sprintf(fpsbuf, "fps: %f\n", videoFPS);
-                OutputDebugString(fpsbuf);
+            timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
+            // ts.AddMs(msAudioLatencyEstimate);
 
-            timestamp currentTS = {0, AV_TIME_BASE, videoFPS};
-            timestamp targetTS = {seekPos, AV_TIME_BASE, videoFPS};
-
-            // basically how close will we consider a "success"
-            double secondsInHalfFrame = (loaded_video.targetMsPerFrame / 1000.0) / 2.0;
-
-            // todo: special if at start of file?
-
- 			// todo: failsafe exits (end of file, timeout)
-            // while (targetTS.seconds() - currentTS.seconds() > secondsInHalfFrame) {
-
-            	// todo: what if we seek right to an I-frame? i think that would still work,
-            	// we'd have to pull at least 1 frame to have something to display anyway
-
-                double realTime = (double)seekPos / (double)AV_TIME_BASE;
-                loaded_video.audio_stopwatch.SetMsElapsedFromSeconds(realTime);
-                // int timeTicks = realTime * loaded_video.audio_stopwatch.timer.ticks_per_second;
-                // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
-                double msSinceAudioStart = loaded_video.audio_stopwatch.MsElapsed();
-	                char msbuf[123];
-	                sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
-	                OutputDebugString(msbuf);
-
-                // step through video frames for both contexts until we reach our desired timestamp
-                GetNextVideoFrame(
-                    loaded_video.av_movie.vfc,
-                    loaded_video.av_movie.video.codecContext,
-                    loaded_video.sws_context,
-                    loaded_video.av_movie.video.index,
-                    loaded_video.frame_output,
-                    msSinceAudioStart,
-                    msAudioLatencyEstimate,
-                    &framePTS);
-
-                i64 streamIndex = loaded_video.av_movie.video.index;
-                i64 base_num = loaded_video.av_movie.vfc->streams[streamIndex]->time_base.num;
-                i64 base_den = loaded_video.av_movie.vfc->streams[streamIndex]->time_base.den;
-
-            	currentTS = {framePTS * base_num, base_den, videoFPS};
-
-
-                // int timeTicks = currentTS.seconds() * loaded_video.audio_stopwatch.timer.ticks_per_second;
-                // loaded_video.audio_stopwatch.timer.starting_ticks = loaded_video.audio_stopwatch.timer.TicksNow() - timeTicks;
-
-                double totalFrameCount = (loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)videoFPS;
-
-                char ptsbuf[123];
-                sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.frame(), targetTS.frame(), totalFrameCount);
-                // sprintf(ptsbuf, "at: %f / want: %f of %f\n", currentTS.seconds(), targetTS.seconds(), loaded_video.av_movie.vfc->duration / (double)AV_TIME_BASE);
-                OutputDebugString(ptsbuf);
-            // }
-
+            HardExtractVideoFrameForTimestamp(&loaded_video, ts, loaded_video.vid_buffer);
 
         }
 
@@ -658,7 +694,7 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
                         (double)loaded_video->video.codecContext->ticks_per_frame;
 
     char vidfps[123];
-    sprintf(vidfps, "video frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+    sprintf(vidfps, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
         loaded_video->video.codecContext->time_base.num,
         loaded_video->video.codecContext->time_base.den,
         targetFPS,

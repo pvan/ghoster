@@ -20,8 +20,12 @@ extern "C"
 
 
 
-
-
+// todo: fsomething like this?
+struct VideoBuffer
+{
+    AVFrame frame;  // this is setup to use raw_mem
+    void *raw_mem;
+};
 
 struct SoundBuffer
 {
@@ -290,6 +294,14 @@ bool GetNextVideoFrame(
                 // OutputDebugString(temp2);
 
 
+    i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
+        char frambuf2[123];
+        sprintf(frambuf2, "want: %lli \n", frame_want+1);
+        OutputDebugString(frambuf2);
+    bool displayedSkipMsg = false;
+
+
+
     bool skipped_a_frame_already = false;
 
     while(av_read_frame(fc, &packet) >= 0)
@@ -313,37 +325,45 @@ bool GetNextVideoFrame(
                     fc->streams[streamIndex]->time_base.den;
 
 
+                // we'll use a frame even if it's this far behind
+                // should we make sure this is at least half a frame length? hmm
                 double msDelayAllowed = 20;
 
 
-                char zxcv[123];
-                sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
-                        msToPlayFrame,
-                        msSinceStart,
-                        msAudioLatencyEstimate + msDelayAllowed
-                        );
-                OutputDebugString(zxcv);
+                // char zxcv[123];
+                // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
+                //         msToPlayFrame,
+                //         msSinceStart,
+                //         msAudioLatencyEstimate + msDelayAllowed
+                //         );
+                // OutputDebugString(zxcv);
 
 
-                // skip frame if too far off
-                if (msAudioLatencyEstimate != 0)  // todo: i guess for now use this as code to not skip frames
+                if (msToPlayFrame + msAudioLatencyEstimate + msDelayAllowed < msSinceStart
+                    && !skipped_a_frame_already)
                 {
-                    if (msToPlayFrame +
-                        msAudioLatencyEstimate +
-                        msDelayAllowed <
-                        msSinceStart &&
-                        !skipped_a_frame_already)
-                    {
-                        OutputDebugString("skipped a frame\n");
-                        // skipped_a_frame_already = true;
+                    // OutputDebugString("skipped a frame\n");
 
-                        // seems like we'd want this here right?
-                        av_packet_unref(&packet);
-                        av_frame_unref(frame);
+                    // now skip as many as you want..
+                    // but we should limit by time actually, right?
+                    // skipped_a_frame_already = true;
 
-                        continue;
-                    }
+                    if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
+
+                    double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
+                    i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
+                        char frambuf[123];
+                        sprintf(frambuf, "%lli ", frame_count+1);
+                        OutputDebugString(frambuf);
+
+                    // seems like we'd want this here right?
+                    av_packet_unref(&packet);
+                    av_frame_unref(frame);
+
+                    continue;
                 }
+                OutputDebugString("\n");
+
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);
 
@@ -356,6 +376,7 @@ bool GetNextVideoFrame(
                     outFrame->data,
                     outFrame->linesize);
 
+
                 // as far as i can tell, these need to be freed before leaving
                 // AND they need to be unref'd before every use below
                 av_free_packet(&packet);
@@ -365,6 +386,7 @@ bool GetNextVideoFrame(
                 // before it was every avcodec_decode_video2
                 // even if we didn't get a compelte frame
                 return true;
+
             }
 
 
