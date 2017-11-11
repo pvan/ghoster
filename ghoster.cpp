@@ -218,7 +218,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
     // step through video frames for both contexts until we reach our desired timestamp
 
-    // todo: replace this will getnextaudioframe?
+    // todo: replace this with getnextaudioframe?
     GetNextVideoFrame(
         movie->av_movie.afc,
         movie->av_movie.video.codecContext,
@@ -226,7 +226,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->av_movie.video.index,
         movie->frame_output,
         realTimeMs,
-        // 0,
+        0,
         &movie->ptsOfLastAudio);
     // int bytes_queued_up = GetNextAudioFrame(
     //     loaded_video.av_movie.afc,
@@ -244,7 +244,8 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->sws_context,
         movie->av_movie.video.index,
         movie->frame_output,
-        movie->audio_stopwatch.MsElapsed() - msAudioLatencyEstimate,
+        movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
+        0,
         &movie->ptsOfLastVideo);
 
 
@@ -432,7 +433,7 @@ struct GhosterWindow
 
 
 
-            // VIDEO
+            // TIMINGS / SYNC
 
 
 
@@ -443,11 +444,7 @@ struct GhosterWindow
                 // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
                 // OutputDebugString(secquebuf);
 
-
-
-
             timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
-
             // assuming we've filled the sdl buffer, we are 1 second ahead
             // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
             // and how consistently do we pull audio data? is it sometimes more than others?
@@ -455,17 +452,34 @@ struct GhosterWindow
             // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
 
-            double vid_seconds;
+
+            timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
+            double vid_seconds = ts_video.seconds();
+
+            double estimatedVidPTS = vid_seconds + loaded_video.targetMsPerFrame/1000.0;
 
 
-static double lastVidSec = 10000;
+            // better to have audio lag than lead, these based loosely on:
+            // https://en.wikipedia.org/wiki/Audio-to-video_synchronization#Recommendations
+            double idealMaxAudioLag = 80;
+            double idealMaxAudioLead = 20;
 
-            double estimatedVidPTS = lastVidSec + loaded_video.targetMsPerFrame/1000.0;
+            // todo: make this / these adjustable?
+            // based on screen recording the sdl estimate seems pretty accurate, unless
+            // that's just balancing out our initial uneven tolerances? dunno
+            // double estimatedSDLAudioLag = sdl_stuff.estimated_audio_latency_ms;
+            // it almost feels better to actually have a little audio delay though...
+            double estimatedSDLAudioLag = 0;
+            double allowableAudioLag = idealMaxAudioLag - estimatedSDLAudioLag;
+            double allowableAudioLead = idealMaxAudioLead + estimatedSDLAudioLag;
+
+
+            // VIDEO
 
             // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
             // i guess seeking/starting -> best effort sync, and auto-correct in update while running
             // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
-            if (aud_seconds > estimatedVidPTS - .04) // time for a new frame if audio is this far behind
+            if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0) // time for a new frame if audio is this far behind
             {
                 GetNextVideoFrame(
                     loaded_video.av_movie.vfc,
@@ -474,8 +488,8 @@ static double lastVidSec = 10000;
                     loaded_video.av_movie.video.index,
                     loaded_video.frame_output,
                     aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
+                    allowableAudioLead,
                     &loaded_video.ptsOfLastVideo);
-
 
             }
             else
@@ -484,25 +498,21 @@ static double lastVidSec = 10000;
             }
 
 
-            timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
-
-            // when should this frame be shown (according to the ffmpeg stream)
+            ts_video = timestamp::FromVideoPTS(loaded_video);
             vid_seconds = ts_video.seconds();
-
-lastVidSec = vid_seconds;
 
 
             // how far ahead is the sound?
             double delta_ms = (aud_seconds - vid_seconds) * 1000.0;
 
             // the real audio being transmitted is sdl's write buffer which will be a little behind
-            double aud_sec_corrected = aud_seconds - sdl_stuff.estimated_audio_latency_ms/1000.0;
+            double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
             double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
 
-            char ptsbuf[123];
-            sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-                    vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-            OutputDebugString(ptsbuf);
+            // char ptsbuf[123];
+            // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+            //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+            // OutputDebugString(ptsbuf);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;

@@ -280,7 +280,7 @@ bool GetNextVideoFrame(
     int streamIndex,
     AVFrame *outFrame,
     double msOfDesiredFrame,
-    // double msDelayBehindTimeByThisMuch,
+    double msAllowableAudioLead,
     i64 *outPTS)
 {
     AVPacket packet;
@@ -330,11 +330,6 @@ bool GetNextVideoFrame(
                     fc->streams[streamIndex]->time_base.den;
 
 
-                // we'll use a frame even if it's this far behind
-                // should we make sure this is at least half a frame length? hmm
-                double msDelayAllowed = 50;
-
-
                 // char zxcv[123];
                 // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
                 //         msToPlayFrame,
@@ -344,7 +339,7 @@ bool GetNextVideoFrame(
                 // OutputDebugString(zxcv);
 
 
-                if (msToPlayThisFrame < msOfDesiredFrame - msDelayAllowed /*+ msAudioLatencyEstimate + msDelayAllowed*/
+                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
                     && !skipped_a_frame_already)
                 {
                     OutputDebugString("skipped a frame\n");
