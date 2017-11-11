@@ -8,11 +8,12 @@
     [ ] with caching
     [ ] and buffering
 
-[ ] definite sync issues when seeking youtube videos
+[x] definite sync issues when seeking youtube videos
 
 [ ] look into how ffmpeg dls videos -- cache anywhere?
 
 [ ] need to dl a low quality version first or we'll lag on large files??
+    (definite delay but maybe not correlated to vid size)
 
 
 [ ] overlay display, play/pause feedback, etc
