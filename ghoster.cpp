@@ -713,10 +713,13 @@ static void GlobalLoadMovie(char *path)
     global_load_new_file = true;
 }
 
-// todo: peruse this for memory leaks. also: better name?
-bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
-{
 
+
+
+// fill movieAV with data from movie at path
+// calls youtube-dl if needed so could take a sec
+bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
+{
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
     OutputDebugString(loadingMsg);
@@ -727,7 +730,7 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
         char *audio_url;
         if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
         {
-            newMovie->av_movie = OpenMovieAV(video_url, audio_url);
+            *newMovie = OpenMovieAV(video_url, audio_url);
         }
         else
         {
@@ -737,67 +740,72 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     }
     else if (path[1] == ':')
     {
-        newMovie->av_movie = OpenMovieAV(path, path);
+        *newMovie = OpenMovieAV(path, path);
     }
     else
     {
         MsgBox("not full filepath or url\n");
         return false;
     }
+    return true;
+}
 
 
-    MovieAV *loaded_video = &newMovie->av_movie;
+bool SetupForNewMovie(MovieAV *movie, RunningMovie *outMovie)
+{
+
+    // MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
-    newMovie->vidWID = loaded_video->video.codecContext->width;
-    newMovie->vidHEI = loaded_video->video.codecContext->height;
-    global_ghoster.state.winWID = newMovie->vidWID;
-    global_ghoster.state.winHEI = newMovie->vidHEI;
+    outMovie->vidWID = movie->video.codecContext->width;
+    outMovie->vidHEI = movie->video.codecContext->height;
+    global_ghoster.state.winWID = outMovie->vidWID;
+    global_ghoster.state.winHEI = outMovie->vidHEI;
     RECT winRect;
     GetWindowRect(global_ghoster.state.window, &winRect);
     //keep top left of window in same pos for now, change to keep center in same position?
     MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);  // ever non-zero opening position? launch option?
 
-    newMovie->vid_aspect = (double)global_ghoster.state.winWID / (double)global_ghoster.state.winHEI;
+    outMovie->vid_aspect = (double)global_ghoster.state.winWID / (double)global_ghoster.state.winHEI;
 
 
     // MAKE NOTE OF VIDEO LENGTH
 
     // todo: add handling for this
-    assert(loaded_video->vfc->start_time==0);
+    assert(movie->vfc->start_time==0);
         // char rewq[123];
         // sprintf(rewq, "start: %lli\n", start_time);
         // OutputDebugString(rewq);
 
 
     OutputDebugString("\nvideo format ctx:\n");
-    logFormatContextDuration(loaded_video->vfc);
+    logFormatContextDuration(movie->vfc);
     OutputDebugString("\naudio format ctx:\n");
-    logFormatContextDuration(loaded_video->afc);
+    logFormatContextDuration(movie->afc);
 
-    newMovie->duration = (double)loaded_video->vfc->duration / (double)AV_TIME_BASE;
-    newMovie->elapsed = 0;
+    outMovie->duration = (double)movie->vfc->duration / (double)AV_TIME_BASE;
+    outMovie->elapsed = 0;
 
-    newMovie->audio_stopwatch.ResetCompletely();
+    outMovie->audio_stopwatch.ResetCompletely();
 
 
     // SET FPS BASED ON LOADED VIDEO
 
-    double targetFPS = ((double)loaded_video->video.codecContext->time_base.den /
-                        (double)loaded_video->video.codecContext->time_base.num) /
-                        (double)loaded_video->video.codecContext->ticks_per_frame;
+    double targetFPS = ((double)movie->video.codecContext->time_base.den /
+                        (double)movie->video.codecContext->time_base.num) /
+                        (double)movie->video.codecContext->ticks_per_frame;
 
     char vidfps[123];
     sprintf(vidfps, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-        loaded_video->video.codecContext->time_base.num,
-        loaded_video->video.codecContext->time_base.den,
+        movie->video.codecContext->time_base.num,
+        movie->video.codecContext->time_base.den,
         targetFPS,
-        loaded_video->video.codecContext->ticks_per_frame
+        movie->video.codecContext->ticks_per_frame
     );
     OutputDebugString(vidfps);
 
 
-    newMovie->targetMsPerFrame = 1000.0 / targetFPS;
+    outMovie->targetMsPerFrame = 1000.0 / targetFPS;
 
 
 
@@ -806,9 +814,9 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(loaded_video->audio.codecContext, &global_ghoster.sdl_stuff);
+    SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff);
 
-    SetupSoundBuffer(loaded_video->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
+    SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
 
 
 
@@ -816,45 +824,53 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     // MORE FFMPEG
 
     // AVFrame *
-    if (newMovie->frame_output) av_frame_free(&newMovie->frame_output);
-    newMovie->frame_output = av_frame_alloc();  // just metadata
+    if (outMovie->frame_output) av_frame_free(&outMovie->frame_output);
+    outMovie->frame_output = av_frame_alloc();  // just metadata
 
-    if (!newMovie->frame_output)
+    if (!outMovie->frame_output)
         { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, newMovie->vidWID, newMovie->vidHEI);
-    if (newMovie->vid_buffer) av_free(newMovie->vid_buffer);
-    newMovie->vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
+    if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
+    outMovie->vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
-    avpicture_fill((AVPicture *)newMovie->frame_output, newMovie->vid_buffer, AV_PIX_FMT_RGB32,
-        newMovie->vidWID,
-        newMovie->vidHEI);
+    avpicture_fill((AVPicture *)outMovie->frame_output, outMovie->vid_buffer, AV_PIX_FMT_RGB32,
+        outMovie->vidWID,
+        outMovie->vidHEI);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
-    if (newMovie->sws_context) sws_freeContext(newMovie->sws_context);
-    newMovie->sws_context = {0};
-    newMovie->sws_context = sws_getContext(
-        loaded_video->video.codecContext->width,
-        loaded_video->video.codecContext->height,
-        loaded_video->video.codecContext->pix_fmt,
-        newMovie->vidWID,
-        newMovie->vidHEI,
+    if (outMovie->sws_context) sws_freeContext(outMovie->sws_context);
+    outMovie->sws_context = {0};
+    outMovie->sws_context = sws_getContext(
+        movie->video.codecContext->width,
+        movie->video.codecContext->height,
+        movie->video.codecContext->pix_fmt,
+        outMovie->vidWID,
+        outMovie->vidHEI,
         AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
         SWS_BILINEAR,
         0, 0, 0);
 
 
     // get first frame in case we are paused
-    HardSeekToFrameForTimestamp(newMovie, {0,1,targetFPS}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
+    HardSeekToFrameForTimestamp(outMovie, {0,1,targetFPS}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
 
 
     return true;
 
 }
 
+
+// todo: peruse this for memory leaks. also: better name?
+bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
+{
+    if (!SetupMovieAVFromPath(path, &newMovie->av_movie)) return false;
+    if (!SetupForNewMovie(&newMovie->av_movie, newMovie)) return false;
+    return true;
+}
 
 
 
@@ -877,7 +893,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     {
         if (global_load_new_file)
         {
-            global_ghoster.state.buffering = true;
+            // global_ghoster.state.buffering = true;
             CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
             global_load_new_file = false;
         }
