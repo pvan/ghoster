@@ -554,8 +554,8 @@ struct GhosterWindow
 
 
         RenderToScreenGL((void*)loaded_video.vid_buffer,
-                        loaded_video.vidWID,
-                        loaded_video.vidHEI,
+                        960,//loaded_video.vidWID,
+                        720,//loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
                         state.window,
@@ -749,8 +749,14 @@ void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
 {
     RECT winRect;
     GetWindowRect(hwnd, &winRect);
-    int w = winRect.right - winRect.left;
-    int h = winRect.bottom - winRect.top;
+
+        char hwbuf[123];
+        sprintf(hwbuf, "wid: %i  hei: %i\n",
+            global_ghoster.loaded_video.av_movie.video.codecContext->width, global_ghoster.loaded_video.av_movie.video.codecContext->height);
+        OutputDebugString(hwbuf);
+
+        global_ghoster.state.winWID = movie.vidWID;
+        global_ghoster.state.winHEI = movie.vidHEI;
 
     MoveWindow(hwnd, winRect.left, winRect.top, movie.vidWID, movie.vidHEI, true);
 }
@@ -819,6 +825,8 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     // MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
+    // global_ghoster.state.winWID = movie->video.codecContext->width;
+    // global_ghoster.state.winHEI = movie->video.codecContext->height;
     outMovie->vidWID = movie->video.codecContext->width;
     outMovie->vidHEI = movie->video.codecContext->height;
         char hwbuf[123];
@@ -900,14 +908,14 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720 /*outMovie->vidWID, outMovie->vidHEI*/);
     if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
     outMovie->vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
 
     // frame is now using buffer memory
     avpicture_fill((AVPicture *)outMovie->frame_output, outMovie->vid_buffer, AV_PIX_FMT_RGB32,
-        outMovie->vidWID,
-        outMovie->vidHEI);
+        960,//outMovie->vidWID,
+        720);//outMovie->vidHEI);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
     if (outMovie->sws_context) sws_freeContext(outMovie->sws_context);
@@ -916,8 +924,8 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
         movie->video.codecContext->width,
         movie->video.codecContext->height,
         movie->video.codecContext->pix_fmt,
-        outMovie->vidWID,
-        outMovie->vidHEI,
+        960,//outMovie->vidWID,
+        720,//outMovie->vidHEI,
         AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
         SWS_BILINEAR,
         0, 0, 0);
