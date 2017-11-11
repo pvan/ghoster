@@ -407,7 +407,7 @@ struct GhosterWindow
                 }
 
                 // ideally a little bite of sound, every frame
-                // todo: how to sync this right, pts dts?
+                // todo: better way to track all the pts, both a/v and seeking etc?
                 int bytes_queued_up = GetNextAudioFrame(
                     loaded_video.av_movie.afc,
                     loaded_video.av_movie.audio.codecContext,
@@ -427,7 +427,8 @@ struct GhosterWindow
                         OutputDebugString(audioerr);
                     }
                        // char msg2[256];
-                       // sprintf(msg2, "bytes_queued_up: %i\n", bytes_queued_up);
+                       // sprintf(msg2, "bytes_queued_up: %i  seconds: %.1f\n", bytes_queued_up,
+                       //         (double)bytes_queued_up / (double)sdl_stuff.desired_bytes_in_sdl_queue);
                        // OutputDebugString(msg2);
                 }
             }
@@ -454,8 +455,8 @@ struct GhosterWindow
             // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
                 // char audbuf[123];
-                // sprintf(audbuf, "aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
-                //         aud_seconds, seconds_left_in_queue);
+                // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
+                //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
                 // OutputDebugString(audbuf);
 
 

@@ -240,6 +240,10 @@ int GetNextAudioFrame(
                     decodingPacket.size = 0;
                     decodingPacket.data = nullptr;
                 }
+
+                // grab pts from frame before unref, in case we exit via end of function
+                *outPTS = av_frame_get_best_effort_timestamp(frame);
+
                 av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
 
                 // don't this right, because we may be pulling a second frame from it?
@@ -270,7 +274,7 @@ int GetNextAudioFrame(
 
     av_free_packet(&readingPacket);
     av_frame_free(&frame);
-    return bytes_written; // ever get here?
+    return bytes_written; // ever get here? yes, at the end of a file
 }
 
 bool GetNextVideoFrame(
