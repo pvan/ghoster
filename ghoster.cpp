@@ -553,11 +553,12 @@ struct GhosterWindow
         }
 
 
+
         RenderToScreenGL((void*)loaded_video.vid_buffer,
-                        // 540,
-                        // 320, //asdf
-                        loaded_video.vidWID,
-                        loaded_video.vidHEI,
+                        960,
+                        720, //asdf
+                        // loaded_video.vidWID,
+                        // loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
                         state.window,
@@ -910,10 +911,12 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
 
     // actual mem for frame
-    // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 540,320); // asdf
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720); // asdf
+    // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
     if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
     outMovie->vid_buffer = (u8*)av_malloc(numBytes);
+
+
 
     // set up frame to use buffer memory...
     // avpicture_fill(  // deprecated
@@ -929,10 +932,10 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
          outMovie->frame_output->linesize,
          outMovie->vid_buffer,
          AV_PIX_FMT_RGB32,
-        // 540,
-        // 320);
-        outMovie->vidWID,
-        outMovie->vidHEI,
+        960,
+        720,
+        // outMovie->vidWID,
+        // outMovie->vidHEI,
         1);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
@@ -956,11 +959,19 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
         movie->video.codecContext->width,
         movie->video.codecContext->height,
         movie->video.codecContext->pix_fmt,
-        outMovie->vidWID,
-        outMovie->vidHEI,
+        960,
+        720,
+        // outMovie->vidWID,
+        // outMovie->vidHEI,
         AV_PIX_FMT_RGB32,
         SWS_BILINEAR,
         0, 0, 0);
+
+
+    char linbuf[123];
+    sprintf(linbuf, "linesize: %i\n", *outMovie->frame_output->linesize);
+    OutputDebugString(linbuf);
+
 
 
     // get first frame in case we are paused
