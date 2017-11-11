@@ -120,18 +120,23 @@ struct RunningMovie
 struct AppState {
     bool appRunning = true;
 
-    double msOfLastMouseMove = -1000;
-    bool clickingOnProgressBar = false;
 
     Timer menuCloseTimer;
     bool globalContextMenuOpen;
 
     bool lock_aspect = true;
 
-    // a bit awkward, we set these when we want to seek somewhere
-    // better way? a function method maybe?
-    bool setSeek = false;
-    double seekProportion = 0;
+
+
+    // mouse state
+    POINT mDownPoint;
+
+    bool mDown;
+    bool ctrlDown;
+    bool clickingOnProgressBar = false;
+
+    bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
+    double msOfLastMouseMove = -1000;
 
 
     HWND window;
@@ -139,6 +144,14 @@ struct AppState {
     int winHEI;
 
     Timer app_timer;
+
+
+    // a bit awkward, we set these when we want to seek somewhere
+    // better way? a function method maybe?
+    // maybe a sort of command interface struct?
+    bool setSeek = false;
+    double seekProportion = 0;
+
 };
 
 
@@ -200,9 +213,6 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
     av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
 
-    // // basically how close will we consider a "success"
-    // double secondsInHalfFrame = (movie->targetMsPerFrame / 1000.0) / 2.0;
-
     // todo: special if at start of file?
 
     // todo: what if we seek right to an I-frame? i think that would still work,
@@ -214,7 +224,6 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
         // OutputDebugString(msbuf);
 
-    // i64 framePTS = 0;
 
     // step through video frames for both contexts until we reach our desired timestamp
 
@@ -274,13 +283,6 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 }
 
 
-// todo: what to do with this stuff??
-// move into ghosterwindow?
-POINT mDownPoint;
-bool mDown;
-bool ctrlDown;
-bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
-
 
 struct GhosterWindow
 {
@@ -327,8 +329,8 @@ struct GhosterWindow
 
             // if we mouse up while not on window all our mdown etc flags will be wrong
             // so we just force an "end of click" when we leave the window
-            mDown = false;
-            mouseHasMovedSinceDownL = false;
+            state.mDown = false;
+            state.mouseHasMovedSinceDownL = false;
             state.clickingOnProgressBar = false;
         }
 
@@ -910,44 +912,6 @@ void SetWindowToAspectRatio(double vid_aspect)
 
 
 
-void DisplayAudioBuffer(u32 *buf, int wid, int hei, float *audio, int audioLen)
-{
-    u8 r = 0;
-    u8 g = 0;
-    u8 b = 0;
-    for (int x = 0; x < wid; x++)
-    {
-        float audioSample = audio[x*5];
-        float audioScaled = audioSample * hei/2;
-        audioScaled += hei/2;
-        for (int y = 0; y < hei; y++)
-        {
-            if (y < hei/2) {
-                if (y < audioScaled) r = 0;
-                else r = 255;
-            } else {
-                if (y > audioScaled) r = 0;
-                else r = 255;
-            }
-            buf[x + y*wid] = (r<<16) | (g<<8) | (b<<0) | (0xff<<24);
-        }
-    }
-    // for (int i = 0; i < 20; i++)
-    // {
-       //  char temp[256];
-       //  sprintf(temp, "value: %f\n", (float)audio[i]);
-       //  OutputDebugString(temp);
-    // }
-}
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1060,13 +1024,13 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
     // this is for progress bar timeout.. rename/move?
     global_ghoster.state.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
 
-    if (mDown)
+    if (global_ghoster.state.mDown)
     {
         // need to determine if click or drag here, not in buttonup
         // because mousemove will trigger (i think) at the first pixel of movement
         POINT mPos = { clientX, clientY };
-        double dx = (double)mPos.x - (double)mDownPoint.x;
-        double dy = (double)mPos.y - (double)mDownPoint.y;
+        double dx = (double)mPos.x - (double)global_ghoster.state.mDownPoint.x;
+        double dy = (double)mPos.y - (double)global_ghoster.state.mDownPoint.y;
         double distance = sqrt(dx*dx + dy*dy);
         double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
         if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
@@ -1076,9 +1040,9 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
         }
         else
         {
-            mouseHasMovedSinceDownL = true;
+            global_ghoster.state.mouseHasMovedSinceDownL = true;
 
-            if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+            if (clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
             {
                 appSetProgressBar(clientX, clientY);
             }
@@ -1094,18 +1058,18 @@ void onMouseUpL()
 {
     // OutputDebugString("LUP\n");
 
-    mDown = false;
+    global_ghoster.state.mDown = false;
 
-    if (mouseHasMovedSinceDownL)
+    if (global_ghoster.state.mouseHasMovedSinceDownL)
     {
         // end of a drag
     }
     else
     {
-        if (!clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+        if (!clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
             appTogglePause();
     }
-    mouseHasMovedSinceDownL = false;
+    global_ghoster.state.mouseHasMovedSinceDownL = false;
     global_ghoster.state.clickingOnProgressBar = false;
 }
 
@@ -1113,7 +1077,7 @@ void onDoubleClickDownL()
 {
     // OutputDebugString("LDOUBLECLICK\n");
 
-    if (clientPointIsOnProgressBar(mDownPoint.x, mDownPoint.y))
+    if (clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
     {
         // OutputDebugString("on bar dbl\n");
         global_ghoster.state.clickingOnProgressBar = true;
@@ -1152,9 +1116,9 @@ void onMouseDownL(int clientX, int clientY)
         return;
 
     // mouse state / info about click...
-    mDown = true;
-    mouseHasMovedSinceDownL = false;
-    mDownPoint = {clientX, clientY};
+    global_ghoster.state.mDown = true;
+    global_ghoster.state.mouseHasMovedSinceDownL = false;
+    global_ghoster.state.mDownPoint = {clientX, clientY};
 
     if (clientPointIsOnProgressBar(clientX, clientY))
     {
@@ -1281,21 +1245,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_KEYDOWN: {
             if (wParam == 0x56) // V
             {
-                if (ctrlDown)
+                if (global_ghoster.state.ctrlDown)
                 {
                     PasteClipboard();
                 }
             }
             if (wParam == 0x11) // ctrl
             {
-                ctrlDown = true;
+                global_ghoster.state.ctrlDown = true;
             }
         } break;
 
         case WM_KEYUP: {
             if (wParam == 0x11) // ctrl
             {
-                ctrlDown = false;
+                global_ghoster.state.ctrlDown = false;
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
@@ -1420,9 +1384,9 @@ int CALLBACK WinMain(
         MSG Message;
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            // char ttt[123];
-            // sprintf(ttt, "msg: %i\n", Message.message);
-            // OutputDebugString(ttt);
+            // char msgbuf[123];
+            // sprintf(msgbuf, "msg: %i\n", Message.message);
+            // OutputDebugString(msgbuf);
 
             TranslateMessage(&Message);
             DispatchMessage(&Message);

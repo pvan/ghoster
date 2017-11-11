@@ -303,9 +303,7 @@ bool GetNextVideoFrame(
     //     OutputDebugString(frambuf2);
     // bool displayedSkipMsg = false;
 
-
-
-    bool skipped_a_frame_already = false;
+    int frames_skipped = 0;
 
     while(av_read_frame(fc, &packet) >= 0)
     {
@@ -339,14 +337,10 @@ bool GetNextVideoFrame(
                 // OutputDebugString(zxcv);
 
 
-                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
-                    && !skipped_a_frame_already)
+                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead)
                 {
-                    OutputDebugString("skipped a frame\n");
-
-                    // now skip as many as you want..
-                    // but we should limit by time actually, right?
-                    // skipped_a_frame_already = true;
+                    // OutputDebugString("skipped a frame\n");
+                    frames_skipped++;
 
                     // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
 
@@ -362,7 +356,11 @@ bool GetNextVideoFrame(
 
                     continue;
                 }
-                // OutputDebugString("\n");
+                if (frames_skipped > 0) {
+                    char skipbuf[256];
+                    sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                    OutputDebugString(skipbuf);
+                }
 
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);
