@@ -49,6 +49,17 @@ struct MovieAV
     StreamAV audio;
 };
 
+MovieAV DeepCopyMovieAV(MovieAV source)
+{
+    MovieAV dest;
+    dest.vfc = source.vfc;
+    dest.afc = source.afc;
+    dest.video.index = source.video.index;
+    dest.video.codecContext = source.video.codecContext;
+    dest.audio.index = source.audio.index;
+    dest.audio.codecContext = source.audio.codecContext;
+    return dest;
+}
 
 
 

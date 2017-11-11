@@ -152,6 +152,9 @@ struct AppState {
     bool setSeek = false;
     double seekProportion = 0;
 
+    bool readyToLoadNewMovie = false;
+    MovieAV newMovieToRun;
+
     bool buffering = false;
 
 };
@@ -284,6 +287,8 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 }
 
 
+bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
+
 
 struct GhosterWindow
 {
@@ -301,6 +306,18 @@ struct GhosterWindow
         if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
         {
             state.globalContextMenuOpen = false;
+        }
+
+
+
+        if (state.readyToLoadNewMovie)
+        {
+            OutputDebugString("Ready to load new movie...\n");
+            state.readyToLoadNewMovie = false;
+            if (!SetupForNewMovie(state.newMovieToRun, &loaded_video))
+            {
+                MsgBox("Error in setup for new movie.\n");
+            }
         }
 
 
@@ -751,9 +768,11 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
 }
 
 
-bool SetupForNewMovie(MovieAV *movie, RunningMovie *outMovie)
+bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 {
 
+    outMovie->av_movie = DeepCopyMovieAV(inMovie);
+    MovieAV *movie = &outMovie->av_movie;
     // MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
@@ -868,7 +887,9 @@ bool SetupForNewMovie(MovieAV *movie, RunningMovie *outMovie)
 bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
     if (!SetupMovieAVFromPath(path, &newMovie->av_movie)) return false;
-    if (!SetupForNewMovie(&newMovie->av_movie, newMovie)) return false;
+    global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie->av_movie);
+    global_ghoster.state.readyToLoadNewMovie = true;
+    // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
     return true;
 }
 
