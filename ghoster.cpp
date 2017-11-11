@@ -182,19 +182,19 @@ struct timestamp
         return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
     }
 
-    static timestamp FromPTS(i64 pts, RunningMovie movie, int streamIndex)
+    static timestamp FromPTS(i64 pts, AVFormatContext *fc, int streamIndex, RunningMovie movie)
     {
-        i64 base_num = movie.av_movie.vfc->streams[streamIndex]->time_base.num;
-        i64 base_den = movie.av_movie.vfc->streams[streamIndex]->time_base.den;
+        i64 base_num = fc->streams[streamIndex]->time_base.num;
+        i64 base_den = fc->streams[streamIndex]->time_base.den;
         return {pts * base_num, base_den, movie.targetMsPerFrame};
     }
     static timestamp FromVideoPTS(RunningMovie movie)
     {
-        return timestamp::FromPTS(movie.ptsOfLastVideo, movie, movie.av_movie.video.index);
+        return timestamp::FromPTS(movie.ptsOfLastVideo, movie.av_movie.vfc, movie.av_movie.video.index, movie);
     }
     static timestamp FromAudioPTS(RunningMovie movie)
     {
-        return timestamp::FromPTS(movie.ptsOfLastAudio, movie, movie.av_movie.audio.index);
+        return timestamp::FromPTS(movie.ptsOfLastAudio, movie.av_movie.afc, movie.av_movie.audio.index, movie);
     }
 };
 
@@ -225,27 +225,10 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         // OutputDebugString(msbuf);
 
 
-    // step through video frames for both contexts until we reach our desired timestamp
-
-    // todo: replace this with getnextaudioframe?
-    GetNextVideoFrame(
-        movie->av_movie.afc,
-        movie->av_movie.video.codecContext,
-        movie->sws_context,
-        movie->av_movie.video.index,
-        movie->frame_output,
-        realTimeMs,
-        0,
-        &movie->ptsOfLastAudio);
-    // int bytes_queued_up = GetNextAudioFrame(
-    //     loaded_video.av_movie.afc,
-    //     loaded_video.av_movie.audio.codecContext,
-    //     loaded_video.av_movie.audio.index,
-    //     ffmpeg_to_sdl_buffer,
-    //     wanted_bytes,
-    //     loaded_video.audio_stopwatch.MsElapsed());
-
     movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
+
+
+    // step through frames for both contexts until we reach our desired timestamp
 
     GetNextVideoFrame(
         movie->av_movie.vfc,
@@ -256,6 +239,30 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
         0,
         &movie->ptsOfLastVideo);
+
+    // kinda awkward
+    //int bytes_in_single_frame = 1;
+
+    SoundBuffer dummyBuffyJunkData;
+    dummyBuffyJunkData.data = (u8*)malloc(1024 * 10);
+    dummyBuffyJunkData.size_in_bytes = 1024 * 10;
+
+    int bytes_queued_up = GetNextAudioFrame(
+        movie->av_movie.afc,
+        movie->av_movie.audio.codecContext,
+        movie->av_movie.audio.index,
+        dummyBuffyJunkData,
+        1024,
+        realTimeMs,
+        &movie->ptsOfLastAudio);
+    // int bytes_queued_up = GetNextAudioFrame(
+    //     loaded_video.av_movie.afc,
+    //     loaded_video.av_movie.audio.codecContext,
+    //     loaded_video.av_movie.audio.index,
+    //     ffmpeg_to_sdl_buffer,
+    //     wanted_bytes,
+    //     loaded_video.audio_stopwatch.MsElapsed());
+    free(dummyBuffyJunkData.data);
 
 
     i64 streamIndex = movie->av_movie.video.index;
@@ -414,7 +421,7 @@ struct GhosterWindow
                     loaded_video.av_movie.audio.index,
                     ffmpeg_to_sdl_buffer,
                     wanted_bytes,
-                    loaded_video.audio_stopwatch.MsElapsed(),
+                    -1,
                     &loaded_video.ptsOfLastAudio);
 
 
@@ -454,10 +461,10 @@ struct GhosterWindow
             // update: i think we always put everything we get from decoding into sdl queue,
             // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
-                // char audbuf[123];
-                // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
-                //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
-                // OutputDebugString(audbuf);
+                char audbuf[123];
+                sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
+                        ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
+                OutputDebugString(audbuf);
 
 
             timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
@@ -516,10 +523,10 @@ struct GhosterWindow
             double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
             double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
 
-            // char ptsbuf[123];
-            // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-            //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-            // OutputDebugString(ptsbuf);
+            char ptsbuf[123];
+            sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+                    vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+            OutputDebugString(ptsbuf);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;

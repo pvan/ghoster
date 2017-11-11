@@ -64,7 +64,7 @@ int GetNextAudioFrame(
     int streamIndex,
     SoundBuffer outBuf,
     int requestedBytes,
-    double msSinceStart,
+    double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
     i64 *outPTS)
 {
 
@@ -138,6 +138,41 @@ int GetNextAudioFrame(
                     int additional_bytes = frame->nb_samples *
                                            cc->channels *
                                            av_get_bytes_per_sample(cc->sample_fmt);
+
+
+
+                    double msToPlayThisFrame = 1000.0 *
+                        av_frame_get_best_effort_timestamp(frame) *
+                        fc->streams[streamIndex]->time_base.num /
+                        fc->streams[streamIndex]->time_base.den;
+
+
+                    if (msToPlayThisFrame < startAtThisMsTimestamp && startAtThisMsTimestamp>=0)
+                    {
+                        // OutputDebugString("skipped a frame\n");
+                        // frames_skipped++;
+
+                        // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
+
+                        // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
+                        // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
+                        //     char frambuf[123];
+                        //     sprintf(frambuf, "%lli ", frame_count+1);
+                        //     OutputDebugString(frambuf);
+
+                        // seems like we'd want this here right?
+                        // av_packet_unref(&packet);
+                        av_frame_unref(frame);
+
+                        // continue;
+                        goto next_frame;
+                    }
+                    // if (frames_skipped > 0) {
+                    //     char skipbuf[256];
+                    //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                    //     OutputDebugString(skipbuf);
+                    // }
+
 
                     // little fail-safe check so we don't overflow outBuffer
                     // (ie, in case we guessed when to quit wrong below)
@@ -254,6 +289,9 @@ int GetNextAudioFrame(
             // av_free_packet(&decodingPacket);
             // av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
         }
+
+        next_frame:
+
         av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
     }
 
