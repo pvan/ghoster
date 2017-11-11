@@ -1,24 +1,5 @@
 
 
-bugs:
-
-
-[x] seeking near begining or end triggers resize area
-
-
-[x] pause then load new video displays memory
-
-
-we now sort of do this
-(right now, could drift out sync over long durations since audio is not tied to clock in any way)
-[/] dont use audio timer to track position but get actual audio bytes sent 
-[-] alternative: correctly slow down and speed up audio to match the timer
-
-
-
-
-features:
-
 
 [ ] needs a few abstraction cleanup passes
 
@@ -71,12 +52,6 @@ features:
 
 [ ] volume! 
 
-
-
-[x] more precise seeking:
-av_seek_frame(fc, ?, 0.15, flag_any | flag_backw)
-first i frame before desired frame
-read forward w/o using till we get to desired time
 
 
 
