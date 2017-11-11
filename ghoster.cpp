@@ -554,8 +554,10 @@ struct GhosterWindow
 
 
         RenderToScreenGL((void*)loaded_video.vid_buffer,
-                        960,//loaded_video.vidWID,
-                        720,//loaded_video.vidHEI,
+                        // 540,
+                        // 320, //asdf
+                        loaded_video.vidWID,
+                        loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
                         state.window,
@@ -908,25 +910,55 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720 /*outMovie->vidWID, outMovie->vidHEI*/);
+    // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 540,320); // asdf
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
     if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
-    outMovie->vid_buffer = (u8*)av_malloc(numBytes * sizeof(u8)); // is this right?
+    outMovie->vid_buffer = (u8*)av_malloc(numBytes);
 
-    // frame is now using buffer memory
-    avpicture_fill((AVPicture *)outMovie->frame_output, outMovie->vid_buffer, AV_PIX_FMT_RGB32,
-        960,//outMovie->vidWID,
-        720);//outMovie->vidHEI);
+    // set up frame to use buffer memory...
+    // avpicture_fill(  // deprecated
+    //     (AVPicture *)outMovie->frame_output,
+    //     outMovie->vid_buffer,
+    //     AV_PIX_FMT_RGB32,
+    //     // 540,
+    //     // 320);
+    //     outMovie->vidWID,
+    //     outMovie->vidHEI);
+    av_image_fill_arrays(
+         outMovie->frame_output->data,
+         outMovie->frame_output->linesize,
+         outMovie->vid_buffer,
+         AV_PIX_FMT_RGB32,
+        // 540,
+        // 320);
+        outMovie->vidWID,
+        outMovie->vidHEI,
+        1);
 
     // for converting frame from file to a standard color format buffer (size doesn't matter so much)
     if (outMovie->sws_context) sws_freeContext(outMovie->sws_context);
+    // outMovie->sws_context = sws_alloc_context(); // this instead of {0}? doesnt seem to be needed?
     outMovie->sws_context = {0};
-    outMovie->sws_context = sws_getContext(
+    // outMovie->sws_context = sws_getContext(  // deprecated
+    //     movie->video.codecContext->width,
+    //     movie->video.codecContext->height,
+    //     movie->video.codecContext->pix_fmt,
+    //     // 540,
+    //     // 320,
+    //     outMovie->vidWID,
+    //     outMovie->vidHEI,
+    //     AV_PIX_FMT_RGB32,
+    //     SWS_BILINEAR,
+    //     0, 0, 0);
+    // this seems to be no help in our extra bar issue
+    outMovie->sws_context = sws_getCachedContext(
+        outMovie->sws_context,
         movie->video.codecContext->width,
         movie->video.codecContext->height,
         movie->video.codecContext->pix_fmt,
-        960,//outMovie->vidWID,
-        720,//outMovie->vidHEI,
-        AV_PIX_FMT_RGB32, //(AVPixelFormat)frame_output->format,
+        outMovie->vidWID,
+        outMovie->vidHEI,
+        AV_PIX_FMT_RGB32,
         SWS_BILINEAR,
         0, 0, 0);
 
