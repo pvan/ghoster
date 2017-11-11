@@ -324,7 +324,9 @@ bool GetNextVideoFrame(
                 // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
                 // OutputDebugString(temp);
 
-                double msToPlayThisFrame = 1000 * frame->pts /
+                double msToPlayThisFrame = 1000.0 *
+                    av_frame_get_best_effort_timestamp(frame) * //frame->pts *
+                    fc->streams[streamIndex]->time_base.num /
                     fc->streams[streamIndex]->time_base.den;
 
 
