@@ -747,6 +747,25 @@ static void GlobalLoadMovie(char *path)
 
 
 
+void SetWindowToAspectRatio(HWND hwnd, double vid_aspect)
+{
+    RECT winRect;
+    GetWindowRect(hwnd, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
+    // which to adjust tho?
+    int nw = (int)((double)h * vid_aspect);
+    int nh = (int)((double)w / vid_aspect);
+    // // i guess always make smaller for now
+    // if (nw < w)
+    //     MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+    // else
+    //     MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
+    // now always adjusting width
+    MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+}
+
+
 // fill movieAV with data from movie at path
 // calls youtube-dl if needed so could take a sec
 bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
@@ -794,14 +813,20 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     // set window size on video source resolution
     outMovie->vidWID = movie->video.codecContext->width;
     outMovie->vidHEI = movie->video.codecContext->height;
-    global_ghoster.state.winWID = outMovie->vidWID;
-    global_ghoster.state.winHEI = outMovie->vidHEI;
-    RECT winRect;
-    GetWindowRect(global_ghoster.state.window, &winRect);
-    //keep top left of window in same pos for now, change to keep center in same position?
-    MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);  // ever non-zero opening position? launch option?
+        char hwbuf[123];
+        sprintf(hwbuf, "wid: %i  hei: %i\n", movie->video.codecContext->width, movie->video.codecContext->height);
+        OutputDebugString(hwbuf);
+    // global_ghoster.state.winWID = outMovie->vidWID;
+    // global_ghoster.state.winHEI = outMovie->vidHEI;
 
-    outMovie->vid_aspect = (double)global_ghoster.state.winWID / (double)global_ghoster.state.winHEI;
+    // RECT winRect;
+    // GetWindowRect(global_ghoster.state.window, &winRect);
+    // //keep top left of window in same pos for now, change to keep center in same position?
+    // MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);  // ever non-zero opening position? launch option?
+
+    outMovie->vid_aspect = (double)outMovie->vidWID / (double)outMovie->vidHEI;
+
+    SetWindowToAspectRatio(global_ghoster.state.window, outMovie->vid_aspect);
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -959,26 +984,6 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     }
 
     return 0;
-}
-
-
-
-
-
-void SetWindowToAspectRatio(double vid_aspect)
-{
-    RECT winRect;
-    GetWindowRect(global_ghoster.state.window, &winRect);
-    int w = winRect.right - winRect.left;
-    int h = winRect.bottom - winRect.top;
-    // which to adjust tho?
-    int nw = (int)((double)h * vid_aspect);
-    int nh = (int)((double)w / vid_aspect);
-    // i guess always make smaller for now
-    if (nw < w)
-        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, nw, h, true);
-    else
-        MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, w, nh, true);
 }
 
 
@@ -1350,7 +1355,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
                     break;
                 case ID_ASPECT:
-                    SetWindowToAspectRatio(global_ghoster.loaded_video.vid_aspect);
+                    SetWindowToAspectRatio(global_ghoster.state.window, global_ghoster.loaded_video.vid_aspect);
                     global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
                     break;
                 case ID_PASTE:

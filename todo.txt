@@ -1,10 +1,14 @@
 
 
+[ ] extra bar on right of some vids
+
+[ ] seems like mem leak on loading files
+
 
 [ ] needs a few abstraction cleanup passes
 
 
-[ ] decouple display from frames decoded so we can decode from network easier.. 
+[ ] decouple display from frames decoded so we can decode from network easier? 
     [ ] with caching
     [ ] and buffering
 
@@ -25,15 +29,15 @@
 
 
 [x] split movie loading into sep thread to keep io responsive
-[ ] split move loading into yet another thread so we can draw buffering animation
+[x] split move loading into yet another thread so we can draw buffering animation
 
-[ ] buffering / waiting animation
+[x] buffering / waiting animation
 
 
 
 [ ] repeat toggle
 
-[ ] keep new loaded video same window size (maybe resize to new aspect ratio)
+[x] keep new loaded video same window size (maybe resize to new aspect ratio)
 
 
 
@@ -74,7 +78,6 @@ replace youtube-dl with homegrown/internal variant?
 
 grown/shrink which side of window based on screen location when changing aspect ratio??
 
-option to reset to native video resolution? [doesn't seem actually useful]
 
 
 ---instructions-------
@@ -100,20 +103,6 @@ repeat_pict?
 
 
 use avframe repeat_pict ?
-
-
-only pause when waiting for next frame?
-
-
-
-cross check audio clock 
-w/ pts of data buffer sent to sdl
-+ sdl delay estimate (2x buf length?)
-
-usually no change
-just a failsafe check
-
-
 
 
 
