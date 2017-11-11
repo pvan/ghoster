@@ -461,10 +461,10 @@ struct GhosterWindow
             // update: i think we always put everything we get from decoding into sdl queue,
             // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
-                char audbuf[123];
-                sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
-                        ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
-                OutputDebugString(audbuf);
+                // char audbuf[123];
+                // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
+                //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
+                // OutputDebugString(audbuf);
 
 
             timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
@@ -523,10 +523,10 @@ struct GhosterWindow
             double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
             double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
 
-            char ptsbuf[123];
-            sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-                    vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-            OutputDebugString(ptsbuf);
+            // char ptsbuf[123];
+            // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+            //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+            // OutputDebugString(ptsbuf);
 
         }
         loaded_video.vid_was_paused = loaded_video.vid_paused;
