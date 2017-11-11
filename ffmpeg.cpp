@@ -419,6 +419,15 @@ bool GetNextVideoFrame(
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);
 
+
+                // char linebuf[123];
+                // sprintf(linebuf, "frame->linesize[0]: %i outFrame->linesize[0]: %i \n",
+                //         frame->linesize[0],
+                //         outFrame->linesize[0]
+                //         );
+                // OutputDebugString(linebuf);
+
+
                 sws_scale(
                     sws_context,
                     (u8**)frame->data,
