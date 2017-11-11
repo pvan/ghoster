@@ -528,7 +528,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         state.window,
-                        percent, drawProgressBar, true);
+                        percent, drawProgressBar, state.buffering);
 
         // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
         //            (float*)sound_buffer, bytes_in_buffer);
@@ -877,7 +877,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     {
         if (global_load_new_file)
         {
-            // global_ghoster.state.buffering = true;
+            global_ghoster.state.buffering = true;
             CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
             global_load_new_file = false;
         }

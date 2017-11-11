@@ -283,9 +283,17 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     {
         static float t = 0;
         t++;
-        float col = sin(t*M_PI*2 / 100);
-        col = (col + 1) / 2; // 0-1
-        col = 0.4*col + 0.9*(1-col); //lerp
+        // float col = sin(t*M_PI*2 / 100);
+        // col = (col + 1) / 2; // 0-1
+        // col = 0.9*col + 0.4*(1-col); //lerp
+
+        // e^sin(x) very interesting shape, via
+        // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+        float col = pow(M_E, sin(t*M_PI*2 / 100));
+        float min = 1/M_E;
+        float max = M_E;
+        col = (col-min) / (max-min); // 0-1
+        col = 0.75*col + 0.2*(1-col); //lerp
 
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(col, col, col, 0);  // r g b a  looks like
