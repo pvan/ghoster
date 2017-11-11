@@ -9,17 +9,34 @@ bugs:
 [x] pause then load new video displays memory
 
 
+we now sort of do this
 (right now, could drift out sync over long durations since audio is not tied to clock in any way)
-[ ] dont use audio timer to track position but get actual audio bytes sent 
-[ ] alternative: correctly slow down and speed up audio to match the timer
-
-
-[ ] feels like sync issues when seeking youtube videos
+[/] dont use audio timer to track position but get actual audio bytes sent 
+[-] alternative: correctly slow down and speed up audio to match the timer
 
 
 
 
 features:
+
+
+[ ] needs a few abstraction cleanup passes
+
+
+[ ] decouple display from frames decoded so we can decode from network easier.. 
+    [ ] with caching
+    [ ] and buffering
+
+[ ] definite sync issues when seeking youtube videos
+
+[ ] look into how ffmpeg dls videos -- cache anywhere?
+
+[ ] need to dl a low quality version first or we'll lag on large files??
+
+
+[ ] overlay display, play/pause feedback, etc
+
+
 
 [ ] add black bars when aspect ratio is locked and full screen
 
@@ -51,11 +68,6 @@ features:
 [?] more than one video stream??
 
 
-[ ] looks like we need to dl a low quality version first or we'll lag on large files??
-
-
-[ ] look into how ffmpeg dls videos -- cache anywhere?
-
 
 [ ] volume! 
 
@@ -73,11 +85,8 @@ read forward w/o using till we get to desired time
 step forward and backwards by a single frame?
 
 
-drag with middle mouse button? na
-
-
-auto crop black bars?
-(or do manually by resize borders keeping window same, maybe with middle mouse button)
+manual crop by resize borders but keeping window same? 
+maybe with middle mouse button
 
 
 when playing url...
