@@ -152,6 +152,8 @@ struct AppState {
     bool setSeek = false;
     double seekProportion = 0;
 
+    bool buffering = false;
+
 };
 
 
@@ -240,13 +242,11 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         0,
         &movie->ptsOfLastVideo);
 
-    // kinda awkward
-    //int bytes_in_single_frame = 1;
 
+    // kinda awkward
     SoundBuffer dummyBuffyJunkData;
     dummyBuffyJunkData.data = (u8*)malloc(1024 * 10);
     dummyBuffyJunkData.size_in_bytes = 1024 * 10;
-
     int bytes_queued_up = GetNextAudioFrame(
         movie->av_movie.afc,
         movie->av_movie.audio.codecContext,
@@ -255,13 +255,6 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         1024,
         realTimeMs,
         &movie->ptsOfLastAudio);
-    // int bytes_queued_up = GetNextAudioFrame(
-    //     loaded_video.av_movie.afc,
-    //     loaded_video.av_movie.audio.codecContext,
-    //     loaded_video.av_movie.audio.index,
-    //     ffmpeg_to_sdl_buffer,
-    //     wanted_bytes,
-    //     loaded_video.audio_stopwatch.MsElapsed());
     free(dummyBuffyJunkData.data);
 
 
@@ -287,6 +280,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         //         nearestI64(ts.frame())+1,
         //         nearestI64(totalFrameCount));
         // OutputDebugString(ptsbuf);
+
 }
 
 
@@ -303,10 +297,6 @@ struct GhosterWindow
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
     void Update()
     {
-
-        // if (dt < targetMsPerFrame)
-        //     return;
-
 
         if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
         {
@@ -538,7 +528,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         state.window,
-                        percent, drawProgressBar);
+                        percent, drawProgressBar, true);
 
         // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
         //            (float*)sound_buffer, bytes_in_buffer);
@@ -887,6 +877,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     {
         if (global_load_new_file)
         {
+            // global_ghoster.state.buffering = true;
             CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
             global_load_new_file = false;
         }

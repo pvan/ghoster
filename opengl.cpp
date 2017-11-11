@@ -268,7 +268,8 @@ void InitOpenGL(HWND window)
 // TODO: pull out progress bar rendering from this function
 // need to render to fbo to do so?
 //dfdf
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, float proportion, bool drawProgressBar)
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window,
+                      float proportion, bool drawProgressBar, bool drawBuffering)
 {
     HDC hdc = GetDC(window);
 
@@ -278,53 +279,68 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     glViewport(0, 0, dWID, dHEI);
 
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, tex);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
-        check_gl_error("glTexImage2D");
-
-    GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
-    glUniform1i(tex_loc, 0);   // texture id of 0
-
-    GLuint alpha_loc = glGetUniformLocation(shader_program, "alpha");
-    glUniform1f(alpha_loc, 1);
-
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    glClear(GL_COLOR_BUFFER_BIT);
-    glClearColor(0, 1, 1, 1);
-    glUseProgram(shader_program);
-
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-
-    if (drawProgressBar)
+    if (drawBuffering)
     {
-        // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
-        // fakey way to draw rects
-        int pos = (int)(proportion * (double)dWID);
+        static float t = 0;
+        t++;
+        float col = sin(t*M_PI*2 / 100);
+        col = (col + 1) / 2; // 0-1
+        col = 0.4*col + 0.9*(1-col); //lerp
 
-        glViewport(pos, PROGRESS_BAR_B, dWID, PROGRESS_BAR_H);
-        glUniform1f(alpha_loc, 0.4);
-        u32 gray = 0xaaaaaaaa;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-        glViewport(0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H);
-        glUniform1f(alpha_loc, 0.6);
-        u32 red = 0xffff0000;
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(col, col, col, 0);  // r g b a  looks like
     }
+    else
+    {
 
-    // unbind and cleanup
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex);
 
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
+                     0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+            check_gl_error("glTexImage2D");
+
+        GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
+        glUniform1i(tex_loc, 0);   // texture id of 0
+
+        GLuint alpha_loc = glGetUniformLocation(shader_program, "alpha");
+        glUniform1f(alpha_loc, 1);
+
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        glClear(GL_COLOR_BUFFER_BIT);
+        glClearColor(0, 0, 0, 0);  // r g b a  looks like
+        glUseProgram(shader_program);
+
+        glBindVertexArray(vao);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+
+        if (drawProgressBar)
+        {
+            // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
+            // fakey way to draw rects
+            int pos = (int)(proportion * (double)dWID);
+
+            glViewport(pos, PROGRESS_BAR_B, dWID, PROGRESS_BAR_H);
+            glUniform1f(alpha_loc, 0.4);
+            u32 gray = 0xaaaaaaaa;
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &gray);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+            glViewport(0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H);
+            glUniform1f(alpha_loc, 0.6);
+            u32 red = 0xffff0000;
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        }
+
+        // unbind and cleanup
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+
+    }
 
     SwapBuffers(hdc);
 
