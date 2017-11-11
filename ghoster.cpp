@@ -155,6 +155,9 @@ struct AppState {
     bool readyToLoadNewMovie = false;
     MovieAV newMovieToRun;
 
+    bool readyToRunMovie = false;
+
+
     bool buffering = false;
 
 };
@@ -318,6 +321,7 @@ struct GhosterWindow
             {
                 MsgBox("Error in setup for new movie.\n");
             }
+            state.readyToRunMovie = true;
         }
 
 
@@ -349,194 +353,204 @@ struct GhosterWindow
         }
 
 
+        double percent;
 
 
-
-        if (state.setSeek)
+        // feels a bit kludgey
+        if (!state.readyToRunMovie)
         {
-            SDL_ClearQueuedAudio(sdl_stuff.audio_device);
-
-            state.setSeek = false;
-            int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
-
-
-            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
-                // char fpsbuf[123];
-                // sprintf(fpsbuf, "fps: %f\n", videoFPS);
-                // OutputDebugString(fpsbuf);
-
-            timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
-
-            HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
-
-        }
-
-        // best place for this?
-        loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-        double percent = loaded_video.elapsed/loaded_video.duration;
-            // char durbuf[123];
-            // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
-            // OutputDebugString(durbuf);
-
-
-        if (loaded_video.vid_paused)
-        {
-            if (!loaded_video.vid_was_paused)
-            {
-                loaded_video.audio_stopwatch.Pause();
-                SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
-            }
+            loaded_video.audio_stopwatch.Pause();
+            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         }
         else
         {
-            if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
+
+            if (state.setSeek)
             {
-                loaded_video.audio_stopwatch.Start();
-                SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
+                SDL_ClearQueuedAudio(sdl_stuff.audio_device);
+
+                state.setSeek = false;
+                int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
+
+
+                double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+                    // char fpsbuf[123];
+                    // sprintf(fpsbuf, "fps: %f\n", videoFPS);
+                    // OutputDebugString(fpsbuf);
+
+                timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
+
+                HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
+
             }
 
+            // best place for this?
+            loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+            percent = loaded_video.elapsed/loaded_video.duration;
+                // char durbuf[123];
+                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
+                // OutputDebugString(durbuf);
 
-            // SOUND
 
-            int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
-                // char msg[256];
-                // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
-                // OutputDebugString(msg);
-
-
-            int wanted_bytes = sdl_stuff.desired_bytes_in_sdl_queue - bytes_left_in_queue;
-                // char msg3[256];
-                // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
-                // OutputDebugString(msg3);
-
-            if (wanted_bytes >= 0)
+            if (loaded_video.vid_paused)
             {
-                if (wanted_bytes > ffmpeg_to_sdl_buffer.size_in_bytes)
+                if (!loaded_video.vid_was_paused)
                 {
-                    // char errq[256];
-                    // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer.size_in_bytes);
-                    // OutputDebugString(errq);
-
-                    wanted_bytes = ffmpeg_to_sdl_buffer.size_in_bytes;
+                    loaded_video.audio_stopwatch.Pause();
+                    SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
                 }
-
-                // ideally a little bite of sound, every frame
-                // todo: better way to track all the pts, both a/v and seeking etc?
-                int bytes_queued_up = GetNextAudioFrame(
-                    loaded_video.av_movie.afc,
-                    loaded_video.av_movie.audio.codecContext,
-                    loaded_video.av_movie.audio.index,
-                    ffmpeg_to_sdl_buffer,
-                    wanted_bytes,
-                    -1,
-                    &loaded_video.ptsOfLastAudio);
-
-
-                if (bytes_queued_up > 0)
-                {
-                    if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
-                    {
-                        char audioerr[256];
-                        sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
-                        OutputDebugString(audioerr);
-                    }
-                       // char msg2[256];
-                       // sprintf(msg2, "bytes_queued_up: %i  seconds: %.1f\n", bytes_queued_up,
-                       //         (double)bytes_queued_up / (double)sdl_stuff.desired_bytes_in_sdl_queue);
-                       // OutputDebugString(msg2);
-                }
-            }
-
-
-
-
-            // TIMINGS / SYNC
-
-
-
-            int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
-            double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
-            double seconds_left_in_queue = (double)bytes_left / bytes_per_second;
-                // char secquebuf[123];
-                // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
-                // OutputDebugString(secquebuf);
-
-            timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
-            // assuming we've filled the sdl buffer, we are 1 second ahead
-            // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
-            // and how consistently do we pull audio data? is it sometimes more than others?
-            // update: i think we always put everything we get from decoding into sdl queue,
-            // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
-            double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
-                // char audbuf[123];
-                // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
-                //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
-                // OutputDebugString(audbuf);
-
-
-            timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
-            double vid_seconds = ts_video.seconds();
-
-            double estimatedVidPTS = vid_seconds + loaded_video.targetMsPerFrame/1000.0;
-
-
-            // better to have audio lag than lead, these based loosely on:
-            // https://en.wikipedia.org/wiki/Audio-to-video_synchronization#Recommendations
-            double idealMaxAudioLag = 80;
-            double idealMaxAudioLead = 20;
-
-            // todo: make this / these adjustable?
-            // based on screen recording the sdl estimate seems pretty accurate, unless
-            // that's just balancing out our initial uneven tolerances? dunno
-            // double estimatedSDLAudioLag = sdl_stuff.estimated_audio_latency_ms;
-            // it almost feels better to actually have a little audio delay though...
-            double estimatedSDLAudioLag = 0;
-            double allowableAudioLag = idealMaxAudioLag - estimatedSDLAudioLag;
-            double allowableAudioLead = idealMaxAudioLead + estimatedSDLAudioLag;
-
-
-            // VIDEO
-
-            // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
-            // i guess seeking/starting -> best effort sync, and auto-correct in update while running
-            // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
-            if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0) // time for a new frame if audio is this far behind
-            {
-                GetNextVideoFrame(
-                    loaded_video.av_movie.vfc,
-                    loaded_video.av_movie.video.codecContext,
-                    loaded_video.sws_context,
-                    loaded_video.av_movie.video.index,
-                    loaded_video.frame_output,
-                    aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
-                    allowableAudioLead,
-                    &loaded_video.ptsOfLastVideo);
-
             }
             else
             {
-                OutputDebugString("repeating a frame\n");
+                if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
+                {
+                    loaded_video.audio_stopwatch.Start();
+                    SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
+                }
+
+
+                // SOUND
+
+                int bytes_left_in_queue = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
+                    // char msg[256];
+                    // sprintf(msg, "bytes_left_in_queue: %i\n", bytes_left_in_queue);
+                    // OutputDebugString(msg);
+
+
+                int wanted_bytes = sdl_stuff.desired_bytes_in_sdl_queue - bytes_left_in_queue;
+                    // char msg3[256];
+                    // sprintf(msg3, "wanted_bytes: %i\n", wanted_bytes);
+                    // OutputDebugString(msg3);
+
+                if (wanted_bytes >= 0)
+                {
+                    if (wanted_bytes > ffmpeg_to_sdl_buffer.size_in_bytes)
+                    {
+                        // char errq[256];
+                        // sprintf(errq, "want to queue: %i, but only space for %i in buffer\n", wanted_bytes, ffmpeg_to_sdl_buffer.size_in_bytes);
+                        // OutputDebugString(errq);
+
+                        wanted_bytes = ffmpeg_to_sdl_buffer.size_in_bytes;
+                    }
+
+                    // ideally a little bite of sound, every frame
+                    // todo: better way to track all the pts, both a/v and seeking etc?
+                    int bytes_queued_up = GetNextAudioFrame(
+                        loaded_video.av_movie.afc,
+                        loaded_video.av_movie.audio.codecContext,
+                        loaded_video.av_movie.audio.index,
+                        ffmpeg_to_sdl_buffer,
+                        wanted_bytes,
+                        -1,
+                        &loaded_video.ptsOfLastAudio);
+
+
+                    if (bytes_queued_up > 0)
+                    {
+                        if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
+                        {
+                            char audioerr[256];
+                            sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
+                            OutputDebugString(audioerr);
+                        }
+                           // char msg2[256];
+                           // sprintf(msg2, "bytes_queued_up: %i  seconds: %.1f\n", bytes_queued_up,
+                           //         (double)bytes_queued_up / (double)sdl_stuff.desired_bytes_in_sdl_queue);
+                           // OutputDebugString(msg2);
+                    }
+                }
+
+
+
+
+                // TIMINGS / SYNC
+
+
+
+                int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
+                double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
+                double seconds_left_in_queue = (double)bytes_left / bytes_per_second;
+                    // char secquebuf[123];
+                    // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
+                    // OutputDebugString(secquebuf);
+
+                timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
+                // assuming we've filled the sdl buffer, we are 1 second ahead
+                // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
+                // and how consistently do we pull audio data? is it sometimes more than others?
+                // update: i think we always put everything we get from decoding into sdl queue,
+                // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
+                double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
+                    // char audbuf[123];
+                    // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
+                    //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
+                    // OutputDebugString(audbuf);
+
+
+                timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
+                double vid_seconds = ts_video.seconds();
+
+                double estimatedVidPTS = vid_seconds + loaded_video.targetMsPerFrame/1000.0;
+
+
+                // better to have audio lag than lead, these based loosely on:
+                // https://en.wikipedia.org/wiki/Audio-to-video_synchronization#Recommendations
+                double idealMaxAudioLag = 80;
+                double idealMaxAudioLead = 20;
+
+                // todo: make this / these adjustable?
+                // based on screen recording the sdl estimate seems pretty accurate, unless
+                // that's just balancing out our initial uneven tolerances? dunno
+                // double estimatedSDLAudioLag = sdl_stuff.estimated_audio_latency_ms;
+                // it almost feels better to actually have a little audio delay though...
+                double estimatedSDLAudioLag = 0;
+                double allowableAudioLag = idealMaxAudioLag - estimatedSDLAudioLag;
+                double allowableAudioLead = idealMaxAudioLead + estimatedSDLAudioLag;
+
+
+                // VIDEO
+
+                // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
+                // i guess seeking/starting -> best effort sync, and auto-correct in update while running
+                // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
+                if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0) // time for a new frame if audio is this far behind
+                {
+                    GetNextVideoFrame(
+                        loaded_video.av_movie.vfc,
+                        loaded_video.av_movie.video.codecContext,
+                        loaded_video.sws_context,
+                        loaded_video.av_movie.video.index,
+                        loaded_video.frame_output,
+                        aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
+                        allowableAudioLead,
+                        &loaded_video.ptsOfLastVideo);
+
+                }
+                else
+                {
+                    OutputDebugString("repeating a frame\n");
+                }
+
+
+                ts_video = timestamp::FromVideoPTS(loaded_video);
+                vid_seconds = ts_video.seconds();
+
+
+                // how far ahead is the sound?
+                double delta_ms = (aud_seconds - vid_seconds) * 1000.0;
+
+                // the real audio being transmitted is sdl's write buffer which will be a little behind
+                double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
+                double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
+
+                // char ptsbuf[123];
+                // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+                //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+                // OutputDebugString(ptsbuf);
+
             }
-
-
-            ts_video = timestamp::FromVideoPTS(loaded_video);
-            vid_seconds = ts_video.seconds();
-
-
-            // how far ahead is the sound?
-            double delta_ms = (aud_seconds - vid_seconds) * 1000.0;
-
-            // the real audio being transmitted is sdl's write buffer which will be a little behind
-            double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
-            double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
-
-            // char ptsbuf[123];
-            // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-            //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-            // OutputDebugString(ptsbuf);
-
+            loaded_video.vid_was_paused = loaded_video.vid_paused;
         }
-        loaded_video.vid_was_paused = loaded_video.vid_paused;
 
 
         RenderToScreenGL((void*)loaded_video.vid_buffer,
@@ -545,7 +559,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         state.window,
-                        percent, drawProgressBar, state.buffering);
+                        percent, drawProgressBar, !state.readyToRunMovie);
 
         // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
         //            (float*)sound_buffer, bytes_in_buffer);
@@ -768,6 +782,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
 }
 
 
+// todo: peruse this for memory leaks. also: better name!
+
 bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 {
 
@@ -883,13 +899,33 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 }
 
 
-// todo: peruse this for memory leaks. also: better name?
+
+DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
+{
+    char *path = (char*)lpParam;
+
+    MovieAV newMovie;
+    if (!SetupMovieAVFromPath(path, &newMovie))
+    {
+        char errbuf[123];
+        sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
+        MsgBox(errbuf);
+        return false;
+    }
+    global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
+    global_ghoster.state.readyToLoadNewMovie = true;
+
+    return 0;
+}
+
+
 bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
-    if (!SetupMovieAVFromPath(path, &newMovie->av_movie)) return false;
-    global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie->av_movie);
-    global_ghoster.state.readyToLoadNewMovie = true;
     // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
+    global_ghoster.state.readyToRunMovie = false;
+
+    CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
+
     return true;
 }
 
