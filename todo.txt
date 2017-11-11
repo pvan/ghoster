@@ -2,7 +2,6 @@
 
 bugs:
 
-[ ] video pauses near end of file (seems like when audio is done reading?)
 
 [x] seeking near begining or end triggers resize area
 

@@ -439,7 +439,7 @@ struct GhosterWindow
 
             int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
             double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
-            double seconds_left_in_queue = bytes_per_second / (double)bytes_left;
+            double seconds_left_in_queue = (double)bytes_left / bytes_per_second;
                 // char secquebuf[123];
                 // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
                 // OutputDebugString(secquebuf);
@@ -451,6 +451,10 @@ struct GhosterWindow
             // update: i think we always put everything we get from decoding into sdl queue,
             // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
+                // char audbuf[123];
+                // sprintf(audbuf, "aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
+                //         aud_seconds, seconds_left_in_queue);
+                // OutputDebugString(audbuf);
 
 
             timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
