@@ -102,6 +102,9 @@ struct RunningMovie
     Stopwatch audio_stopwatch;
     double vid_aspect; // feels like it'd be better to store this as a rational
 
+    i64 ptsOfLastVideo;
+    i64 ptsOfLastAudio;
+
     // lines between runnningmovie and appstate are blurring a bit to me right now
     bool vid_paused = false;
     bool vid_was_paused = false;
@@ -172,6 +175,14 @@ struct timestamp
         i64 base_den = movie.av_movie.vfc->streams[streamIndex]->time_base.den;
         return {pts * base_num, base_den, movie.targetMsPerFrame};
     }
+    static timestamp FromVideoPTS(RunningMovie movie)
+    {
+        return timestamp::FromPTS(movie.ptsOfLastVideo, movie, movie.av_movie.video.index);
+    }
+    static timestamp FromAudioPTS(RunningMovie movie)
+    {
+        return timestamp::FromPTS(movie.ptsOfLastAudio, movie, movie.av_movie.audio.index);
+    }
 };
 
 
@@ -203,7 +214,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
         // OutputDebugString(msbuf);
 
-    i64 framePTS = 0;
+    // i64 framePTS = 0;
 
     // step through video frames for both contexts until we reach our desired timestamp
 
@@ -216,7 +227,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->frame_output,
         realTimeMs,
         // 0,
-        &framePTS);
+        &movie->ptsOfLastAudio);
     // int bytes_queued_up = GetNextAudioFrame(
     //     loaded_video.av_movie.afc,
     //     loaded_video.av_movie.audio.codecContext,
@@ -234,13 +245,13 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->av_movie.video.index,
         movie->frame_output,
         movie->audio_stopwatch.MsElapsed() - msAudioLatencyEstimate,
-        &framePTS);
+        &movie->ptsOfLastVideo);
 
 
     i64 streamIndex = movie->av_movie.video.index;
     i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
     i64 base_den = movie->av_movie.vfc->streams[streamIndex]->time_base.den;
-    timestamp currentTS = {framePTS * base_num, base_den, ts.framesPerSecond};
+    timestamp currentTS = {movie->ptsOfLastVideo * base_num, base_den, ts.framesPerSecond};
 
     double totalFrameCount = (movie->av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
     double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
@@ -322,8 +333,6 @@ struct GhosterWindow
 
 
 
-        i64 ptsOfVideo;
-        i64 ptsOfAudio;
 
 
         if (state.setSeek)
@@ -403,7 +412,7 @@ struct GhosterWindow
                     ffmpeg_to_sdl_buffer,
                     wanted_bytes,
                     loaded_video.audio_stopwatch.MsElapsed(),
-                    &ptsOfAudio);
+                    &loaded_video.ptsOfLastAudio);
 
 
                 if (bytes_queued_up > 0)
@@ -422,6 +431,11 @@ struct GhosterWindow
 
 
 
+
+            // VIDEO
+
+
+
             int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
             double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
             double seconds_left_in_queue = bytes_per_second / (double)bytes_left;
@@ -430,28 +444,53 @@ struct GhosterWindow
                 // OutputDebugString(secquebuf);
 
 
-            // VIDEO
-
-            GetNextVideoFrame(
-                loaded_video.av_movie.vfc,
-                loaded_video.av_movie.video.codecContext,
-                loaded_video.sws_context,
-                loaded_video.av_movie.video.index,
-                loaded_video.frame_output,
-                loaded_video.audio_stopwatch.MsElapsed() - sdl_stuff.estimated_audio_latency_ms,
-                &ptsOfVideo);
 
 
-            timestamp ts_video = timestamp::FromPTS(ptsOfVideo, loaded_video, loaded_video.av_movie.video.index);
-            timestamp ts_audio = timestamp::FromPTS(ptsOfAudio, loaded_video, loaded_video.av_movie.audio.index);
-
-            // when should this frame be shown (according to the ffmpeg stream)
-            double vid_seconds = ts_video.seconds();
+            timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
 
             // assuming we've filled the sdl buffer, we are 1 second ahead
             // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
             // and how consistently do we pull audio data? is it sometimes more than others?
+            // update: i think we always put everything we get from decoding into sdl queue,
+            // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
             double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
+
+            double vid_seconds;
+
+
+static double lastVidSec = 10000;
+
+            double estimatedVidPTS = lastVidSec + loaded_video.targetMsPerFrame/1000.0;
+
+            // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
+            // i guess seeking/starting -> best effort sync, and auto-correct in update while running
+            // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
+            if (aud_seconds > estimatedVidPTS - .04) // time for a new frame if audio is this far behind
+            {
+                GetNextVideoFrame(
+                    loaded_video.av_movie.vfc,
+                    loaded_video.av_movie.video.codecContext,
+                    loaded_video.sws_context,
+                    loaded_video.av_movie.video.index,
+                    loaded_video.frame_output,
+                    aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
+                    &loaded_video.ptsOfLastVideo);
+
+
+            }
+            else
+            {
+                OutputDebugString("repeating a frame\n");
+            }
+
+
+            timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
+
+            // when should this frame be shown (according to the ffmpeg stream)
+            vid_seconds = ts_video.seconds();
+
+lastVidSec = vid_seconds;
+
 
             // how far ahead is the sound?
             double delta_ms = (aud_seconds - vid_seconds) * 1000.0;

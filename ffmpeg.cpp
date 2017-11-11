@@ -332,7 +332,7 @@ bool GetNextVideoFrame(
 
                 // we'll use a frame even if it's this far behind
                 // should we make sure this is at least half a frame length? hmm
-                double msDelayAllowed = 20;
+                double msDelayAllowed = 50;
 
 
                 // char zxcv[123];
@@ -347,7 +347,7 @@ bool GetNextVideoFrame(
                 if (msToPlayThisFrame < msOfDesiredFrame - msDelayAllowed /*+ msAudioLatencyEstimate + msDelayAllowed*/
                     && !skipped_a_frame_already)
                 {
-                    // OutputDebugString("skipped a frame\n");
+                    OutputDebugString("skipped a frame\n");
 
                     // now skip as many as you want..
                     // but we should limit by time actually, right?
