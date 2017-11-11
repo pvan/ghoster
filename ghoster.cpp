@@ -745,7 +745,15 @@ static void GlobalLoadMovie(char *path)
 }
 
 
+void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
+{
+    RECT winRect;
+    GetWindowRect(hwnd, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
 
+    MoveWindow(hwnd, winRect.left, winRect.top, movie.vidWID, movie.vidHEI, true);
+}
 
 void SetWindowToAspectRatio(HWND hwnd, double vid_aspect)
 {
@@ -996,6 +1004,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_PAUSE 1002
 #define ID_ASPECT 1003
 #define ID_PASTE 1004
+#define ID_RESET_RES 1005
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
@@ -1005,6 +1014,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
@@ -1360,6 +1370,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case ID_PASTE:
                     PasteClipboard();
+                    break;
+                case ID_RESET_RES:
+                    SetWindowToNativeRes(global_ghoster.state.window, global_ghoster.loaded_video);
                     break;
             }
         } break;

@@ -130,3 +130,12 @@ d/l / decode loop
 
 
 
+---fun----
+
+preview random frame when loading while paused
+
+filters!
+
+random a/v mashup
+
+
