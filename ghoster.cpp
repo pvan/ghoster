@@ -125,6 +125,7 @@ struct AppState {
     bool globalContextMenuOpen;
 
     bool lock_aspect = true;
+    bool repeat = true;
 
 
 
@@ -556,7 +557,7 @@ struct GhosterWindow
 
         RenderToScreenGL((void*)loaded_video.vid_buffer,
                         960,
-                        720, //asdf
+                        720, //todo: extra bar bug qwer
                         // loaded_video.vidWID,
                         // loaded_video.vidHEI,
                         state.winWID,
@@ -571,6 +572,16 @@ struct GhosterWindow
         // RenderToScreenGL((void*)vid_buffer, vidWID, vidHEI, winWID, winHEI, window, 0, false);
         // RenderToScreenGDI((void*)secondary_buf, vidWID, vidHEI, window);
 
+
+
+
+        // REPEAT
+
+        if (state.repeat && percent > 1.0)  // not percent will keep ticking up even after vid is done
+        {
+            double targetFPS = 1000.0 / loaded_video.targetMsPerFrame;
+            HardSeekToFrameForTimestamp(&loaded_video, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
+        }
 
 
 
@@ -911,7 +922,7 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
 
     // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720); // asdf
+    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720); // todo: extra bar bug qwer
     // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
     if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
     outMovie->vid_buffer = (u8*)av_malloc(numBytes);
@@ -1056,16 +1067,19 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_ASPECT 1003
 #define ID_PASTE 1004
 #define ID_RESET_RES 1005
+#define ID_REPEAT 1006
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
     UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
+    UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_REPEAT, L"Repeat");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
@@ -1424,6 +1438,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case ID_RESET_RES:
                     SetWindowToNativeRes(global_ghoster.state.window, global_ghoster.loaded_video);
+                    break;
+                case ID_REPEAT:
+                    global_ghoster.state.repeat = !global_ghoster.state.repeat;
                     break;
             }
         } break;

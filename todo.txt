@@ -1,6 +1,6 @@
 
 
-[ ] extra bar on right of some vids
+[/] extra bar on right of some vids
 
 [ ] seems like mem leak on loading files
 
@@ -20,7 +20,7 @@
     (definite delay but maybe not correlated to vid size)
 
 
-[ ] overlay display, play/pause feedback, etc
+[ ] overlay display: play/pause feedback, etc
 
 
 
@@ -35,7 +35,7 @@
 
 
 
-[ ] repeat toggle
+[x] repeat toggle
 
 [x] keep new loaded video same window size (maybe resize to new aspect ratio)
 
