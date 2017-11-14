@@ -1086,7 +1086,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Toggle Click Through");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
@@ -1133,6 +1133,8 @@ bool PasteClipboard()
 #define ID_SYSTRAY_MSG WM_USER + 1
 
 static HICON global_icon;
+static HICON global_icon_white;
+
 
 void MakeIcons(HINSTANCE hInstance)
 {
@@ -1141,6 +1143,19 @@ void MakeIcons(HINSTANCE hInstance)
         MAKEINTRESOURCE(ID_ICON),
         IMAGE_ICON,
         0, 0, LR_DEFAULTSIZE);
+
+    // global_icon_white = (HICON)LoadImage(
+    HBITMAP hbm = (HBITMAP)LoadImage(
+        hInstance,
+        MAKEINTRESOURCE(ID_ICON_W),
+        IMAGE_BITMAP,
+        0, 0, LR_DEFAULTSIZE);
+    ICONINFO info = {
+        true, 0, 0,
+        hbm, hbm
+    };
+    global_icon_white = CreateIconIndirect(&info);
+
 }
 
 NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
@@ -1178,19 +1193,31 @@ void RemoveSysTrayIcon(HWND hwnd)
     Shell_NotifyIcon(NIM_DELETE, &info);
 }
 
+void SetSysTrayIcon(HWND hwnd, HICON icon)
+{
+    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
+    info.hIcon = icon;
+    Shell_NotifyIcon(NIM_MODIFY, &info);
+
+    SendMessage (hwnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
+    SendMessage (hwnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
+}
+
 
 
 void setClickThrough(HWND hwnd, bool enable)
 {
-
+    global_ghoster.state.clickThrough = enable;
     LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
     if (enable)
     {
         style = style | WS_EX_TRANSPARENT;
+        SetSysTrayIcon(hwnd, global_icon_white);
     }
     else
     {
         style = style & ~WS_EX_TRANSPARENT;
+        SetSysTrayIcon(hwnd, global_icon);
     }
     SetWindowLong(hwnd, GWL_EXSTYLE, style);
 
@@ -1541,8 +1568,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                     break;
                 case ID_CLICKTHRU:
-                    global_ghoster.state.clickThrough = !global_ghoster.state.clickThrough;
-                    setClickThrough(hwnd, global_ghoster.state.clickThrough);
+                    setClickThrough(hwnd, !global_ghoster.state.clickThrough);
                     break;
 
             }
@@ -1568,15 +1594,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_SYSTRAY_MSG: {
             switch (lParam) {
                 case WM_LBUTTONUP:
-                    global_ghoster.state.clickThrough = !global_ghoster.state.clickThrough;
-                    // global_ghoster.state.transparent = !global_ghoster.state.transparent;
-                    // if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
-                    // if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
+                    SetForegroundWindow(hwnd);
+                    setClickThrough(hwnd, !global_ghoster.state.clickThrough);
                 break;
                 case WM_RBUTTONUP:
                     POINT mousePos;
                     GetCursorPos(&mousePos);
-                    SetForegroundWindow(hwnd); // supposedly needed for menu to work as expected
+                    SetForegroundWindow(hwnd); // supposedly needed for menu to work as expected?
                     OpenRClickMenuAt(hwnd, mousePos);
                 break;
             }
