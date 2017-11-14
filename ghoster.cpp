@@ -5,7 +5,7 @@
 #include <math.h>
 
 
-// for drag drop
+// for drag drop, sys tray icon
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
 
@@ -1132,16 +1132,27 @@ bool PasteClipboard()
 #define ID_SYSTRAY 999
 #define ID_SYSTRAY_MSG 998
 
+static HICON global_icon;
+
+void MakeIcons(HINSTANCE hInstance)
+{
+    global_icon = (HICON)LoadImage(
+        hInstance,
+        MAKEINTRESOURCE(ID_ICON),
+        IMAGE_ICON,
+        0, 0, LR_DEFAULTSIZE);
+}
+
 NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
 {
     NOTIFYICONDATA info =
     {
         sizeof(NOTIFYICONDATA),
         hwnd,
-        ID_SYSTRAY,           //UINT  uID
-        NIF_MESSAGE | NIF_TIP,          //UINT  uFlags
-        ID_SYSTRAY_MSG,       //UINT  uCallbackMessage
-        0,                    //HICON hIcon
+        ID_SYSTRAY,               //UINT  uID
+        NIF_ICON | NIF_MESSAGE | NIF_TIP,
+        ID_SYSTRAY_MSG,           //UINT  uCallbackMessage
+        global_icon,              //HICON hIcon
         "replace with movie title",               //TCHAR szTip[64]
         0,                    //DWORD dwState
         0,                    //DWORD dwStateMask
@@ -1362,6 +1373,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
+        // is this needed?
+        // case WM_DESTROY: {
+        //     RemoveSysTrayIcon(hwnd);
+        // } break;
+
         case WM_CLOSE: {
             global_ghoster.state.appRunning = false;
         } break;
@@ -1557,6 +1573,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
+
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
@@ -1603,10 +1620,15 @@ int CALLBACK WinMain(
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
 
-    // setup some defaults
+    // setup some defaults....
+
     setWindowOpacity(global_ghoster.state.window, 1.0);
+
+    MakeIcons(hInstance);
+
     AddSysTrayIcon(global_ghoster.state.window);
 
+    //
 
 
     // ENABLE DRAG DROP
@@ -1631,6 +1653,8 @@ int CALLBACK WinMain(
             DispatchMessage(&Message);
         }
     }
+
+    RemoveSysTrayIcon(global_ghoster.state.window);
 
     return 0;
 }
