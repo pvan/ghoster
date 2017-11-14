@@ -155,6 +155,7 @@ struct AppState {
     bool repeat = true;
     bool transparent = false;
     bool clickThrough = false;
+    bool topMost = true;
 
 
     // mouse state
@@ -1100,11 +1101,12 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_TRANSPARENCY 1007
 #define ID_CLICKTHRU 1008
 #define ID_RANDICON 1009
+#define ID_TOPMOST 1010
 
-#define ID_SET_R 1010
-#define ID_SET_P 1011
-#define ID_SET_C 1012
-#define ID_SET_Y 1013
+#define ID_SET_R 2001
+#define ID_SET_P 2002
+#define ID_SET_C 2003
+#define ID_SET_Y 2004
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
@@ -1128,11 +1130,14 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
     UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
     UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
+    UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
+
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | topMostChecked, ID_TOPMOST, L"Always On Top");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
     // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
@@ -1372,6 +1377,15 @@ void SetIcon(HWND hwnd, HICON icon)
 
 
 
+void setTopMost(HWND hwnd, bool enable)
+{
+    global_ghoster.state.topMost = enable;
+    if (enable)
+        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    else
+        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+}
+
 void setClickThrough(HWND hwnd, bool enable)
 {
     global_ghoster.state.clickThrough = enable;
@@ -1389,8 +1403,6 @@ void setClickThrough(HWND hwnd, bool enable)
     SetWindowLong(hwnd, GWL_EXSTYLE, style);
 
 }
-
-
 
 void setWindowOpacity(HWND hwnd, double opacity)
 {
@@ -1741,6 +1753,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     global_ghoster.icon = RandomIcon();
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
+                case ID_TOPMOST:
+                    setTopMost(hwnd, !global_ghoster.state.topMost);
+                    break;
 
                 int color;
                 case ID_SET_C: color = 0;
@@ -1845,6 +1860,7 @@ int CALLBACK WinMain(
     // setup some defaults....
 
     setWindowOpacity(global_ghoster.state.window, 1.0);
+    setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
 
     MakeIcons(hInstance);
 
