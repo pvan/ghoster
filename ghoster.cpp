@@ -11,6 +11,9 @@
 
 
 
+#include "resource.h"
+
+
 
 #define uint unsigned int
 
@@ -1126,6 +1129,45 @@ bool PasteClipboard()
 // todo: what to do with this assortment of functions?
 
 
+#define ID_SYSTRAY 999
+#define ID_SYSTRAY_MSG 998
+
+NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
+{
+    NOTIFYICONDATA info =
+    {
+        sizeof(NOTIFYICONDATA),
+        hwnd,
+        ID_SYSTRAY,           //UINT  uID
+        NIF_MESSAGE | NIF_TIP,          //UINT  uFlags
+        ID_SYSTRAY_MSG,       //UINT  uCallbackMessage
+        0,                    //HICON hIcon
+        "replace with movie title",               //TCHAR szTip[64]
+        0,                    //DWORD dwState
+        0,                    //DWORD dwStateMask
+        0,                    //TCHAR szInfo[256]
+        0,                    //UINT uVersion
+        0,                    //TCHAR szInfoTitle[64]
+        0,                    //DWORD dwInfoFlags
+        0,                    //GUID  guidItem
+        0                     //HICON hBalloonIcon
+    };
+    return info;
+}
+
+void AddSysTrayIcon(HWND hwnd)
+{
+    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
+    Shell_NotifyIcon(NIM_ADD, &info);
+}
+
+void RemoveSysTrayIcon(HWND hwnd)
+{
+    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
+    Shell_NotifyIcon(NIM_DELETE, &info);
+}
+
+
 
 void setClickThrough(HWND hwnd, bool enable)
 {
@@ -1506,6 +1548,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
+
+        case ID_SYSTRAY_MSG: {
+            switch (lParam) {
+                case WM_LBUTTONUP:
+                    global_ghoster.state.clickThrough = !global_ghoster.state.clickThrough;
+                break;
+            }
+        } break;
+
     }
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
@@ -1551,7 +1602,11 @@ int CALLBACK WinMain(
 
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
+
+    // setup some defaults
     setWindowOpacity(global_ghoster.state.window, 1.0);
+    AddSysTrayIcon(global_ghoster.state.window);
+
 
 
     // ENABLE DRAG DROP

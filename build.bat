@@ -15,6 +15,8 @@ if not defined DevEnvDir (
 )
 
 
+rc resource.rc
+
 
 set WarningFlags= -we4302
 
@@ -51,7 +53,7 @@ REM  -FC             full paths in errors (for sublime error regex)
 
 
 pushd build
-cl -nologo %CompilerFlags% %WarningFlags% ..\ghoster.cpp %LinkerFlags% user32.lib Winmm.lib
+cl -nologo %CompilerFlags% %WarningFlags% ..\ghoster.cpp %LinkerFlags% user32.lib Winmm.lib ..\resource.res
 popd
 
 
