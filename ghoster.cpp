@@ -1112,14 +1112,17 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     // TODO: create this once at start then just show it here?
 
     HMENU hSubMenu = CreatePopupMenu();
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_Y, (LPCWSTR)global_bitmap_y1);
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_C, (LPCWSTR)global_bitmap_c1);
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_P, (LPCWSTR)global_bitmap_p1);
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_R, (LPCWSTR)global_bitmap_r1);
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_Y, L"Clyde");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_C, L"Inky");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_P, L"Pinky");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_R, L"Blinky");
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_C, L"Inky");
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_P, L"Pinky");
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_R, L"Blinky");
+    MENUITEMINFO info = {0};
+    info.cbSize = sizeof(MENUITEMINFO);
+    info.fMask = MIIM_BITMAP;
+    info.hbmpItem = global_bitmap_y1; SetMenuItemInfo(hSubMenu, ID_SET_Y, 0, &info);
+    info.hbmpItem = global_bitmap_c1; SetMenuItemInfo(hSubMenu, ID_SET_C, 0, &info);
+    info.hbmpItem = global_bitmap_p1; SetMenuItemInfo(hSubMenu, ID_SET_P, 0, &info);
+    info.hbmpItem = global_bitmap_r1; SetMenuItemInfo(hSubMenu, ID_SET_R, 0, &info);
 
     UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
@@ -1225,7 +1228,6 @@ void MakeIcons(HINSTANCE hInstance)
         IMAGE_ICON,
         0, 0, LR_DEFAULTSIZE);
 
-
     global_bitmap_w  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_W ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
     global_bitmap_b  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_B ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
     global_bitmap_c1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
@@ -1244,7 +1246,6 @@ void MakeIcons(HINSTANCE hInstance)
     global_bitmap_y2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
     global_bitmap_y3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
     global_bitmap_y4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-
 
     global_icon_w =  MakeIconFromBitmap(hInstance, global_bitmap_w );
     global_icon_b =  MakeIconFromBitmap(hInstance, global_bitmap_b );
