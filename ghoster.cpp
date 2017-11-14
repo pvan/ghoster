@@ -305,6 +305,7 @@ struct GhosterWindow
     SoundBuffer ffmpeg_to_sdl_buffer;
     SDLStuff sdl_stuff;
     RunningMovie loaded_video;
+    HICON icon; // randomly assigned on startup
 
 
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
@@ -1133,8 +1134,36 @@ bool PasteClipboard()
 #define ID_SYSTRAY_MSG WM_USER + 1
 
 static HICON global_icon;
-static HICON global_icon_white;
+static HICON global_icon_w;
+static HICON global_icon_b;
 
+static HICON global_icon_c1;
+static HICON global_icon_c2;
+static HICON global_icon_c3;
+static HICON global_icon_c4;
+
+static HICON global_icon_p1;
+static HICON global_icon_p2;
+static HICON global_icon_p3;
+static HICON global_icon_p4;
+
+static HICON global_icon_r1;
+static HICON global_icon_r2;
+static HICON global_icon_r3;
+static HICON global_icon_r4;
+
+static HICON global_icon_y1;
+static HICON global_icon_y2;
+static HICON global_icon_y3;
+static HICON global_icon_y4;
+
+
+HICON MakeIconFromBitmapID(HINSTANCE hInstance, int id)
+{
+    HBITMAP hbm = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(id), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    ICONINFO info = {true, 0, 0, hbm, hbm };
+    return CreateIconIndirect(&info);
+}
 
 void MakeIcons(HINSTANCE hInstance)
 {
@@ -1144,18 +1173,55 @@ void MakeIcons(HINSTANCE hInstance)
         IMAGE_ICON,
         0, 0, LR_DEFAULTSIZE);
 
-    // global_icon_white = (HICON)LoadImage(
-    HBITMAP hbm = (HBITMAP)LoadImage(
-        hInstance,
-        MAKEINTRESOURCE(ID_ICON_W),
-        IMAGE_BITMAP,
-        0, 0, LR_DEFAULTSIZE);
-    ICONINFO info = {
-        true, 0, 0,
-        hbm, hbm
-    };
-    global_icon_white = CreateIconIndirect(&info);
+    global_icon_w = MakeIconFromBitmapID(hInstance, ID_ICON_W);
+    global_icon_b = MakeIconFromBitmapID(hInstance, ID_ICON_B);
 
+    global_icon_c1 = MakeIconFromBitmapID(hInstance, ID_ICON_C1);
+    global_icon_c2 = MakeIconFromBitmapID(hInstance, ID_ICON_C2);
+    global_icon_c3 = MakeIconFromBitmapID(hInstance, ID_ICON_C3);
+    global_icon_c4 = MakeIconFromBitmapID(hInstance, ID_ICON_C4);
+
+    global_icon_p1 = MakeIconFromBitmapID(hInstance, ID_ICON_P1);
+    global_icon_p2 = MakeIconFromBitmapID(hInstance, ID_ICON_P2);
+    global_icon_p3 = MakeIconFromBitmapID(hInstance, ID_ICON_P3);
+    global_icon_p4 = MakeIconFromBitmapID(hInstance, ID_ICON_P4);
+
+    global_icon_r1 = MakeIconFromBitmapID(hInstance, ID_ICON_R1);
+    global_icon_r2 = MakeIconFromBitmapID(hInstance, ID_ICON_R2);
+    global_icon_r3 = MakeIconFromBitmapID(hInstance, ID_ICON_R3);
+    global_icon_r4 = MakeIconFromBitmapID(hInstance, ID_ICON_R4);
+
+    global_icon_y1 = MakeIconFromBitmapID(hInstance, ID_ICON_Y1);
+    global_icon_y2 = MakeIconFromBitmapID(hInstance, ID_ICON_Y2);
+    global_icon_y3 = MakeIconFromBitmapID(hInstance, ID_ICON_Y3);
+    global_icon_y4 = MakeIconFromBitmapID(hInstance, ID_ICON_Y4);
+
+}
+
+HICON RandomIcon()
+{
+    int r = rand() % 16;
+    if (r-- < 1) return global_icon_c1;
+    if (r-- < 1) return global_icon_c2;
+    if (r-- < 1) return global_icon_c3;
+    if (r-- < 1) return global_icon_c4;
+
+    if (r-- < 1) return global_icon_p1;
+    if (r-- < 1) return global_icon_p2;
+    if (r-- < 1) return global_icon_p3;
+    if (r-- < 1) return global_icon_p4;
+
+    if (r-- < 1) return global_icon_r1;
+    if (r-- < 1) return global_icon_r2;
+    if (r-- < 1) return global_icon_r3;
+    if (r-- < 1) return global_icon_r4;
+
+    if (r-- < 1) return global_icon_y1;
+    if (r-- < 1) return global_icon_y2;
+    if (r-- < 1) return global_icon_y3;
+    if (r-- < 1) return global_icon_y4;
+
+    return global_icon_b;
 }
 
 NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
@@ -1193,12 +1259,14 @@ void RemoveSysTrayIcon(HWND hwnd)
     Shell_NotifyIcon(NIM_DELETE, &info);
 }
 
-void SetSysTrayIcon(HWND hwnd, HICON icon)
+void SetIcon(HWND hwnd, HICON icon)
 {
+    // system tray icon
     NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
     info.hIcon = icon;
     Shell_NotifyIcon(NIM_MODIFY, &info);
 
+    // window icon (taskbar)
     SendMessage (hwnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
     SendMessage (hwnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
 }
@@ -1212,12 +1280,12 @@ void setClickThrough(HWND hwnd, bool enable)
     if (enable)
     {
         style = style | WS_EX_TRANSPARENT;
-        SetSysTrayIcon(hwnd, global_icon_white);
+        SetIcon(hwnd, global_icon_w);
     }
     else
     {
         style = style & ~WS_EX_TRANSPARENT;
-        SetSysTrayIcon(hwnd, global_icon);
+        SetIcon(hwnd, global_ghoster.icon);
     }
     SetWindowLong(hwnd, GWL_EXSTYLE, style);
 
@@ -1659,7 +1727,11 @@ int CALLBACK WinMain(
 
     MakeIcons(hInstance);
 
-    AddSysTrayIcon(global_ghoster.state.window);
+    srand(time(0));
+    global_ghoster.icon = RandomIcon();
+
+    AddSysTrayIcon(global_ghoster.state.window); // sets as default icon
+    SetIcon(global_ghoster.state.window, global_ghoster.icon);
 
     //
 

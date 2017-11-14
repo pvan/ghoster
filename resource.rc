@@ -3,4 +3,25 @@
 ID_ICON ICON resources\icon.ico
 
 ID_ICON_W BITMAP resources\zzw.bmp
+ID_ICON_B BITMAP resources\zzb.bmp
+
+ID_ICON_C1 BITMAP resources\c1.bmp
+ID_ICON_C2 BITMAP resources\c2.bmp
+ID_ICON_C3 BITMAP resources\c3.bmp
+ID_ICON_C4 BITMAP resources\c4.bmp
+
+ID_ICON_P1 BITMAP resources\p1.bmp
+ID_ICON_P2 BITMAP resources\p2.bmp
+ID_ICON_P3 BITMAP resources\p3.bmp
+ID_ICON_P4 BITMAP resources\p4.bmp
+
+ID_ICON_R1 BITMAP resources\r1.bmp
+ID_ICON_R2 BITMAP resources\r2.bmp
+ID_ICON_R3 BITMAP resources\r3.bmp
+ID_ICON_R4 BITMAP resources\r4.bmp
+
+ID_ICON_Y1 BITMAP resources\y1.bmp
+ID_ICON_Y2 BITMAP resources\y2.bmp
+ID_ICON_Y3 BITMAP resources\y3.bmp
+ID_ICON_Y4 BITMAP resources\y4.bmp
 
