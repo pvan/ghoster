@@ -1573,6 +1573,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     // if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
                     // if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                 break;
+                case WM_RBUTTONUP:
+                    POINT mousePos;
+                    GetCursorPos(&mousePos);
+                    SetForegroundWindow(hwnd); // supposedly needed for menu to work as expected
+                    OpenRClickMenuAt(hwnd, mousePos);
+                break;
             }
         } break;
 
