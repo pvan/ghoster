@@ -69,6 +69,8 @@ char *TEST_FILES[] = {
 };
 
 
+static WINDOWPLACEMENT temp_delete_me_last_win_pos;
+static bool temp_delete_me_is_maximized;
 
 
 // progress bar position
@@ -1438,9 +1440,22 @@ void appDragWindow(HWND hwnd, int x, int y)
     winpos.length = sizeof(WINDOWPLACEMENT);
     if (GetWindowPlacement(hwnd, &winpos))
     {
-        if (winpos.showCmd == SW_MAXIMIZE)
+        if (winpos.showCmd == SW_MAXIMIZE || temp_delete_me_is_maximized)
         {
-            ShowWindow(hwnd, SW_RESTORE);
+            // ShowWindow(hwnd, SW_RESTORE);
+
+            SetWindowPos(
+                global_ghoster.state.window,
+                0,
+                temp_delete_me_last_win_pos.rcNormalPosition.left,
+                temp_delete_me_last_win_pos.rcNormalPosition.top,
+                temp_delete_me_last_win_pos.rcNormalPosition.right -
+                temp_delete_me_last_win_pos.rcNormalPosition.left,
+                temp_delete_me_last_win_pos.rcNormalPosition.bottom -
+                temp_delete_me_last_win_pos.rcNormalPosition.top,
+                0);
+            temp_delete_me_is_maximized = false;
+
 
             int mouseX = x;
             int mouseY = y;
@@ -1524,9 +1539,23 @@ void onDoubleClickDownL()
     winpos.length = sizeof(WINDOWPLACEMENT);
     if (GetWindowPlacement(global_ghoster.state.window, &winpos))
     {
-        if (winpos.showCmd == SW_MAXIMIZE)
+        if (winpos.showCmd == SW_MAXIMIZE || temp_delete_me_is_maximized)
         {
-            ShowWindow(global_ghoster.state.window, SW_RESTORE);
+            // ShowWindow(global_ghoster.state.window, SW_RESTORE);
+
+            // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
+            SetWindowPos(
+                global_ghoster.state.window,
+                0,
+                temp_delete_me_last_win_pos.rcNormalPosition.left,
+                temp_delete_me_last_win_pos.rcNormalPosition.top,
+                temp_delete_me_last_win_pos.rcNormalPosition.right -
+                temp_delete_me_last_win_pos.rcNormalPosition.left,
+                temp_delete_me_last_win_pos.rcNormalPosition.bottom -
+                temp_delete_me_last_win_pos.rcNormalPosition.top,
+                0);
+            temp_delete_me_is_maximized = false;
+
 
             // make this an option... (we might want to keep it in the corner eg)
             // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
@@ -1542,6 +1571,9 @@ void onDoubleClickDownL()
 
             // for now just change our window size to the monitor
             // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
+            temp_delete_me_last_win_pos.length = sizeof(WINDOWPLACEMENT);
+            if (GetWindowPlacement(global_ghoster.state.window, &temp_delete_me_last_win_pos)); // cache last position
+            //
             MONITORINFO mi = { sizeof(mi) };
             if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
             {
@@ -1553,7 +1585,10 @@ void onDoubleClickDownL()
                     mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
                     SWP_NOOWNERZORDER | SWP_FRAMECHANGED
                     );
+                temp_delete_me_is_maximized = true;
             }
+
+
 
         }
     }
