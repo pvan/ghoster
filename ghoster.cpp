@@ -30,6 +30,30 @@
 
 
 
+static HBITMAP global_bitmap_w;
+static HBITMAP global_bitmap_b;
+
+static HBITMAP global_bitmap_c1;
+static HBITMAP global_bitmap_c2;
+static HBITMAP global_bitmap_c3;
+static HBITMAP global_bitmap_c4;
+
+static HBITMAP global_bitmap_p1;
+static HBITMAP global_bitmap_p2;
+static HBITMAP global_bitmap_p3;
+static HBITMAP global_bitmap_p4;
+
+static HBITMAP global_bitmap_r1;
+static HBITMAP global_bitmap_r2;
+static HBITMAP global_bitmap_r3;
+static HBITMAP global_bitmap_r4;
+
+static HBITMAP global_bitmap_y1;
+static HBITMAP global_bitmap_y2;
+static HBITMAP global_bitmap_y3;
+static HBITMAP global_bitmap_y4;
+
+
 char *TEST_FILES[] = {
     "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
     // "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
@@ -305,7 +329,7 @@ struct GhosterWindow
     SoundBuffer ffmpeg_to_sdl_buffer;
     SDLStuff sdl_stuff;
     RunningMovie loaded_video;
-    HICON icon; // randomly assigned on startup
+    HICON icon; // randomly assigned on launch, or set in menu
 
 
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
@@ -1075,10 +1099,28 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_REPEAT 1006
 #define ID_TRANSPARENCY 1007
 #define ID_CLICKTHRU 1008
+#define ID_RANDICON 1009
+
+#define ID_SET_R 1010
+#define ID_SET_P 1011
+#define ID_SET_C 1012
+#define ID_SET_Y 1013
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
+    // TODO: create this once at start then just show it here?
+
+    HMENU hSubMenu = CreatePopupMenu();
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_Y, (LPCWSTR)global_bitmap_y1);
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_C, (LPCWSTR)global_bitmap_c1);
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_P, (LPCWSTR)global_bitmap_p1);
+    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_R, (LPCWSTR)global_bitmap_r1);
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_Y, L"Clyde");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_C, L"Inky");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_P, L"Pinky");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING | MF_BITMAP, ID_SET_R, L"Blinky");
+
     UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
     UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
@@ -1088,6 +1130,9 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
@@ -1158,10 +1203,17 @@ static HICON global_icon_y3;
 static HICON global_icon_y4;
 
 
-HICON MakeIconFromBitmapID(HINSTANCE hInstance, int id)
+
+// HICON MakeIconFromBitmapID(HINSTANCE hInstance, int id)
+// {
+//     HBITMAP hbm = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(id), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+//     ICONINFO info = {true, 0, 0, hbm, hbm };
+//     return CreateIconIndirect(&info);
+// }
+
+HICON MakeIconFromBitmap(HINSTANCE hInstance, HBITMAP hbm)
 {
-    HBITMAP hbm = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(id), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    ICONINFO info = {true, 0, 0, hbm, hbm };
+    ICONINFO info = {true, 0, 0, hbm, hbm};
     return CreateIconIndirect(&info);
 }
 
@@ -1173,56 +1225,102 @@ void MakeIcons(HINSTANCE hInstance)
         IMAGE_ICON,
         0, 0, LR_DEFAULTSIZE);
 
-    global_icon_w = MakeIconFromBitmapID(hInstance, ID_ICON_W);
-    global_icon_b = MakeIconFromBitmapID(hInstance, ID_ICON_B);
 
-    global_icon_c1 = MakeIconFromBitmapID(hInstance, ID_ICON_C1);
-    global_icon_c2 = MakeIconFromBitmapID(hInstance, ID_ICON_C2);
-    global_icon_c3 = MakeIconFromBitmapID(hInstance, ID_ICON_C3);
-    global_icon_c4 = MakeIconFromBitmapID(hInstance, ID_ICON_C4);
+    global_bitmap_w  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_W ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_b  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_B ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_c1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_c2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_c3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_c4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_p1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_p2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_p3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_p4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_r1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_r2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_r3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_r4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_y1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_y2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_y3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+    global_bitmap_y4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
 
-    global_icon_p1 = MakeIconFromBitmapID(hInstance, ID_ICON_P1);
-    global_icon_p2 = MakeIconFromBitmapID(hInstance, ID_ICON_P2);
-    global_icon_p3 = MakeIconFromBitmapID(hInstance, ID_ICON_P3);
-    global_icon_p4 = MakeIconFromBitmapID(hInstance, ID_ICON_P4);
 
-    global_icon_r1 = MakeIconFromBitmapID(hInstance, ID_ICON_R1);
-    global_icon_r2 = MakeIconFromBitmapID(hInstance, ID_ICON_R2);
-    global_icon_r3 = MakeIconFromBitmapID(hInstance, ID_ICON_R3);
-    global_icon_r4 = MakeIconFromBitmapID(hInstance, ID_ICON_R4);
+    global_icon_w =  MakeIconFromBitmap(hInstance, global_bitmap_w );
+    global_icon_b =  MakeIconFromBitmap(hInstance, global_bitmap_b );
+    global_icon_c1 = MakeIconFromBitmap(hInstance, global_bitmap_c1);
+    global_icon_c2 = MakeIconFromBitmap(hInstance, global_bitmap_c2);
+    global_icon_c3 = MakeIconFromBitmap(hInstance, global_bitmap_c3);
+    global_icon_c4 = MakeIconFromBitmap(hInstance, global_bitmap_c4);
+    global_icon_p1 = MakeIconFromBitmap(hInstance, global_bitmap_p1);
+    global_icon_p2 = MakeIconFromBitmap(hInstance, global_bitmap_p2);
+    global_icon_p3 = MakeIconFromBitmap(hInstance, global_bitmap_p3);
+    global_icon_p4 = MakeIconFromBitmap(hInstance, global_bitmap_p4);
+    global_icon_r1 = MakeIconFromBitmap(hInstance, global_bitmap_r1);
+    global_icon_r2 = MakeIconFromBitmap(hInstance, global_bitmap_r2);
+    global_icon_r3 = MakeIconFromBitmap(hInstance, global_bitmap_r3);
+    global_icon_r4 = MakeIconFromBitmap(hInstance, global_bitmap_r4);
+    global_icon_y1 = MakeIconFromBitmap(hInstance, global_bitmap_y1);
+    global_icon_y2 = MakeIconFromBitmap(hInstance, global_bitmap_y2);
+    global_icon_y3 = MakeIconFromBitmap(hInstance, global_bitmap_y3);
+    global_icon_y4 = MakeIconFromBitmap(hInstance, global_bitmap_y4);
 
-    global_icon_y1 = MakeIconFromBitmapID(hInstance, ID_ICON_Y1);
-    global_icon_y2 = MakeIconFromBitmapID(hInstance, ID_ICON_Y2);
-    global_icon_y3 = MakeIconFromBitmapID(hInstance, ID_ICON_Y3);
-    global_icon_y4 = MakeIconFromBitmapID(hInstance, ID_ICON_Y4);
+}
 
+HICON GetIconByInt(int i)
+{
+    if (i-- < 1) return global_icon_c1;
+    if (i-- < 1) return global_icon_c2;
+    if (i-- < 1) return global_icon_c3;
+    if (i-- < 1) return global_icon_c4;
+
+    if (i-- < 1) return global_icon_p1;
+    if (i-- < 1) return global_icon_p2;
+    if (i-- < 1) return global_icon_p3;
+    if (i-- < 1) return global_icon_p4;
+
+    if (i-- < 1) return global_icon_r1;
+    if (i-- < 1) return global_icon_r2;
+    if (i-- < 1) return global_icon_r3;
+    if (i-- < 1) return global_icon_r4;
+
+    if (i-- < 1) return global_icon_y1;
+    if (i-- < 1) return global_icon_y2;
+    if (i-- < 1) return global_icon_y3;
+    if (i-- < 1) return global_icon_y4;
+
+    return global_icon_b;
 }
 
 HICON RandomIcon()
 {
     int r = rand() % 16;
-    if (r-- < 1) return global_icon_c1;
-    if (r-- < 1) return global_icon_c2;
-    if (r-- < 1) return global_icon_c3;
-    if (r-- < 1) return global_icon_c4;
+    return GetIconByInt(r);
 
-    if (r-- < 1) return global_icon_p1;
-    if (r-- < 1) return global_icon_p2;
-    if (r-- < 1) return global_icon_p3;
-    if (r-- < 1) return global_icon_p4;
+    // if (r-- < 1) return global_icon_c1;
+    // if (r-- < 1) return global_icon_c2;
+    // if (r-- < 1) return global_icon_c3;
+    // if (r-- < 1) return global_icon_c4;
 
-    if (r-- < 1) return global_icon_r1;
-    if (r-- < 1) return global_icon_r2;
-    if (r-- < 1) return global_icon_r3;
-    if (r-- < 1) return global_icon_r4;
+    // if (r-- < 1) return global_icon_p1;
+    // if (r-- < 1) return global_icon_p2;
+    // if (r-- < 1) return global_icon_p3;
+    // if (r-- < 1) return global_icon_p4;
 
-    if (r-- < 1) return global_icon_y1;
-    if (r-- < 1) return global_icon_y2;
-    if (r-- < 1) return global_icon_y3;
-    if (r-- < 1) return global_icon_y4;
+    // if (r-- < 1) return global_icon_r1;
+    // if (r-- < 1) return global_icon_r2;
+    // if (r-- < 1) return global_icon_r3;
+    // if (r-- < 1) return global_icon_r4;
 
-    return global_icon_b;
+    // if (r-- < 1) return global_icon_y1;
+    // if (r-- < 1) return global_icon_y2;
+    // if (r-- < 1) return global_icon_y3;
+    // if (r-- < 1) return global_icon_y4;
+
+    // return global_icon_b;
 }
+
+
 
 NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
 {
@@ -1637,6 +1735,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case ID_CLICKTHRU:
                     setClickThrough(hwnd, !global_ghoster.state.clickThrough);
+                    break;
+                case ID_RANDICON:
+                    global_ghoster.icon = RandomIcon();
+                    if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+                    break;
+
+                int color;
+                case ID_SET_C: color = 0;
+                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+                    break;
+                case ID_SET_P: color = 1;
+                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+                    break;
+                case ID_SET_R: color = 2;
+                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+                    break;
+                case ID_SET_Y: color = 3;
+                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
 
             }
