@@ -100,7 +100,7 @@ struct RunningMovie
     double duration;
     double elapsed;
     Stopwatch audio_stopwatch;
-    double vid_aspect; // feels like it'd be better to store this as a rational
+    double aspect_ratio; // feels like it'd be better to store this as a rational
 
     i64 ptsOfLastVideo;
     i64 ptsOfLastAudio;
@@ -126,7 +126,7 @@ struct AppState {
 
     bool lock_aspect = true;
     bool repeat = true;
-
+    bool transparent = false;
 
 
     // mouse state
@@ -775,15 +775,15 @@ void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
     MoveWindow(hwnd, winRect.left, winRect.top, movie.vidWID, movie.vidHEI, true);
 }
 
-void SetWindowToAspectRatio(HWND hwnd, double vid_aspect)
+void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
 {
     RECT winRect;
     GetWindowRect(hwnd, &winRect);
     int w = winRect.right - winRect.left;
     int h = winRect.bottom - winRect.top;
     // which to adjust tho?
-    int nw = (int)((double)h * vid_aspect);
-    int nh = (int)((double)w / vid_aspect);
+    int nw = (int)((double)h * aspect_ratio);
+    int nh = (int)((double)w / aspect_ratio);
     // // i guess always make smaller for now
     // if (nw < w)
     //     MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
@@ -854,9 +854,9 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     // //keep top left of window in same pos for now, change to keep center in same position?
     // MoveWindow(global_ghoster.state.window, winRect.left, winRect.top, global_ghoster.state.winWID, global_ghoster.state.winHEI, true);  // ever non-zero opening position? launch option?
 
-    outMovie->vid_aspect = (double)outMovie->vidWID / (double)outMovie->vidHEI;
+    outMovie->aspect_ratio = (double)outMovie->vidWID / (double)outMovie->vidHEI;
 
-    SetWindowToAspectRatio(global_ghoster.state.window, outMovie->vid_aspect);
+    SetWindowToAspectRatio(global_ghoster.state.window, outMovie->aspect_ratio);
 
 
     // MAKE NOTE OF VIDEO LENGTH
@@ -1068,14 +1068,18 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_PASTE 1004
 #define ID_RESET_RES 1005
 #define ID_REPEAT 1006
+#define ID_TRANSPARENCY 1007
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
     UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
+    UINT transpChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transpChecked, ID_TRANSPARENCY, L"Toggle Transparency");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
@@ -1116,6 +1120,22 @@ bool PasteClipboard()
 
 
 // todo: what to do with this assortment of functions?
+
+
+
+void toggleClickThrough(HWND hwnd)
+{
+
+}
+
+
+
+void setWindowOpacity(HWND hwnd, double opacity)
+{
+    SetLayeredWindowAttributes(global_ghoster.state.window, 0, 255.0*opacity, LWA_ALPHA);
+}
+
+
 
 
 bool clientPointIsOnProgressBar(int x, int y)
@@ -1302,31 +1322,31 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 int w = rc.right - rc.left;
                 int h = rc.bottom - rc.top;
 
-                double vid_aspect = global_ghoster.loaded_video.vid_aspect;
+                double aspect_ratio = global_ghoster.loaded_video.aspect_ratio;
 
                 switch (wParam)
                 {
                     case WMSZ_LEFT:
                     case WMSZ_RIGHT:
-                        rc.bottom = rc.top + (int)((double)w / vid_aspect);
+                        rc.bottom = rc.top + (int)((double)w / aspect_ratio);
                         break;
 
                     case WMSZ_TOP:
                     case WMSZ_BOTTOM:
-                        rc.right = rc.left + (int)((double)h * vid_aspect);
+                        rc.right = rc.left + (int)((double)h * aspect_ratio);
                         break;
 
                     case WMSZ_LEFT + WMSZ_TOP:
                     case WMSZ_LEFT + WMSZ_BOTTOM:
-                        rc.left = rc.right - (int)((double)h * vid_aspect);
+                        rc.left = rc.right - (int)((double)h * aspect_ratio);
                         break;
 
                     case WMSZ_RIGHT + WMSZ_TOP:
-                        rc.top = rc.bottom - (int)((double)w / vid_aspect);
+                        rc.top = rc.bottom - (int)((double)w / aspect_ratio);
                         break;
 
                     case WMSZ_RIGHT + WMSZ_BOTTOM:
-                        rc.bottom = rc.top + (int)((double)w / vid_aspect);
+                        rc.bottom = rc.top + (int)((double)w / aspect_ratio);
                         break;
                 }
                 *(RECT*)lParam = rc;
@@ -1430,7 +1450,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
                     break;
                 case ID_ASPECT:
-                    SetWindowToAspectRatio(global_ghoster.state.window, global_ghoster.loaded_video.vid_aspect);
+                    SetWindowToAspectRatio(global_ghoster.state.window, global_ghoster.loaded_video.aspect_ratio);
                     global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
                     break;
                 case ID_PASTE:
@@ -1441,6 +1461,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case ID_REPEAT:
                     global_ghoster.state.repeat = !global_ghoster.state.repeat;
+                    break;
+                case ID_TRANSPARENCY:
+                    global_ghoster.state.transparent = !global_ghoster.state.transparent;
+                    if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
+                    if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                     break;
             }
         } break;
@@ -1466,7 +1491,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
-
 int CALLBACK WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -1487,7 +1511,7 @@ int CALLBACK WinMain(
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = "best class";
+    wc.lpszClassName = "ghoster window class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
     global_ghoster.state.winWID = 960;
@@ -1495,37 +1519,19 @@ int CALLBACK WinMain(
     RECT neededRect = {};
     neededRect.right = global_ghoster.state.winWID;
     neededRect.bottom = global_ghoster.state.winHEI;
-    // adjust window size based on desired client size
-    // AdjustWindowRectEx(&neededRect, WS_OVERLAPPEDWINDOW, 0, 0);
-
-    // transparency options
-    bool SEE_THROUGH   = false;
-    bool CLICK_THROUGH = false;
-    // bool SEE_THROUGH   = true;
-    // bool CLICK_THROUGH = true;
-
-    DWORD exStyles = 0;
-    if (SEE_THROUGH)                  exStyles  = WS_EX_LAYERED;
-    if (CLICK_THROUGH)                exStyles |= WS_EX_TRANSPARENT;
-    if (SEE_THROUGH || CLICK_THROUGH) exStyles |= WS_EX_TOPMOST;
 
     // HWND
     global_ghoster.state.window = CreateWindowEx(
-        exStyles,
-        wc.lpszClassName, "vid player",
+        WS_EX_LAYERED,
+        wc.lpszClassName, "ghoster video player",
         WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
         CW_USEDEFAULT, CW_USEDEFAULT,
         neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
         0, 0, hInstance, 0);
 
-    if (!global_ghoster.state.window)
-    {
-        MsgBox("Couldn't open window.");
-    }
+    if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
-    // set window transparent (if styles above are right)
-    if (SEE_THROUGH || CLICK_THROUGH)
-        SetLayeredWindowAttributes(global_ghoster.state.window, 0, 122, LWA_ALPHA);
+    setWindowOpacity(global_ghoster.state.window, 1.0);
 
 
     // ENABLE DRAG DROP
