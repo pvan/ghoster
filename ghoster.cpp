@@ -1130,7 +1130,7 @@ bool PasteClipboard()
 
 
 #define ID_SYSTRAY 999
-#define ID_SYSTRAY_MSG 998
+#define ID_SYSTRAY_MSG WM_USER + 1
 
 static HICON global_icon;
 
@@ -1569,6 +1569,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (lParam) {
                 case WM_LBUTTONUP:
                     global_ghoster.state.clickThrough = !global_ghoster.state.clickThrough;
+                    // global_ghoster.state.transparent = !global_ghoster.state.transparent;
+                    // if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
+                    // if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                 break;
             }
         } break;
