@@ -127,6 +127,7 @@ struct AppState {
     bool lock_aspect = true;
     bool repeat = true;
     bool transparent = false;
+    bool clickThrough = false;
 
 
     // mouse state
@@ -1069,17 +1070,20 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_RESET_RES 1005
 #define ID_REPEAT 1006
 #define ID_TRANSPARENCY 1007
+#define ID_CLICKTHRU 1008
 
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
     UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
     UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
-    UINT transpChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
+    UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
+    UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transpChecked, ID_TRANSPARENCY, L"Toggle Transparency");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Toggle Click Through");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
@@ -1123,8 +1127,19 @@ bool PasteClipboard()
 
 
 
-void toggleClickThrough(HWND hwnd)
+void setClickThrough(HWND hwnd, bool enable)
 {
+
+    LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
+    if (enable)
+    {
+        style = style | WS_EX_TRANSPARENT;
+    }
+    else
+    {
+        style = style & ~WS_EX_TRANSPARENT;
+    }
+    SetWindowLong(hwnd, GWL_EXSTYLE, style);
 
 }
 
@@ -1467,6 +1482,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
                     if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                     break;
+                case ID_CLICKTHRU:
+                    global_ghoster.state.clickThrough = !global_ghoster.state.clickThrough;
+                    setClickThrough(hwnd, global_ghoster.state.clickThrough);
+                    break;
+
             }
         } break;
 
