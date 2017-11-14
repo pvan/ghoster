@@ -1298,10 +1298,20 @@ HICON GetIconByInt(int i)
     return global_icon_b;
 }
 
+static bool global_already_seeded_rand = false;
+int randomInt(int upToAndNotIncluding)
+{
+    if (!global_already_seeded_rand)
+    {
+        global_already_seeded_rand = true;
+        srand(time(0));
+    }
+    return rand() % upToAndNotIncluding;
+}
+
 HICON RandomIcon()
 {
-    int r = rand() % 16;
-    return GetIconByInt(r);
+    return GetIconByInt(randomInt(16));
 
     // if (r-- < 1) return global_icon_c1;
     // if (r-- < 1) return global_icon_c2;
@@ -1759,19 +1769,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
                 int color;
                 case ID_SET_C: color = 0;
-                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
                 case ID_SET_P: color = 1;
-                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
                 case ID_SET_R: color = 2;
-                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
                 case ID_SET_Y: color = 3;
-                    global_ghoster.icon = GetIconByInt((rand()%4) + (4*color));
+                    global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
                     break;
 
@@ -1864,7 +1874,6 @@ int CALLBACK WinMain(
 
     MakeIcons(hInstance);
 
-    srand(time(0));
     global_ghoster.icon = RandomIcon();
 
     AddSysTrayIcon(global_ghoster.state.window); // sets as default icon
