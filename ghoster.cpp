@@ -156,6 +156,7 @@ struct AppState {
     bool transparent = false;
     bool clickThrough = false;
     bool topMost = true;
+    double opacity = 1.0;
 
 
     // mouse state
@@ -1312,28 +1313,6 @@ int randomInt(int upToAndNotIncluding)
 HICON RandomIcon()
 {
     return GetIconByInt(randomInt(16));
-
-    // if (r-- < 1) return global_icon_c1;
-    // if (r-- < 1) return global_icon_c2;
-    // if (r-- < 1) return global_icon_c3;
-    // if (r-- < 1) return global_icon_c4;
-
-    // if (r-- < 1) return global_icon_p1;
-    // if (r-- < 1) return global_icon_p2;
-    // if (r-- < 1) return global_icon_p3;
-    // if (r-- < 1) return global_icon_p4;
-
-    // if (r-- < 1) return global_icon_r1;
-    // if (r-- < 1) return global_icon_r2;
-    // if (r-- < 1) return global_icon_r3;
-    // if (r-- < 1) return global_icon_r4;
-
-    // if (r-- < 1) return global_icon_y1;
-    // if (r-- < 1) return global_icon_y2;
-    // if (r-- < 1) return global_icon_y3;
-    // if (r-- < 1) return global_icon_y4;
-
-    // return global_icon_b;
 }
 
 
@@ -1416,6 +1395,7 @@ void setClickThrough(HWND hwnd, bool enable)
 
 void setWindowOpacity(HWND hwnd, double opacity)
 {
+    global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.state.window, 0, 255.0*opacity, LWA_ALPHA);
 }
 
@@ -1557,7 +1537,24 @@ void onDoubleClickDownL()
         }
         else
         {
-            ShowWindow(global_ghoster.state.window, SW_MAXIMIZE);
+            // todo: BUG: transparency is lost when we full screen
+            // ShowWindow(global_ghoster.state.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
+
+            // for now just change our window size to the monitor
+            // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
+            MONITORINFO mi = { sizeof(mi) };
+            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+            {
+                SetWindowPos(
+                    global_ghoster.state.window,
+                    HWND_TOP,
+                    mi.rcMonitor.left, mi.rcMonitor.top,
+                    mi.rcMonitor.right - mi.rcMonitor.left,
+                    mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
+                    SWP_NOOWNERZORDER | SWP_FRAMECHANGED
+                    );
+            }
+
         }
     }
 
