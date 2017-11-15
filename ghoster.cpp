@@ -141,8 +141,8 @@ struct RunningMovie
     i64 ptsOfLastAudio;
 
     // lines between runnningmovie and appstate are blurring a bit to me right now
-    bool vid_paused = false;
-    bool vid_was_paused = false;
+    bool is_paused = false;
+    bool was_paused = false;
 
     double targetMsPerFrame;
 
@@ -445,7 +445,7 @@ struct GhosterWindow
                 // OutputDebugString(durbuf);
 
 
-            if (!loaded_video.vid_paused)
+            if (!loaded_video.is_paused)
             {
 
                 // SOUND
@@ -1144,7 +1144,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
     UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
 
-    wchar_t *playPauseText = global_ghoster.loaded_video.vid_paused ? L"Play" : L"Pause";
+    wchar_t *playPauseText = global_ghoster.loaded_video.is_paused ? L"Play" : L"Pause";
 
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
@@ -1545,33 +1545,33 @@ void appPlay()
 {
     global_ghoster.loaded_video.audio_stopwatch.Start();
     SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
-    global_ghoster.loaded_video.vid_paused = false;
+    global_ghoster.loaded_video.is_paused = false;
 }
 
 void appPause()
 {
     global_ghoster.loaded_video.audio_stopwatch.Pause();
     SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
-    global_ghoster.loaded_video.vid_paused = true;
+    global_ghoster.loaded_video.is_paused = true;
 }
 
 void appTogglePause()
 {
-    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
+    global_ghoster.loaded_video.is_paused = !global_ghoster.loaded_video.is_paused;
 
-    if (global_ghoster.loaded_video.vid_paused && !global_ghoster.loaded_video.vid_was_paused)
+    if (global_ghoster.loaded_video.is_paused && !global_ghoster.loaded_video.was_paused)
     {
         appPause();
     }
-    if (!global_ghoster.loaded_video.vid_paused)
+    if (!global_ghoster.loaded_video.is_paused)
     {
-        if (global_ghoster.loaded_video.vid_was_paused || !global_ghoster.loaded_video.audio_stopwatch.timer.started)
+        if (global_ghoster.loaded_video.was_paused || !global_ghoster.loaded_video.audio_stopwatch.timer.started)
         {
             appPlay();
         }
     }
 
-    global_ghoster.loaded_video.vid_was_paused = global_ghoster.loaded_video.vid_paused;
+    global_ghoster.loaded_video.was_paused = global_ghoster.loaded_video.is_paused;
 }
 
 void appSetProgressBar(int clientX, int clientY)
