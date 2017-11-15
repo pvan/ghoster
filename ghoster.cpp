@@ -78,6 +78,8 @@ const int PROGRESS_BAR_B = 0;
 const double PROGRESS_BAR_TIMEOUT = 1000;
 
 
+// disallow opacity greater than this when in ghost ode
+const double GHOST_MODE_MAX_OPACITY = 0.95;
 
 
 
@@ -155,7 +157,10 @@ struct AppState {
     bool transparent = false;
     bool clickThrough = false;
     bool topMost = true;
+
     double opacity = 1.0;
+    double last_opacity;
+    bool had_to_cache_opacity = false;
 
     bool fullscreen = false;
     WINDOWPLACEMENT last_win_pos;
@@ -1440,7 +1445,6 @@ void setTopMost(HWND hwnd, bool enable)
     else
         SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 }
-
 void setClickThrough(HWND hwnd, bool enable)
 {
     global_ghoster.state.clickThrough = enable;
@@ -1456,14 +1460,42 @@ void setClickThrough(HWND hwnd, bool enable)
         SetIcon(hwnd, global_ghoster.icon);
     }
     SetWindowLong(hwnd, GWL_EXSTYLE, style);
-
 }
-
 void setWindowOpacity(HWND hwnd, double opacity)
 {
+    if (global_ghoster.state.clickThrough && opacity > GHOST_MODE_MAX_OPACITY)
+        opacity = GHOST_MODE_MAX_OPACITY;
     global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.state.window, 0, 255.0*opacity, LWA_ALPHA);
 }
+
+void setGhostMode(HWND hwnd, bool enable)
+{
+    setClickThrough(hwnd, enable);
+    if (enable)
+    {
+        if (global_ghoster.state.opacity > GHOST_MODE_MAX_OPACITY)
+        {
+            global_ghoster.state.last_opacity = global_ghoster.state.opacity;
+            global_ghoster.state.had_to_cache_opacity = true;
+            global_ghoster.state.opacity = GHOST_MODE_MAX_OPACITY;
+            setWindowOpacity(hwnd, global_ghoster.state.opacity);
+        }
+        else
+        {
+            global_ghoster.state.had_to_cache_opacity = false;
+        }
+    }
+    else
+    {
+        if (global_ghoster.state.had_to_cache_opacity)
+        {
+            global_ghoster.state.opacity = global_ghoster.state.last_opacity;
+            setWindowOpacity(hwnd, global_ghoster.state.opacity);
+        }
+    }
+}
+
 
 
 
@@ -1798,7 +1830,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
                     break;
                 case ID_CLICKTHRU:
-                    setClickThrough(hwnd, !global_ghoster.state.clickThrough);
+                    setGhostMode(hwnd, !global_ghoster.state.clickThrough);
                     break;
                 case ID_RANDICON:
                     global_ghoster.icon = RandomIcon();
@@ -1852,7 +1884,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             switch (lParam) {
                 case WM_LBUTTONUP:
                     SetForegroundWindow(hwnd);
-                    setClickThrough(hwnd, !global_ghoster.state.clickThrough);
+                    setGhostMode(hwnd, !global_ghoster.state.clickThrough);
                 break;
                 case WM_RBUTTONUP:
                     POINT mousePos;

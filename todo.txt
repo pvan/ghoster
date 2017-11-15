@@ -3,7 +3,7 @@
 
 [ ] proper fullscreen/pause/unpause behavior [cache state on first click]
 
-[ ] turn on a little transparency if ghost mode is enabled when opaque?
+[x] turn on a little transparency if ghost mode is enabled when opaque?
 
 
 [/] extra bar on right of some vids
