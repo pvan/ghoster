@@ -1497,6 +1497,15 @@ void setGhostMode(HWND hwnd, bool enable)
 }
 
 
+void saveVideoPositionForAfterDoubleClick()
+{
+
+}
+
+void restoreVideoPositionAfterDoubleClick()
+{
+
+}
 
 
 
@@ -1634,6 +1643,8 @@ void onDoubleClickDownL()
 
     toggleFullscreen();
 
+    restoreVideoPositionAfterDoubleClick();
+
 }
 
 void onMouseDownL(int clientX, int clientY)
@@ -1654,6 +1665,11 @@ void onMouseDownL(int clientX, int clientY)
         // OutputDebugString("on bar\n");
         global_ghoster.state.clickingOnProgressBar = true;
         appSetProgressBar(clientX, clientY);
+    }
+    else
+    {
+        // note this works because onMouseDownL doesn't trigger on the second click of a double click
+        saveVideoPositionForAfterDoubleClick();
     }
 }
 
