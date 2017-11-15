@@ -1582,6 +1582,20 @@ void appSetProgressBar(int clientX, int clientY)
     }
 }
 
+void SnapRectInsideRect(RECT *rect, RECT container)
+{
+    int width = rect->right - rect->left;
+    int height =  rect->bottom - rect->top;
+
+    if (rect->left   < container.left  ) rect->left = container.left;
+    if (rect->top    < container.top   ) rect->top  = container.top;
+    if (rect->right  > container.right ) rect->left = container.right - width;
+    if (rect->bottom > container.bottom) rect->top  = container.bottom - height;
+
+    rect->right = rect->left + width;
+    rect->bottom = rect->top + height;
+}
+
 void appDragWindow(HWND hwnd, int x, int y)
 {
     WINDOWPLACEMENT winpos;
@@ -1895,6 +1909,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
             POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
             OpenRClickMenuAt(hwnd, openPoint);
+        } break;
+
+        case WM_MOVING: {
+            MONITORINFO mi = { sizeof(mi) };
+            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+            {
+                SnapRectInsideRect((RECT*)lParam, mi.rcMonitor);
+            }
         } break;
 
 
