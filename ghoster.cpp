@@ -1613,7 +1613,7 @@ void appDragWindow(HWND hwnd, int x, int y)
         }
     }
 
-    global_ghoster.state.mDown = false; // kind of out-of-place but mouseup is not getting called otherwise
+    global_ghoster.state.mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
@@ -1636,7 +1636,7 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
         if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
         {
             // we haven't moved enough to be considered a drag
-            // or to eliminate a double click possibility
+            // or to eliminate a double click possibility (edit: although system handles that now)
         }
         else
         {
@@ -1680,6 +1680,7 @@ void onMouseUpL()
     if (global_ghoster.state.mouseHasMovedSinceDownL)
     {
         // end of a drag
+        // todo: i don't think we ever actually get here on the end of a drag
     }
     else
     {
@@ -1919,7 +1920,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
                 GlobalLoadMovie(TEST_FILES[wParam - 0x30]);
-                // debugLoadTestVideo(wParam - 0x30);
             }
         } break;
 
