@@ -390,10 +390,8 @@ struct GhosterWindow
             drawProgressBar = true;
         }
 
-        POINT mPos;
-        GetCursorPos(&mPos);
-        RECT winRect;
-        GetWindowRect(state.window, &winRect);
+        POINT mPos;   GetCursorPos(&mPos);
+        RECT winRect; GetWindowRect(state.window, &winRect);
         if (!PtInRect(&winRect, mPos))
         {
             // OutputDebugString("mouse outside window\n");
@@ -1582,18 +1580,25 @@ void appSetProgressBar(int clientX, int clientY)
     }
 }
 
-void SnapRectInsideRect(RECT *rect, RECT container)
+void SnapRectInsideRect(RECT inRect, RECT container, RECT *outRect)
 {
-    int width = rect->right - rect->left;
-    int height =  rect->bottom - rect->top;
+    *outRect = inRect;
 
-    if (rect->left   < container.left  ) rect->left = container.left;
-    if (rect->top    < container.top   ) rect->top  = container.top;
-    if (rect->right  > container.right ) rect->left = container.right - width;
-    if (rect->bottom > container.bottom) rect->top  = container.bottom - height;
+    int width = outRect->right - outRect->left;
+    int height =  outRect->bottom - outRect->top;
 
-    rect->right = rect->left + width;
-    rect->bottom = rect->top + height;
+    if (outRect->left   < container.left  ) outRect->left = container.left;
+    if (outRect->top    < container.top   ) outRect->top  = container.top;
+    if (outRect->right  > container.right ) outRect->left = container.right - width;
+    if (outRect->bottom > container.bottom) outRect->top  = container.bottom - height;
+
+    outRect->right = outRect->left + width;
+    outRect->bottom = outRect->top + height;
+}
+
+void SnapRectEdgesToRect(RECT inRect, RECT container, RECT *outRect)
+{
+    SnapRectInsideRect(inRect, container, outRect);
 }
 
 void appDragWindow(HWND hwnd, int x, int y)
@@ -1794,6 +1799,10 @@ void onMouseDownL(int clientX, int clientY)
 }
 
 
+static int sys_moving_anchor_x;
+static int sys_moving_anchor_y;
+
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
@@ -1911,11 +1920,28 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
+
+        case WM_ENTERSIZEMOVE: {
+            POINT mPos;   GetCursorPos(&mPos);
+            RECT winRect; GetWindowRect(hwnd, &winRect);
+            sys_moving_anchor_x = mPos.x - winRect.left;
+            sys_moving_anchor_y = mPos.y - winRect.top;
+        } break;
         case WM_MOVING: {
+            POINT mPos;   GetCursorPos(&mPos);
             MONITORINFO mi = { sizeof(mi) };
             if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
             {
-                SnapRectInsideRect((RECT*)lParam, mi.rcMonitor);
+                int width = ((RECT*)lParam)->right - ((RECT*)lParam)->left;
+                int height = ((RECT*)lParam)->bottom - ((RECT*)lParam)->top;
+
+                RECT positionIfNoSnap;
+                positionIfNoSnap.left = mPos.x - sys_moving_anchor_x;
+                positionIfNoSnap.top = mPos.y - sys_moving_anchor_y;
+                positionIfNoSnap.right = positionIfNoSnap.left + width;
+                positionIfNoSnap.bottom = positionIfNoSnap.top + height;
+
+                SnapRectEdgesToRect(positionIfNoSnap, mi.rcMonitor, (RECT*)lParam);
             }
         } break;
 
