@@ -69,9 +69,6 @@ char *TEST_FILES[] = {
 };
 
 
-static WINDOWPLACEMENT temp_delete_me_last_win_pos;
-static bool temp_delete_me_is_maximized;
-
 
 // progress bar position
 const int PROGRESS_BAR_H = 22;
@@ -159,6 +156,9 @@ struct AppState {
     bool clickThrough = false;
     bool topMost = true;
     double opacity = 1.0;
+
+    bool fullscreen = false;
+    WINDOWPLACEMENT last_win_pos;
 
 
     // mouse state
@@ -1105,6 +1105,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_CLICKTHRU 1008
 #define ID_RANDICON 1009
 #define ID_TOPMOST 1010
+#define ID_FULLSCREEN 1011
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -1134,6 +1135,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
     UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
     UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
+    UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
 
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
@@ -1149,6 +1151,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_REPEAT, L"Repeat");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
     SetForegroundWindow(hwnd);
@@ -1156,7 +1159,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     global_ghoster.state.globalContextMenuOpen = true;
     global_ghoster.state.menuCloseTimer.Stop();
     TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    global_ghoster.state.menuCloseTimer.Start(); // we only get past TrackPopupMenu once the menu is closed
+    global_ghoster.state.menuCloseTimer.Start(); // we only get here (past TrackPopupMenu) once the menu is closed
 }
 
 
@@ -1368,6 +1371,67 @@ void SetIcon(HWND hwnd, HICON icon)
 
 
 
+void toggleFullscreen()
+{
+    WINDOWPLACEMENT winpos;
+    winpos.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    {
+        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.state.fullscreen)
+        {
+            // ShowWindow(global_ghoster.state.window, SW_RESTORE);
+
+            // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
+            SetWindowPos(
+                global_ghoster.state.window,
+                0,
+                global_ghoster.state.last_win_pos.rcNormalPosition.left,
+                global_ghoster.state.last_win_pos.rcNormalPosition.top,
+                global_ghoster.state.last_win_pos.rcNormalPosition.right -
+                global_ghoster.state.last_win_pos.rcNormalPosition.left,
+                global_ghoster.state.last_win_pos.rcNormalPosition.bottom -
+                global_ghoster.state.last_win_pos.rcNormalPosition.top,
+                0);
+            global_ghoster.state.fullscreen = false;
+
+
+            // make this an option... (we might want to keep it in the corner eg)
+            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
+            // int mouseY = HIWORD(lParam);
+            // int winX = mouseX - winWID/2;
+            // int winY = mouseY - winHEI/2;
+            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+        }
+        else
+        {
+            // todo: BUG: transparency is lost when we full screen
+            // ShowWindow(global_ghoster.state.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
+
+            // for now just change our window size to the monitor
+            // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
+            global_ghoster.state.last_win_pos.length = sizeof(WINDOWPLACEMENT);
+            if (GetWindowPlacement(global_ghoster.state.window, &global_ghoster.state.last_win_pos)); // cache last position
+            //
+            MONITORINFO mi = { sizeof(mi) };
+            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+            {
+                SetWindowPos(
+                    global_ghoster.state.window,
+                    HWND_TOP,
+                    mi.rcMonitor.left, mi.rcMonitor.top,
+                    mi.rcMonitor.right - mi.rcMonitor.left,
+                    mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
+                    SWP_NOOWNERZORDER | SWP_FRAMECHANGED
+                    );
+                global_ghoster.state.fullscreen = true;
+            }
+
+
+
+        }
+    }
+}
+
 void setTopMost(HWND hwnd, bool enable)
 {
     global_ghoster.state.topMost = enable;
@@ -1440,21 +1504,21 @@ void appDragWindow(HWND hwnd, int x, int y)
     winpos.length = sizeof(WINDOWPLACEMENT);
     if (GetWindowPlacement(hwnd, &winpos))
     {
-        if (winpos.showCmd == SW_MAXIMIZE || temp_delete_me_is_maximized)
+        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.state.fullscreen)
         {
             // ShowWindow(hwnd, SW_RESTORE);
 
             SetWindowPos(
                 global_ghoster.state.window,
                 0,
-                temp_delete_me_last_win_pos.rcNormalPosition.left,
-                temp_delete_me_last_win_pos.rcNormalPosition.top,
-                temp_delete_me_last_win_pos.rcNormalPosition.right -
-                temp_delete_me_last_win_pos.rcNormalPosition.left,
-                temp_delete_me_last_win_pos.rcNormalPosition.bottom -
-                temp_delete_me_last_win_pos.rcNormalPosition.top,
+                global_ghoster.state.last_win_pos.rcNormalPosition.left,
+                global_ghoster.state.last_win_pos.rcNormalPosition.top,
+                global_ghoster.state.last_win_pos.rcNormalPosition.right -
+                global_ghoster.state.last_win_pos.rcNormalPosition.left,
+                global_ghoster.state.last_win_pos.rcNormalPosition.bottom -
+                global_ghoster.state.last_win_pos.rcNormalPosition.top,
                 0);
-            temp_delete_me_is_maximized = false;
+            global_ghoster.state.fullscreen = false;
 
 
             int mouseX = x;
@@ -1535,63 +1599,7 @@ void onDoubleClickDownL()
         return;
     }
 
-    WINDOWPLACEMENT winpos;
-    winpos.length = sizeof(WINDOWPLACEMENT);
-    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
-    {
-        if (winpos.showCmd == SW_MAXIMIZE || temp_delete_me_is_maximized)
-        {
-            // ShowWindow(global_ghoster.state.window, SW_RESTORE);
-
-            // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
-            SetWindowPos(
-                global_ghoster.state.window,
-                0,
-                temp_delete_me_last_win_pos.rcNormalPosition.left,
-                temp_delete_me_last_win_pos.rcNormalPosition.top,
-                temp_delete_me_last_win_pos.rcNormalPosition.right -
-                temp_delete_me_last_win_pos.rcNormalPosition.left,
-                temp_delete_me_last_win_pos.rcNormalPosition.bottom -
-                temp_delete_me_last_win_pos.rcNormalPosition.top,
-                0);
-            temp_delete_me_is_maximized = false;
-
-
-            // make this an option... (we might want to keep it in the corner eg)
-            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-            // int mouseY = HIWORD(lParam);
-            // int winX = mouseX - winWID/2;
-            // int winY = mouseY - winHEI/2;
-            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
-        }
-        else
-        {
-            // todo: BUG: transparency is lost when we full screen
-            // ShowWindow(global_ghoster.state.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
-
-            // for now just change our window size to the monitor
-            // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
-            temp_delete_me_last_win_pos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(global_ghoster.state.window, &temp_delete_me_last_win_pos)); // cache last position
-            //
-            MONITORINFO mi = { sizeof(mi) };
-            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
-            {
-                SetWindowPos(
-                    global_ghoster.state.window,
-                    HWND_TOP,
-                    mi.rcMonitor.left, mi.rcMonitor.top,
-                    mi.rcMonitor.right - mi.rcMonitor.left,
-                    mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
-                    SWP_NOOWNERZORDER | SWP_FRAMECHANGED
-                    );
-                temp_delete_me_is_maximized = true;
-            }
-
-
-
-        }
-    }
+    toggleFullscreen();
 
 }
 
@@ -1798,7 +1806,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 case ID_TOPMOST:
                     setTopMost(hwnd, !global_ghoster.state.topMost);
                     break;
-
                 int color;
                 case ID_SET_C: color = 0;
                     global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
@@ -1815,6 +1822,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 case ID_SET_Y: color = 3;
                     global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
                     if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+                    break;
+                case ID_FULLSCREEN:
+                    toggleFullscreen();
                     break;
 
             }

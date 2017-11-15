@@ -1,6 +1,17 @@
 
+[ ] bug: sometimes fullscreen via context menu fails
+
+[ ] proper fullscreen/pause/unpause behavior [cache state on first click]
+
+[ ] turn on a little transparency if ghost mode is enabled when opaque?
+
 
 [/] extra bar on right of some vids
+    -fixed but only by using a constant-size buffer
+
+[/] lose transparency on full screen
+    -temp workaround by keeping 1 pixel smaller than monitor size
+
 
 [ ] seems like mem leak on loading files
 
@@ -45,9 +56,9 @@
 [ ] snap to screen edges
 
 
-[ ] icon
+[x] icon
 
-[ ] taskbar
+[x] taskbar / sys tray
 
 
 [ ] more than one audio stream
@@ -137,5 +148,8 @@ preview random frame when loading while paused
 filters!
 
 random a/v mashup
+
+random video [maybe 'i'm feeling lucky' style]
+
 
 
