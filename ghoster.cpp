@@ -116,7 +116,6 @@ i64 nearestI64(double in)
 #include "timer.cpp"
 
 
-
 struct RunningMovie
 {
     MovieAV av_movie;
@@ -127,7 +126,7 @@ struct RunningMovie
 
     double duration;
     double elapsed;
-    Stopwatch audio_stopwatch;
+    Stopwatch audio_stopwatch; // todo: audit this: is audio a misnomer now? what is it actually used for?
     double aspect_ratio; // feels like it'd be better to store this as a rational
 
     i64 ptsOfLastVideo;
@@ -144,6 +143,8 @@ struct RunningMovie
     int vidHEI;
 };
 
+
+// todo: split into appstate and moviestate? rename runningmovie to moviestate? rename state to app_state? or win_state?
 
 struct AppState {
     bool appRunning = true;
@@ -164,6 +165,9 @@ struct AppState {
 
     bool fullscreen = false;
     WINDOWPLACEMENT last_win_pos;
+
+    bool savestate_is_saved = false;
+    bool restore_vid_position; // a message of sorts passed from double click (a mdown event) to mouse up
 
 
     // mouse state
@@ -205,6 +209,7 @@ struct AppState {
 #include "opengl.cpp"
 
 
+// todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
 struct timestamp
 {
     i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
@@ -338,7 +343,7 @@ struct GhosterWindow
     SoundBuffer ffmpeg_to_sdl_buffer;
     SDLStuff sdl_stuff;
     RunningMovie loaded_video;
-    HICON icon; // randomly assigned on launch, or set in menu
+    HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
 
 
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
@@ -615,7 +620,7 @@ struct GhosterWindow
 
         // REPEAT
 
-        if (state.repeat && percent > 1.0)  // not percent will keep ticking up even after vid is done
+        if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
             double targetFPS = 1000.0 / loaded_video.targetMsPerFrame;
             HardSeekToFrameForTimestamp(&loaded_video, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
@@ -1497,14 +1502,27 @@ void setGhostMode(HWND hwnd, bool enable)
 }
 
 
+// todo: if we have a "videostate" struct we could just copy/restore it for these functions? hmm
+
+// note we're saving this every time we click down (since it could be the start of a double click)
+// so don't make this too crazy
 void saveVideoPositionForAfterDoubleClick()
 {
+    global_ghoster.state.savestate_is_saved = true;
 
+    global_ghoster.loaded_video.elapsed = global_ghoster.loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
+    double percent = global_ghoster.loaded_video.elapsed / global_ghoster.loaded_video.duration;
+    global_ghoster.state.seekProportion = percent; // todo: make new variable rather than co-opt this one?
 }
 
 void restoreVideoPositionAfterDoubleClick()
 {
+    if (global_ghoster.state.savestate_is_saved)
+    {
+        global_ghoster.state.savestate_is_saved = false;
 
+        global_ghoster.state.setSeek = true;
+    }
 }
 
 
@@ -1628,6 +1646,12 @@ void onMouseUpL()
     }
     global_ghoster.state.mouseHasMovedSinceDownL = false;
     global_ghoster.state.clickingOnProgressBar = false;
+
+    if (global_ghoster.state.restore_vid_position)
+    {
+        global_ghoster.state.restore_vid_position = false;
+        restoreVideoPositionAfterDoubleClick();
+    }
 }
 
 void onDoubleClickDownL()
@@ -1643,7 +1667,11 @@ void onDoubleClickDownL()
 
     toggleFullscreen();
 
-    restoreVideoPositionAfterDoubleClick();
+    // note we actually have to do this in mouse up because that's where the vid gets paused
+    // restoreVideoPositionAfterDoubleClick();
+
+    // instead make a note to restore in mouseUp
+    global_ghoster.state.restore_vid_position = true;
 
 }
 

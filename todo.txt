@@ -1,7 +1,9 @@
 
 [x] bug: sometimes fullscreen via context menu fails (seems to happen after app has been dragged once)
 
-[ ] proper fullscreen/pause/unpause behavior [cache state on first click]
+[/] proper fullscreen/pause/unpause behavior
+    [x] cache state on first click
+    [ ] should compromise and pause, like, halfway through our allowed double click time
 
 [x] turn on a little transparency if ghost mode is enabled when opaque?
 
