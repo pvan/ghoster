@@ -1,11 +1,8 @@
 
-[x] bug: sometimes fullscreen via context menu fails (seems to happen after app has been dragged once)
 
 [/] proper fullscreen/pause/unpause behavior
     [x] cache state on first click
     [ ] should compromise and pause, like, halfway through our allowed double click time
-
-[x] turn on a little transparency if ghost mode is enabled when opaque?
 
 
 [ ] a sort of message system for update loop communication? load video, seek, etc
@@ -28,8 +25,6 @@
     [ ] with caching
     [ ] and buffering
 
-[x] definite sync issues when seeking youtube videos
-
 [ ] look into how ffmpeg dls videos -- cache anywhere?
 
 [ ] need to dl a low quality version first or we'll lag on large files??
@@ -44,28 +39,6 @@
 
 
 
-[x] split movie loading into sep thread to keep io responsive
-[x] split move loading into yet another thread so we can draw buffering animation
-
-[x] buffering / waiting animation
-
-
-
-[x] repeat toggle
-
-[x] keep new loaded video same window size (maybe resize to new aspect ratio)
-
-
-
-
-[ ] snap to screen edges
-
-
-[x] icon
-
-[x] taskbar / sys tray
-
-
 [ ] more than one audio stream
 [?] more than one video stream??
 
@@ -73,6 +46,8 @@
 
 [ ] volume! 
 
+
+[ ] transparency slider
 
 
 
