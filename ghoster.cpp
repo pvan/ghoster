@@ -86,7 +86,7 @@ const double GHOST_MODE_MAX_OPACITY = 0.95;
 // how long to wait before toggling pause when single click (which could be start of double click)
 // higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
 // lower makes single click feel better (less delay when clicking to pause/unpause)
-const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 200;  // slowest double click is 500ms by default
+const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 500ms by default
 
 
 
@@ -1686,34 +1686,23 @@ void onMouseUpL()
         if (!clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
         {
             // since this could be the mouse up in between the two clicks of a double click,
-            // optionally wait a little bit before we actually pause
+            // wait a little bit before we actually pause (should work with 0 delay as well)
 
-            if (MS_PAUSE_DELAY_FOR_DOUBLECLICK == 0)
+            // don't queue up another pause if this is the end of a double click
+            // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
+            if (!global_ghoster.state.next_mup_was_double_click)
             {
-                appTogglePause();
+                global_ghoster.state.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
+                singleClickTimerID = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
             }
             else
             {
-                // don't queue up another pause if this is the end of a double click
-                // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick
-                if (!global_ghoster.state.next_mup_was_double_click)
+                // if we are ending the click and we already registered the first click as a pause,
+                // toggle pause again to undo that
+                if (global_ghoster.state.toggledPauseOnLastSingleClick)
                 {
-                    // global_ghoster.state.pause_countdown.Stop();
-                    // global_ghoster.state.pause_countdown.Start();
-                    // global_ghoster.state.waiting_to_pause = true;
-
-                    global_ghoster.state.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
-                    singleClickTimerID = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
-                }
-                else
-                {
-                    // if we are ending the click and we already registered the first click as a pause,
-                    // toggle pause again to undo that
-                    if (global_ghoster.state.toggledPauseOnLastSingleClick)
-                    {
-                        // OutputDebugString("undo that click\n");
-                        appTogglePause();
-                    }
+                    // OutputDebugString("undo that click\n");
+                    appTogglePause();
                 }
             }
         }
@@ -1737,7 +1726,7 @@ void onMouseUpL()
         }
         else
         {
-            // OutputDebugString("that was fast! no stutter\n");
+            // OutputDebugString("that was a fast doubleclick! no stutter\n");
         }
     }
 }
