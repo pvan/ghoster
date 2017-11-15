@@ -8,6 +8,9 @@
 [x] turn on a little transparency if ghost mode is enabled when opaque?
 
 
+[ ] a sort of message system for update loop communication? load video, seek, etc
+
+
 [/] extra bar on right of some vids
     -fixed but only by using a constant-size buffer
 

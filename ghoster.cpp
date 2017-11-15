@@ -202,13 +202,12 @@ struct AppState {
     bool setSeek = false;
     double seekProportion = 0;
 
-    bool readyToLoadNewMovie = false;
+    bool messageLoadNewMovie = false;
     MovieAV newMovieToRun;
 
-    bool readyToRunMovie = false;
+    bool bufferingOrLoading = false;
 
 
-    bool buffering = false;
 
 };
 
@@ -367,15 +366,15 @@ struct GhosterWindow
 
 
 
-        if (state.readyToLoadNewMovie)
+        if (state.messageLoadNewMovie)
         {
             OutputDebugString("Ready to load new movie...\n");
-            state.readyToLoadNewMovie = false;
+            state.messageLoadNewMovie = false;
             if (!SetupForNewMovie(state.newMovieToRun, &loaded_video))
             {
                 MsgBox("Error in setup for new movie.\n");
             }
-            state.readyToRunMovie = true;
+            state.bufferingOrLoading = false;
             appPlay();
         }
 
@@ -412,7 +411,7 @@ struct GhosterWindow
 
 
         // feels a bit clunky.. maybe have is_playing flag somewhere?
-        if (!state.readyToRunMovie)
+        if (state.bufferingOrLoading)
         {
             appPause();
             // loaded_video.audio_stopwatch.Pause();
@@ -603,7 +602,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         state.window,
-                        percent, drawProgressBar, !state.readyToRunMovie);
+                        percent, drawProgressBar, state.bufferingOrLoading);
 
         // DisplayAudioBuffer((u32*)vid_buffer, vidWID, vidHEI,
         //            (float*)sound_buffer, bytes_in_buffer);
@@ -1048,7 +1047,7 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
         return false;
     }
     global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
-    global_ghoster.state.readyToLoadNewMovie = true;
+    global_ghoster.state.messageLoadNewMovie = true;
 
     return 0;
 }
@@ -1057,7 +1056,8 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
 bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
     // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
-    global_ghoster.state.readyToRunMovie = false;
+    global_ghoster.state.bufferingOrLoading = true;
+    appPause(); // stop playing movie as well, we'll auto start the next one
 
     CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
 
@@ -1542,12 +1542,14 @@ void appPlay()
 {
     global_ghoster.loaded_video.audio_stopwatch.Start();
     SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
+    global_ghoster.loaded_video.vid_paused = false;
 }
 
 void appPause()
 {
     global_ghoster.loaded_video.audio_stopwatch.Pause();
     SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
+    global_ghoster.loaded_video.vid_paused = true;
 }
 
 void appTogglePause()
