@@ -29,6 +29,7 @@
 
 
 
+UINT singleClickTimerID;
 
 static HBITMAP global_bitmap_w;
 static HBITMAP global_bitmap_b;
@@ -80,6 +81,12 @@ const double PROGRESS_BAR_TIMEOUT = 1000;
 
 // disallow opacity greater than this when in ghost ode
 const double GHOST_MODE_MAX_OPACITY = 0.95;
+
+
+// how long to wait before toggling pause when single click (which could be start of double click)
+// higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
+// lower makes single click feel better (less delay when clicking to pause/unpause)
+const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 200;  // slowest double click is 500ms by default
 
 
 
@@ -167,7 +174,8 @@ struct AppState {
     WINDOWPLACEMENT last_win_pos;
 
     bool savestate_is_saved = false;
-    bool restore_vid_position; // a message of sorts passed from double click (a mdown event) to mouse up
+    bool toggledPauseOnLastSingleClick = false;
+    bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
 
 
     // mouse state
@@ -335,6 +343,8 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 
+void appPlay();
+void appPause();
 
 struct GhosterWindow
 {
@@ -366,6 +376,7 @@ struct GhosterWindow
                 MsgBox("Error in setup for new movie.\n");
             }
             state.readyToRunMovie = true;
+            appPlay();
         }
 
 
@@ -400,11 +411,12 @@ struct GhosterWindow
         double percent;
 
 
-        // feels a bit kludgey
+        // feels a bit clunky.. maybe have is_playing flag somewhere?
         if (!state.readyToRunMovie)
         {
-            loaded_video.audio_stopwatch.Pause();
-            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
+            appPause();
+            // loaded_video.audio_stopwatch.Pause();
+            // SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         }
         else
         {
@@ -1526,22 +1538,31 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 }
 
 
+void appPlay()
+{
+    global_ghoster.loaded_video.audio_stopwatch.Start();
+    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
+}
+
+void appPause()
+{
+    global_ghoster.loaded_video.audio_stopwatch.Pause();
+    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
+}
 
 void appTogglePause()
 {
     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
 
-    if (!global_ghoster.loaded_video.vid_was_paused)
+    if (global_ghoster.loaded_video.vid_paused && !global_ghoster.loaded_video.vid_was_paused)
     {
-        global_ghoster.loaded_video.audio_stopwatch.Pause();
-        SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
+        appPause();
     }
-    else
+    if (!global_ghoster.loaded_video.vid_paused)
     {
         if (global_ghoster.loaded_video.vid_was_paused || !global_ghoster.loaded_video.audio_stopwatch.timer.started)
         {
-            global_ghoster.loaded_video.audio_stopwatch.Start();
-            SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
+            appPlay();
         }
     }
 
@@ -1631,6 +1652,23 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
     }
 }
 
+
+VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+{
+    // OutputDebugString("DELAYED M UP\n");
+
+    KillTimer(0, singleClickTimerID);
+
+    {
+        appTogglePause();
+
+        // we have to track whether get here or not
+        // so we know if we've toggled pause between our double click or not
+        // (it could be either case now that we have a little delay in our pause)
+        global_ghoster.state.toggledPauseOnLastSingleClick = true;
+    }
+}
+
 void onMouseUpL()
 {
     // OutputDebugString("LUP\n");
@@ -1644,15 +1682,61 @@ void onMouseUpL()
     else
     {
         if (!clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
-            appTogglePause();
+        {
+            // since this could be the mouse up in between the two clicks of a double click,
+            // optionally wait a little bit before we actually pause
+
+            if (MS_PAUSE_DELAY_FOR_DOUBLECLICK == 0)
+            {
+                appTogglePause();
+            }
+            else
+            {
+                // don't queue up another pause if this is the end of a double click
+                // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick
+                if (!global_ghoster.state.next_mup_was_double_click)
+                {
+                    // global_ghoster.state.pause_countdown.Stop();
+                    // global_ghoster.state.pause_countdown.Start();
+                    // global_ghoster.state.waiting_to_pause = true;
+
+                    global_ghoster.state.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
+                    singleClickTimerID = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
+                }
+                else
+                {
+                    // if we are ending the click and we already registered the first click as a pause,
+                    // toggle pause again to undo that
+                    if (global_ghoster.state.toggledPauseOnLastSingleClick)
+                    {
+                        // OutputDebugString("undo that click\n");
+                        appTogglePause();
+                    }
+                }
+            }
+        }
     }
+
     global_ghoster.state.mouseHasMovedSinceDownL = false;
     global_ghoster.state.clickingOnProgressBar = false;
 
-    if (global_ghoster.state.restore_vid_position)
+    if (global_ghoster.state.next_mup_was_double_click)
     {
-        global_ghoster.state.restore_vid_position = false;
-        restoreVideoPositionAfterDoubleClick();
+        global_ghoster.state.next_mup_was_double_click = false;
+
+        // cancel any pending single click effects lingering from the first mup of this dclick
+        KillTimer(0, singleClickTimerID);
+
+        // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
+        if (global_ghoster.state.toggledPauseOnLastSingleClick)
+        {
+            // OutputDebugString("restore our vid position\n");
+            restoreVideoPositionAfterDoubleClick();
+        }
+        else
+        {
+            // OutputDebugString("that was fast! no stutter\n");
+        }
     }
 }
 
@@ -1673,7 +1757,7 @@ void onDoubleClickDownL()
     // restoreVideoPositionAfterDoubleClick();
 
     // instead make a note to restore in mouseUp
-    global_ghoster.state.restore_vid_position = true;
+    global_ghoster.state.next_mup_was_double_click = true;
 
 }
 
