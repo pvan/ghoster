@@ -89,6 +89,9 @@ const double GHOST_MODE_MAX_OPACITY = 0.95;
 const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 500ms by default
 
 
+// snap to screen edge if this close
+const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
+
 
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
@@ -1580,25 +1583,25 @@ void appSetProgressBar(int clientX, int clientY)
     }
 }
 
-void SnapRectInsideRect(RECT inRect, RECT container, RECT *outRect)
+bool EdgeIsClose(int a, int b)
 {
-    *outRect = inRect;
-
-    int width = outRect->right - outRect->left;
-    int height =  outRect->bottom - outRect->top;
-
-    if (outRect->left   < container.left  ) outRect->left = container.left;
-    if (outRect->top    < container.top   ) outRect->top  = container.top;
-    if (outRect->right  > container.right ) outRect->left = container.right - width;
-    if (outRect->bottom > container.bottom) outRect->top  = container.bottom - height;
-
-    outRect->right = outRect->left + width;
-    outRect->bottom = outRect->top + height;
+    return abs(a-b) < SNAP_IF_PIXELS_THIS_CLOSE;
 }
 
-void SnapRectEdgesToRect(RECT inRect, RECT container, RECT *outRect)
+void SnapRectEdgesToRect(RECT in, RECT limit, RECT *out)
 {
-    SnapRectInsideRect(inRect, container, outRect);
+    *out = in;
+
+    int width = out->right - out->left;
+    int height =  out->bottom - out->top;
+
+    if (EdgeIsClose(in.left  , limit.left  )) out->left = limit.left;
+    if (EdgeIsClose(in.top   , limit.top   )) out->top  = limit.top;
+    if (EdgeIsClose(in.right , limit.right )) out->left = limit.right - width;
+    if (EdgeIsClose(in.bottom, limit.bottom)) out->top  = limit.bottom - height;
+
+    out->right = out->left + width;
+    out->bottom = out->top + height;
 }
 
 void appDragWindow(HWND hwnd, int x, int y)
