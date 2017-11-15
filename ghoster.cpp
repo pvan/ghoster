@@ -168,6 +168,7 @@ struct AppState {
     bool transparent = false;
     bool clickThrough = false;
     bool topMost = true;
+    bool enableSnapping = true;
 
     double opacity = 1.0;
     double last_opacity;
@@ -1114,6 +1115,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_RANDICON 1009
 #define ID_TOPMOST 1010
 #define ID_FULLSCREEN 1011
+#define ID_SNAPPING 1012
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -1144,6 +1146,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
     UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
     UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
+    UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
 
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
@@ -1155,6 +1158,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
     // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snappingChecked, ID_SNAPPING, L"Snap To Edges");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_REPEAT, L"Repeat");
@@ -1604,6 +1608,21 @@ void SnapRectEdgesToRect(RECT in, RECT limit, RECT *out)
     out->bottom = out->top + height;
 }
 
+void SnapRectToMonitor(RECT in, RECT *out)
+{
+    MONITORINFO mi = { sizeof(mi) };
+    if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+    {
+        // snap to whatever is closer
+        int distToBottom = abs(in.bottom - mi.rcMonitor.bottom);
+        int distToTaskbar = abs(in.bottom - mi.rcWork.bottom);
+        if (distToBottom < distToTaskbar)
+            SnapRectEdgesToRect(in, mi.rcMonitor, out);
+        else
+            SnapRectEdgesToRect(in, mi.rcWork, out);
+    }
+}
+
 void appDragWindow(HWND hwnd, int x, int y)
 {
     WINDOWPLACEMENT winpos;
@@ -1931,10 +1950,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             sys_moving_anchor_y = mPos.y - winRect.top;
         } break;
         case WM_MOVING: {
-            POINT mPos;   GetCursorPos(&mPos);
-            MONITORINFO mi = { sizeof(mi) };
-            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+            if (global_ghoster.state.enableSnapping)
             {
+                POINT mPos;   GetCursorPos(&mPos);
+
                 int width = ((RECT*)lParam)->right - ((RECT*)lParam)->left;
                 int height = ((RECT*)lParam)->bottom - ((RECT*)lParam)->top;
 
@@ -1944,7 +1963,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 positionIfNoSnap.right = positionIfNoSnap.left + width;
                 positionIfNoSnap.bottom = positionIfNoSnap.top + height;
 
-                SnapRectEdgesToRect(positionIfNoSnap, mi.rcMonitor, (RECT*)lParam);
+                SnapRectToMonitor(positionIfNoSnap, (RECT*)lParam);
             }
         } break;
 
@@ -2030,6 +2049,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     break;
                 case ID_FULLSCREEN:
                     toggleFullscreen();
+                    break;
+                case ID_SNAPPING:
+                    global_ghoster.state.enableSnapping = !global_ghoster.state.enableSnapping;
+                    if (global_ghoster.state.enableSnapping)
+                    {
+                        RECT winRect; GetWindowRect(global_ghoster.state.window, &winRect);
+
+                        SnapRectToMonitor(winRect, &winRect);
+
+                        SetWindowPos(hwnd, 0,
+                            winRect.left, winRect.top,
+                            winRect.right  - winRect.left,
+                            winRect.bottom - winRect.top,
+                            0);
+                    }
                     break;
 
             }
