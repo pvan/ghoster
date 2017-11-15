@@ -1520,7 +1520,7 @@ void appDragWindow(HWND hwnd, int x, int y)
                 0);
             global_ghoster.state.fullscreen = false;
 
-
+            // move window to mouse..
             int mouseX = x;
             int mouseY = y;
             int winX = mouseX - global_ghoster.state.winWID/2;
@@ -1529,6 +1529,7 @@ void appDragWindow(HWND hwnd, int x, int y)
         }
     }
 
+    global_ghoster.state.mDown = false; // kind of out-of-place but mouseup is not getting called otherwise
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 

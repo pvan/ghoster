@@ -1,5 +1,5 @@
 
-[ ] bug: sometimes fullscreen via context menu fails
+[x] bug: sometimes fullscreen via context menu fails (seems to happen after app has been dragged once)
 
 [ ] proper fullscreen/pause/unpause behavior [cache state on first click]
 
