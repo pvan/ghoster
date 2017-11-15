@@ -78,19 +78,17 @@ const int PROGRESS_BAR_B = 0;
 // hide progress bar after this many ms
 const double PROGRESS_BAR_TIMEOUT = 1000;
 
-
 // disallow opacity greater than this when in ghost ode
 const double GHOST_MODE_MAX_OPACITY = 0.95;
-
 
 // how long to wait before toggling pause when single click (which could be start of double click)
 // higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
 // lower makes single click feel better (less delay when clicking to pause/unpause)
 const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 500ms by default
 
-
 // snap to screen edge if this close
 const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
+
 
 
 void MsgBox(char* s) {
@@ -416,8 +414,6 @@ struct GhosterWindow
         if (state.bufferingOrLoading)
         {
             appPause();
-            // loaded_video.audio_stopwatch.Pause();
-            // SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         }
         else
         {
@@ -1148,6 +1144,8 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
     UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
 
+    wchar_t *playPauseText = global_ghoster.loaded_video.vid_paused ? L"Play" : L"Pause";
+
     HMENU hPopupMenu = CreatePopupMenu();
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
@@ -1165,7 +1163,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, L"Pause/Play");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
     SetForegroundWindow(hwnd);
 
     global_ghoster.state.globalContextMenuOpen = true;
@@ -2000,7 +1998,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                     global_ghoster.state.appRunning = false;
                     break;
                 case ID_PAUSE:
-                    global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
+                    appTogglePause();
                     break;
                 case ID_ASPECT:
                     SetWindowToAspectRatio(global_ghoster.state.window, global_ghoster.loaded_video.aspect_ratio);
