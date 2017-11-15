@@ -436,22 +436,8 @@ struct GhosterWindow
                 // OutputDebugString(durbuf);
 
 
-            if (loaded_video.vid_paused)
+            if (!loaded_video.vid_paused)
             {
-                if (!loaded_video.vid_was_paused)
-                {
-                    loaded_video.audio_stopwatch.Pause();
-                    SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
-                }
-            }
-            else
-            {
-                if (loaded_video.vid_was_paused || !loaded_video.audio_stopwatch.timer.started)
-                {
-                    loaded_video.audio_stopwatch.Start();
-                    SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
-                }
-
 
                 // SOUND
 
@@ -593,7 +579,6 @@ struct GhosterWindow
                 // OutputDebugString(ptsbuf);
 
             }
-            loaded_video.vid_was_paused = loaded_video.vid_paused;
         }
 
 
@@ -1197,6 +1182,7 @@ bool PasteClipboard()
 
 
 // todo: what to do with this assortment of functions?
+// split into "ghoster" and "system"? and put ghoster ones in ghoster class? prep for splitting into two files?
 
 
 #define ID_SYSTRAY 999
@@ -1544,6 +1530,22 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 void appTogglePause()
 {
     global_ghoster.loaded_video.vid_paused = !global_ghoster.loaded_video.vid_paused;
+
+    if (!global_ghoster.loaded_video.vid_was_paused)
+    {
+        global_ghoster.loaded_video.audio_stopwatch.Pause();
+        SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
+    }
+    else
+    {
+        if (global_ghoster.loaded_video.vid_was_paused || !global_ghoster.loaded_video.audio_stopwatch.timer.started)
+        {
+            global_ghoster.loaded_video.audio_stopwatch.Start();
+            SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
+        }
+    }
+
+    global_ghoster.loaded_video.vid_was_paused = global_ghoster.loaded_video.vid_paused;
 }
 
 void appSetProgressBar(int clientX, int clientY)
