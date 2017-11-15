@@ -1159,9 +1159,9 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snappingChecked, ID_SNAPPING, L"Snap To Edges");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_ASPECT, L"Lock Aspect Ratio");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_REPEAT, L"Repeat");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_REPEAT, L"Repeat");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
