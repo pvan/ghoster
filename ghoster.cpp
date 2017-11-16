@@ -1139,15 +1139,42 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_SET_Y 2004
 
 
+struct menuItem
+{
+    char *string;
+    HBITMAP image;
+};
+
+const int MI_WID = 250;
+const int MI_HEI = 20;
+
+//asdf
+menuItem menuItems[] =
+{
+    {"Play", 0},
+    {"Paste Clipboard URL", 0},
+    {"Fullscreen", 0},
+    {"Volume", 0},
+    {"Repeat", 0},
+    {"Resize To Native Resolution", 0},
+    {"Lock Aspect Ratio", 0},
+    {"Snap To Edges", 0},
+    {"Choose Icon", 0},
+    {"Always On Top", 0},
+    {"Ghost Mode (Click-Through)", 0},
+    {"Wallpaper Mode", 0},
+    {"Toggle Transparency", 0},
+    {"Exit", 0},
+};
+
+
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
-    // TODO: create this once at start then just show it here?
 
+    int itemCount = sizeof(menuItems) / sizeof(menuItem);
 
-    int itemCount = 15;
-
-    int width = 200;
-    int height = 20 * itemCount;
+    int width = MI_WID;
+    int height = MI_HEI * itemCount;
 
     int posX = point.x;
     int posY = point.y;
@@ -1174,9 +1201,13 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
     if (!newPopup) { MsgBox("Failed to create popup window."); }
 
+
+
     return;
 
     //
+
+    // TODO: create this once at start then just show it here?
 
     HMENU hSubMenu = CreatePopupMenu();
     InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
@@ -2401,6 +2432,39 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // All painting occurs here, between BeginPaint and EndPaint.
 
             FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+
+            for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
+            {//asdf
+                menuItems[i];
+
+                RECT itemRect = {0, MI_HEI*i, MI_WID, MI_HEI*i+MI_HEI};
+
+                // pad
+                itemRect.left += 2;
+                itemRect.top += 2;
+                itemRect.right -= 1;
+                itemRect.bottom -= 1;
+
+                SetBkMode(hdc, OPAQUE);
+
+                // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
+                // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
+                // Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
+
+                // SetBkMode(lpdis->hDC, TRANSPARENT);
+
+                // SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
+                // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+                // Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
+
+                // SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
+                // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+                // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
+
+                DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+
+
+            }
 
             EndPaint(hwnd, &ps);
             return 0;
