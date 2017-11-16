@@ -1161,7 +1161,7 @@ struct menuItem
 
 const int MI_WID = 250;
 const int MI_HEI = 23;
-const int MI_HEI_SEP = 15;
+const int MI_HEI_SEP = 10;
 
 //asdf
 menuItem menuItems[] =
@@ -1196,7 +1196,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
     int width = MI_WID;
     // int height = MI_HEI * itemCount;
-    int height = 0;
+    int height = 8; // 4 top 4 bottom
     for (int i = 0; i < itemCount; i++)
     {
         if (menuItems[i].code == ID_SEP) height += MI_HEI_SEP;
@@ -2540,6 +2540,28 @@ void onMenuItemClick(HWND hwnd, int code)
     ClosePopup(hwnd);
 }
 
+static int selectedItem = -1;
+
+int MouseOverMenuItem(POINT point, menuItem *menu, int count)
+{
+    int indexOfClick = 0;
+
+    int currentY = 0;
+    for (int i = 0; i < count; i++)
+    {
+        int thisH = MI_HEI;
+        if (menuItems[i].code == ID_SEP)
+            thisH = MI_HEI_SEP;
+        currentY += thisH;
+
+        if (point.y < currentY)
+            break;
+
+        indexOfClick++;
+    }
+    return indexOfClick;
+}
+
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
@@ -2549,32 +2571,31 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             ClosePopup(hwnd);
         } break;
 
+        case WM_MOUSEMOVE: {
+            // OutputDebugString("MOVE\n");
+            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
+            selectedItem = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
+
+            RECT winRect; GetWindowRect(hwnd, &winRect);
+            RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+            // InvalidateRect(hwnd, NULL, NULL);
+            // UpdateWindow(hwnd);
+            // return false;
+        } break;
+
         case WM_LBUTTONUP: {
-            // global_ghoster.state.appRunning = false;
-
-            POINT click = { LOWORD(lParam), HIWORD(lParam) };
-
-            // int indexOfClick = click.y / MI_HEI;
-            int indexOfClick = 0;
-
-            int currentY = 0;
-            for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
-            {
-                int thisH = MI_HEI;
-                if (menuItems[i].code == ID_SEP)
-                    thisH = MI_HEI_SEP;
-                currentY += thisH;
-
-                if (click.y < currentY)
-                    break;
-
-                indexOfClick++;
-            }
-
+            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
+            int indexOfClick = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
             onMenuItemClick(hwnd, menuItems[indexOfClick].code);
         } break;
 
+        // doesn't help with flicker
+        // case WM_ERASEBKGND: {
+        //     return true; // don't erase
+        // } break;
+
         case WM_PAINT: {
+            // OutputDebugString("PAINT\n");
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
@@ -2586,7 +2607,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             // FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
             // FillRect(hdc, &ps.rcPaint, GetSysColorBrush(COLOR_MENUBAR));
-            FillRect(hdc, &menu, CreateSolidBrush(0xE6D8AD));
+            // FillRect(hdc, &menu, CreateSolidBrush(0xE6D8AD));
 
 
 
@@ -2605,7 +2626,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             SetBkMode(hdc, TRANSPARENT);
 
-            int currentY = 0;
+            int currentY = 4;
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
             {//asdf
 
@@ -2617,19 +2638,38 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 currentY += thisH;
 
                 // pad
-                itemRect.left += gutterSize+2;
-                itemRect.top += 4;
-                itemRect.right -= 1;
-                itemRect.bottom -= 1;
+                itemRect.left += gutterSize;//+2;
+                // itemRect.top += 1;
+                // itemRect.right -= 1;
+                // itemRect.bottom -= 1;
 
 
                 if (menuItems[i].code == ID_SEP)
                 {
-                    GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &itemRect, &thisRect);
+                    RECT sepRect = itemRect;
+                    sepRect.left -= gutterSize;
+                    sepRect.left += 4; sepRect.right -= 2;
+                    sepRect.top -= 3;
+                    sepRect.bottom -= 3;
+                    GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
                     DrawThemeBackground(theme, hdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
                 }
                 else
                 {
+
+                    if (i == selectedItem)
+                    {
+
+                        RECT hlRect = itemRect;
+                        hlRect.left -= gutterSize;
+                        hlRect.left += 3;
+                        hlRect.right -= 3;
+                        hlRect.top -= 2;
+                        hlRect.bottom += 1;
+
+                        // GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
+                        DrawThemeBackground(theme, hdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
+                    }
 
                     // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
                     // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
@@ -2647,6 +2687,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 
                     // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+                    itemRect.left += 2;
+                    itemRect.top += 3;
                     DrawThemeText(theme, hdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
                 }
 
