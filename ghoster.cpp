@@ -1141,6 +1141,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 struct menuItem
 {
+    int code;
     char *string;
     HBITMAP image;
 };
@@ -1151,20 +1152,20 @@ const int MI_HEI = 20;
 //asdf
 menuItem menuItems[] =
 {
-    {"Play", 0},
-    {"Paste Clipboard URL", 0},
-    {"Fullscreen", 0},
-    {"Volume", 0},
-    {"Repeat", 0},
-    {"Resize To Native Resolution", 0},
-    {"Lock Aspect Ratio", 0},
-    {"Snap To Edges", 0},
-    {"Choose Icon", 0},
-    {"Always On Top", 0},
-    {"Ghost Mode (Click-Through)", 0},
-    {"Wallpaper Mode", 0},
-    {"Toggle Transparency", 0},
-    {"Exit", 0},
+    {ID_PAUSE        ,  "Play"                          , 0},
+    {ID_PASTE        ,  "Paste Clipboard URL"           , 0},
+    {ID_FULLSCREEN   ,  "Fullscreen"                    , 0},
+    {ID_VOLUME       ,  "Volume"                        , 0},
+    {ID_REPEAT       ,  "Repeat"                        , 0},
+    {ID_RESET_RES    ,  "Resize To Native Resolution"   , 0},
+    {ID_ASPECT       ,  "Lock Aspect Ratio"             , 0},
+    {ID_SNAPPING     ,  "Snap To Edges"                 , 0},
+    {ID_SET_R        ,  "Choose Icon"                   , 0},
+    {ID_TOPMOST      ,  "Always On Top"                 , 0},
+    {ID_CLICKTHRU    ,  "Ghost Mode (Click-Through)"    , 0},
+    {ID_WALLPAPER    ,  "Wallpaper Mode"                , 0},
+    {ID_TRANSPARENCY ,  "Toggle Transparency"           , 0},
+    {ID_EXIT         ,  "Exit"                          , 0},
 };
 
 
@@ -2412,6 +2413,89 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+void onMenuItemClick(HWND hwnd, int code)
+{
+    switch (code)
+    {
+        case ID_VOLUME:
+            break;
+        case ID_EXIT:
+            global_ghoster.state.appRunning = false;
+            break;
+        case ID_PAUSE:
+            appTogglePause();
+            break;
+        case ID_ASPECT:
+            SetWindowToAspectRatio(global_ghoster.state.window, global_ghoster.loaded_video.aspect_ratio);
+            global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
+            break;
+        case ID_PASTE:
+            PasteClipboard();
+            break;
+        case ID_RESET_RES:
+            SetWindowToNativeRes(global_ghoster.state.window, global_ghoster.loaded_video);
+            break;
+        case ID_REPEAT:
+            global_ghoster.state.repeat = !global_ghoster.state.repeat;
+            break;
+        case ID_TRANSPARENCY:
+            global_ghoster.state.transparent = !global_ghoster.state.transparent;
+            if (global_ghoster.state.transparent) setWindowOpacity(hwnd, 0.5);
+            if (!global_ghoster.state.transparent) setWindowOpacity(hwnd, 1.0);
+            break;
+        case ID_CLICKTHRU:
+            setGhostMode(hwnd, !global_ghoster.state.clickThrough);
+            break;
+        case ID_RANDICON:
+            global_ghoster.icon = RandomIcon();
+            if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+            break;
+        case ID_TOPMOST:
+            setTopMost(hwnd, !global_ghoster.state.topMost);
+            break;
+        int color;
+        case ID_SET_C: color = 0;
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
+            if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+            break;
+        case ID_SET_P: color = 1;
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
+            if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+            break;
+        case ID_SET_R: color = 2;
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
+            if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+            break;
+        case ID_SET_Y: color = 3;
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*color);
+            if (!global_ghoster.state.clickThrough) SetIcon(hwnd, global_ghoster.icon);
+            break;
+        case ID_FULLSCREEN:
+            toggleFullscreen();
+            break;
+        case ID_SNAPPING:
+            global_ghoster.state.enableSnapping = !global_ghoster.state.enableSnapping;
+            if (global_ghoster.state.enableSnapping)
+            {
+                RECT winRect; GetWindowRect(global_ghoster.state.window, &winRect);
+
+                SnapRectToMonitor(winRect, &winRect);
+
+                SetWindowPos(hwnd, 0,
+                    winRect.left, winRect.top,
+                    winRect.right  - winRect.left,
+                    winRect.bottom - winRect.top,
+                    0);
+            }
+            break;
+        case ID_WALLPAPER:
+            setWallpaperMode(hwnd, !global_ghoster.state.wallpaperMode);
+            break;
+    }
+    DestroyWindow(hwnd);
+}
+
+
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
@@ -2422,7 +2506,12 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_LBUTTONDOWN: {
-            global_ghoster.state.appRunning = false;
+            // global_ghoster.state.appRunning = false;
+
+            POINT click = { LOWORD(lParam), HIWORD(lParam) };
+
+            int indexOfClick = click.y / MI_HEI;
+            onMenuItemClick(hwnd, menuItems[indexOfClick].code);
         } break;
 
         case WM_PAINT: {
