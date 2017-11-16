@@ -1159,7 +1159,7 @@ struct menuItem
 };
 
 const int MI_WID = 250;
-const int MI_HEI = 20;
+const int MI_HEI = 23;
 
 //asdf
 menuItem menuItems[] =
@@ -2545,33 +2545,47 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
-            // All painting occurs here, between BeginPaint and EndPaint.
+            RECT menu = ps.rcPaint;
+
+            int gutterSize = 30;//GetSystemMetrics(SM_CXMENUCHECK);
+
+            // SetBkColor(hdc, GetSysColor(COLOR_MENU));
 
             // FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+            // FillRect(hdc, &ps.rcPaint, GetSysColorBrush(COLOR_MENUBAR));
+            FillRect(hdc, &menu, CreateSolidBrush(0xE6D8AD));
 
-            FillRect(hdc, &ps.rcPaint, GetSysColorBrush(COLOR_MENUBAR));
 
 
             HTHEME theme = OpenThemeData(hwnd, L"MENU");
-            DrawThemeBackground(theme, hdc, MENU_POPUPBACKGROUND, 0, &ps.rcPaint, 0);
-            DrawThemeBackground(theme, hdc, MENU_POPUPBORDERS, 0, &ps.rcPaint, 0);
+
+            RECT thisRect;
+            thisRect = menu;
+
+            DrawThemeBackground(theme, hdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
+            DrawThemeBackground(theme, hdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
+
 
             LOGFONTW outFont;
             GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
-
             SelectFont(hdc, CreateFontIndirectW(&outFont));
+
 
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
             {//asdf
-                menuItems[i];
 
-                RECT itemRect = {0, MI_HEI*i, MI_WID, MI_HEI*i+MI_HEI};
+                RECT itemRect = {0, i*MI_HEI, MI_WID, i*MI_HEI+MI_HEI};
 
                 // pad
-                itemRect.left += 2;
-                itemRect.top += 2;
+                itemRect.left += gutterSize+2;
+                itemRect.top += 4;
                 itemRect.right -= 1;
                 itemRect.bottom -= 1;
+
+
+            // GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &itemRect, &thisRect);
+            // DrawThemeBackground(theme, hdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
+
 
                 // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
                 // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
