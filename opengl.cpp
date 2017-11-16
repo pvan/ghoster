@@ -132,6 +132,10 @@ static GLuint tex;
 // trick for easy shader strings
 #define MULTILINE_STRING(...) #__VA_ARGS__
 
+
+HGLRC gl_rendering_context;
+
+
 void InitOpenGL(HWND window)
 {
     HDC hdc = GetDC(window);
@@ -147,7 +151,7 @@ void InitOpenGL(HWND window)
     int format_index = ChoosePixelFormat(hdc, &pixel_format);
     SetPixelFormat(hdc, format_index, &pixel_format);
 
-    HGLRC gl_rendering_context = wglCreateContext(hdc);
+    gl_rendering_context = wglCreateContext(hdc);
     wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
 
     ReleaseDC(window, hdc);
@@ -273,6 +277,8 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 {
     HDC hdc = GetDC(window);
 
+
+    wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
 
 
     // if window size changed.. could also call in WM_SIZE and not pass dWID here
