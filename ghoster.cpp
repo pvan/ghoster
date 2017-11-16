@@ -1144,13 +1144,22 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     // TODO: create this once at start then just show it here?
 
 
-    int itemCount = 18;
+    int itemCount = 15;
 
     int width = 200;
-    int height = 30 * itemCount;
+    int height = 20 * itemCount;
 
     int posX = point.x;
     int posY = point.y;
+
+    // adjust if close to bottom or right edge of sreen
+    MONITORINFO mi = { sizeof(mi) };
+    if (GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTOPRIMARY), &mi))
+    {
+        // or snap to edge?
+        if (posX + width > mi.rcWork.right) posX -= width;
+        if (posY + height > mi.rcWork.bottom) posY -= height;
+    }
 
     HWND newPopup = CreateWindowEx(
         WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
