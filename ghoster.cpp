@@ -170,8 +170,8 @@ struct AppState {
     bool appRunning = true;
 
 
-    Timer menuCloseTimer;
-    bool globalContextMenuOpen;
+    // Timer menuCloseTimer;
+    bool contextMenuOpen;
 
     bool lock_aspect = true;
     bool repeat = true;
@@ -374,10 +374,13 @@ struct GhosterWindow
     void Update()
     {
 
-        if (state.globalContextMenuOpen && state.menuCloseTimer.started && state.menuCloseTimer.MsSinceStart() > 150)
-        {
-            state.globalContextMenuOpen = false;
-        }
+        // needed when using trackpopupmenu for our context menu
+        // if (state.contextMenuOpen &&
+        //     state.menuCloseTimer.started &&
+        //     state.menuCloseTimer.MsSinceStart() > 300)
+        // {
+        //     state.contextMenuOpen = false;
+        // }
 
 
 
@@ -1189,6 +1192,11 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
         if (posY + height > mi.rcWork.bottom) posY -= height;
     }
 
+
+    global_ghoster.state.contextMenuOpen = true;
+    // global_ghoster.state.menuCloseTimer.Stop();
+    // TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
+
     HWND newPopup = CreateWindowEx(
         WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
         POPUP_CLASS_NAME,
@@ -1206,63 +1214,61 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
     return;
 
-    //
+    // // TODO: create this once at start then just show it here?
 
-    // TODO: create this once at start then just show it here?
+    // HMENU hSubMenu = CreatePopupMenu();
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_C, L"Inky");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_P, L"Pinky");
+    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_R, L"Blinky");
+    // MENUITEMINFO info = {0};
+    // info.cbSize = sizeof(MENUITEMINFO);
+    // info.fMask = MIIM_BITMAP;
+    // info.hbmpItem = global_bitmap_y1; SetMenuItemInfo(hSubMenu, ID_SET_Y, 0, &info);
+    // info.hbmpItem = global_bitmap_c1; SetMenuItemInfo(hSubMenu, ID_SET_C, 0, &info);
+    // info.hbmpItem = global_bitmap_p1; SetMenuItemInfo(hSubMenu, ID_SET_P, 0, &info);
+    // info.hbmpItem = global_bitmap_r1; SetMenuItemInfo(hSubMenu, ID_SET_R, 0, &info);
 
-    HMENU hSubMenu = CreatePopupMenu();
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_C, L"Inky");
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_P, L"Pinky");
-    InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_R, L"Blinky");
-    MENUITEMINFO info = {0};
-    info.cbSize = sizeof(MENUITEMINFO);
-    info.fMask = MIIM_BITMAP;
-    info.hbmpItem = global_bitmap_y1; SetMenuItemInfo(hSubMenu, ID_SET_Y, 0, &info);
-    info.hbmpItem = global_bitmap_c1; SetMenuItemInfo(hSubMenu, ID_SET_C, 0, &info);
-    info.hbmpItem = global_bitmap_p1; SetMenuItemInfo(hSubMenu, ID_SET_P, 0, &info);
-    info.hbmpItem = global_bitmap_r1; SetMenuItemInfo(hSubMenu, ID_SET_R, 0, &info);
+    // UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
+    // UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
+    // UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
+    // UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
+    // UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
+    // UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
+    // UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
+    // UINT wallpaperChecked = global_ghoster.state.wallpaperMode ? MF_CHECKED : MF_UNCHECKED;
 
-    UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
-    UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
-    UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
-    UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
-    UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
-    UINT fullscreenChecked = global_ghoster.state.fullscreen ? MF_CHECKED : MF_UNCHECKED;
-    UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
-    UINT wallpaperChecked = global_ghoster.state.wallpaperMode ? MF_CHECKED : MF_UNCHECKED;
+    // wchar_t *playPauseText = global_ghoster.loaded_video.is_paused ? L"Play" : L"Pause";
 
-    wchar_t *playPauseText = global_ghoster.loaded_video.is_paused ? L"Play" : L"Pause";
+    // HMENU hPopupMenu = CreatePopupMenu();
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | wallpaperChecked, ID_WALLPAPER, L"Wallpaper Mode");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | topMostChecked, ID_TOPMOST, L"Always On Top");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
+    // // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snappingChecked, ID_SNAPPING, L"Snap To Edges");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_REPEAT, L"Repeat");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_OWNERDRAW , ID_VOLUME, L"Volume");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
+    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
 
-    HMENU hPopupMenu = CreatePopupMenu();
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | wallpaperChecked, ID_WALLPAPER, L"Wallpaper Mode");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | topMostChecked, ID_TOPMOST, L"Always On Top");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snappingChecked, ID_SNAPPING, L"Snap To Edges");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_REPEAT, L"Repeat");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_OWNERDRAW , ID_VOLUME, L"Volume");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
-    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
+    // // i think this is what was causing our hidden window to appear..
+    // // but also it's needed for the menu to close correctly, so...
+    // SetForegroundWindow(hwnd);
 
-    // i think this is what was causing our hidden window to appear..
-    // but also it's needed for the menu to close correctly, so...
-    SetForegroundWindow(hwnd);
-
-    global_ghoster.state.globalContextMenuOpen = true;
-    global_ghoster.state.menuCloseTimer.Stop();
-    TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    global_ghoster.state.menuCloseTimer.Start(); // we only get here (past TrackPopupMenu) once the menu is closed
+    // global_ghoster.state.contextMenuOpen = true;
+    // global_ghoster.state.menuCloseTimer.Stop();
+    // TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
+    // global_ghoster.state.menuCloseTimer.Start(); // we only get here (past TrackPopupMenu) once the menu is closed
 }
 
 
@@ -2030,7 +2036,7 @@ void onMouseDownL(int clientX, int clientY)
     // OutputDebugString("LDOWN\n");
 
     // i think we can just ignore if context menu is open
-    if (global_ghoster.state.globalContextMenuOpen)
+    if (global_ghoster.state.contextMenuOpen)
         return;
 
     // mouse state / info about click...
@@ -2413,6 +2419,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+
+void ClosePopup(HWND hwnd)
+{
+    DestroyWindow(hwnd);
+
+    // now i think we can just set this false right away, no need for a timer
+    global_ghoster.state.contextMenuOpen = false;
+
+    // i forget why we couldn't just set this closed right away with when using trackpopup
+    // maybe that same mouse event would trigger on the main window?
+    // global_ghoster.state.menuCloseTimer.Start();
+}
+
 void onMenuItemClick(HWND hwnd, int code)
 {
     switch (code)
@@ -2492,9 +2511,8 @@ void onMenuItemClick(HWND hwnd, int code)
             setWallpaperMode(hwnd, !global_ghoster.state.wallpaperMode);
             break;
     }
-    DestroyWindow(hwnd);
+    ClosePopup(hwnd);
 }
-
 
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2502,10 +2520,10 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     {
 
         case WM_KILLFOCUS: {
-            DestroyWindow(hwnd);
+            ClosePopup(hwnd);
         } break;
 
-        case WM_LBUTTONDOWN: {
+        case WM_LBUTTONUP: {
             // global_ghoster.state.appRunning = false;
 
             POINT click = { LOWORD(lParam), HIWORD(lParam) };
