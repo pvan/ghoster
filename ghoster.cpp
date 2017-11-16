@@ -1126,6 +1126,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_FULLSCREEN 1011
 #define ID_SNAPPING 1012
 #define ID_WALLPAPER 1013
+#define ID_VOLUME 1014
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -1177,6 +1178,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_REPEAT, L"Repeat");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_VOLUME, L"Volume");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
