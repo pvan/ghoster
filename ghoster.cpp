@@ -1,3 +1,4 @@
+#define OEMRESOURCE
 #include <windows.h>
 #include <stdio.h>
 #include <stdint.h> // types
@@ -47,6 +48,8 @@ HINSTANCE global_hInstance;
 
 
 UINT singleClickTimerID;
+
+static HBITMAP gobal_bitmap_checkmark;
 
 static HBITMAP global_bitmap_w;
 static HBITMAP global_bitmap_b;
@@ -1156,7 +1159,8 @@ struct menuItem
 {
     int code;
     WCHAR *string;
-    HBITMAP image;
+    HBITMAP *hbitmap;
+    bool *checked;
 };
 
 const int MI_WID = 250;
@@ -1166,26 +1170,26 @@ const int MI_HEI_SEP = 10;
 //asdf
 menuItem menuItems[] =
 {
-    {ID_PAUSE        ,  L"Play"                          , 0},
-    {ID_FULLSCREEN   ,  L"Fullscreen"                    , 0},
-    {ID_REPEAT       ,  L"Repeat"                        , 0},
-    {ID_VOLUME       ,  L"Volume"                        , 0},
-    {ID_SEP          ,  L""                              , 0},
-    {ID_PASTE        ,  L"Paste Clipboard URL"           , 0},
-    {ID_PASTE        ,  L"Copy URL To Clipboard"         , 0},
-    {ID_SEP          ,  L""                              , 0},
-    {ID_RESET_RES    ,  L"Resize To Native Resolution"   , 0},
-    {ID_ASPECT       ,  L"Lock Aspect Ratio"             , 0},
-    {ID_SNAPPING     ,  L"Snap To Edges"                 , 0},
-    {ID_SEP          ,  L""                              , 0},
-    {ID_SET_R        ,  L"Choose Icon"                   , 0},
-    {ID_SEP          ,  L""                              , 0},
-    {ID_TOPMOST      ,  L"Always On Top"                 , 0},
-    {ID_CLICKTHRU    ,  L"Ghost Mode (Click-Through)"    , 0},
-    {ID_WALLPAPER    ,  L"Wallpaper Mode"                , 0},
-    {ID_TRANSPARENCY ,  L"Toggle Transparency"           , 0},
-    {ID_SEP          ,  L""                              , 0},
-    {ID_EXIT         ,  L"Exit"                          , 0},
+    {ID_PAUSE        ,  L"Play"                          , 0,     0},
+    {ID_FULLSCREEN   ,  L"Fullscreen"                    , 0,                 0},
+    {ID_REPEAT       ,  L"Repeat"                        , 0,  &global_ghoster.state.repeat},   //&gobal_bitmap_checkmark },
+    {ID_VOLUME       ,  L"Volume"                        , 0,                 0},
+    {ID_SEP          ,  L""                              , 0,                 0},
+    {ID_PASTE        ,  L"Paste Clipboard URL"           , 0,                 0},
+    {ID_PASTE        ,  L"Copy URL To Clipboard"         , 0,                 0},
+    {ID_SEP          ,  L""                              , 0,                 0},
+    {ID_RESET_RES    ,  L"Resize To Native Resolution"   , 0,                 0},
+    {ID_ASPECT       ,  L"Lock Aspect Ratio"             , 0,                 0},
+    {ID_SNAPPING     ,  L"Snap To Edges"                 , 0,                 0},
+    {ID_SEP          ,  L""                              , 0,                 0},
+    {ID_SET_R        ,  L"Choose Icon"                   , &global_bitmap_r1, 0},
+    {ID_SEP          ,  L""                              , 0,                 0},
+    {ID_TOPMOST      ,  L"Always On Top"                 , 0,                 0},
+    {ID_CLICKTHRU    ,  L"Ghost Mode (Click-Through)"    , 0,                 0},
+    {ID_WALLPAPER    ,  L"Wallpaper Mode"                , 0,                 0},
+    {ID_TRANSPARENCY ,  L"Toggle Transparency"           , 0,                 0},
+    {ID_SEP          ,  L""                              , 0,                 0},
+    {ID_EXIT         ,  L"Exit"                          , 0,                 0},
 };
 
 
@@ -1366,6 +1370,11 @@ HICON MakeIconFromBitmap(HINSTANCE hInstance, HBITMAP hbm)
 
 void MakeIcons(HINSTANCE hInstance)
 {
+
+    // also this bitmap here
+    gobal_bitmap_checkmark = LoadBitmap((HINSTANCE) NULL, (LPTSTR) OBM_CHECK);
+
+
     global_icon = (HICON)LoadImage(
         hInstance,
         MAKEINTRESOURCE(ID_ICON),
@@ -2604,8 +2613,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             int height = ps.rcPaint.bottom-ps.rcPaint.top;
 
             HDC memhdc = CreateCompatibleDC(hdc);
-            HBITMAP bitmap = CreateCompatibleBitmap(hdc, width, height);
-            SelectObject(memhdc, bitmap);
+            HBITMAP buffer_bitmap = CreateCompatibleBitmap(hdc, width, height);
+            SelectObject(memhdc, buffer_bitmap);
 
 
             RECT menu = ps.rcPaint;
@@ -2665,6 +2674,52 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 }
                 else
                 {
+                    if (menuItems[i].hbitmap != 0)
+                    {
+                        RECT imgRect = itemRect;
+                        imgRect.left -= gutterSize;
+                        imgRect.left += 3;
+                        imgRect.top -= 1;
+                        imgRect.bottom -= 0;
+                        imgRect.right = gutterSize - 2;
+
+                        HBITMAP hbitmap = *(menuItems[i].hbitmap);
+                        HDC bitmapDC = CreateCompatibleDC(memhdc);
+                        SelectObject(bitmapDC, hbitmap);
+
+                        BITMAP imgBitmap;
+                        GetObject(hbitmap, sizeof(BITMAP), &imgBitmap);
+
+                        // center image in rect
+                        imgRect.left += ( (imgRect.right - imgRect.left) - (imgBitmap.bmWidth) ) /2;
+                        imgRect.top += ( (imgRect.bottom - imgRect.top) - (imgBitmap.bmHeight) ) /2;
+
+                        BitBlt(memhdc,
+                               imgRect.left,
+                               imgRect.top,
+                               imgBitmap.bmWidth,
+                               imgBitmap.bmHeight,
+                               bitmapDC,
+                               0, 0, SRCCOPY);
+
+                        DeleteDC    (bitmapDC);
+                    }
+
+                    if (menuItems[i].checked)  //pointer exists
+                    {
+                        if (*(menuItems[i].checked))  // value is true
+                        {
+                            RECT checkRect = itemRect;
+                            checkRect.left -= gutterSize;
+                            checkRect.left += 3;
+                            checkRect.top -= 1;
+                            checkRect.bottom -= 0;
+                            checkRect.right = gutterSize - 2;
+
+                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECKBACKGROUND, MCB_NORMAL, &checkRect, &checkRect);
+                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECK, MC_CHECKMARKNORMAL, &checkRect, &checkRect);
+                        }
+                    }
 
                     if (i == selectedItem)
                     {
@@ -2704,7 +2759,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             }
 
             BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
-            DeleteObject(bitmap);
+            DeleteObject(buffer_bitmap);
             DeleteDC    (memhdc);
             DeleteDC    (hdc);
 
