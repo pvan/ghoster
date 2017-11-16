@@ -1,5 +1,12 @@
 
 
+[ ] load urls with timestamps
+[ ] copy url to clipboard with timestamp
+
+
+[ ] percent bar incorrect when seeking some urls?
+
+
 [/] proper fullscreen/pause/unpause behavior
     [x] cache state on first click
     [ ] should compromise and pause, like, halfway through our allowed double click time
