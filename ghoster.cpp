@@ -33,6 +33,7 @@ HWND global_workerw;
 HWND global_wallpaper_window;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 const char *WALLPAPER_CLASS_NAME = "ghoster wallpaper window class";
+const char *POPUP_CLASS_NAME = "ghoster popup window class";
 HINSTANCE global_hInstance;
 
 
@@ -1142,6 +1143,32 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
     // TODO: create this once at start then just show it here?
 
+
+    int itemCount = 18;
+
+    int width = 200;
+    int height = 30 * itemCount;
+
+    int posX = point.x;
+    int posY = point.y;
+
+    HWND newPopup = CreateWindowEx(
+        WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
+        POPUP_CLASS_NAME,
+        "ghoster popup menu",
+        WS_POPUP | WS_VISIBLE,
+        posX, posY,
+        width, height,
+        0,0,
+        global_hInstance,
+        0);
+
+    if (!newPopup) { MsgBox("Failed to create popup window."); }
+
+    return;
+
+    //
+
     HMENU hSubMenu = CreatePopupMenu();
     InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
     InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_C, L"Inky");
@@ -2221,8 +2248,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_COMMAND: {
+            OutputDebugString("COMMAD");
             switch (wParam)
             {
+                case ID_VOLUME:
+                    return 0;
+                    break;
                 case ID_EXIT:
                     global_ghoster.state.appRunning = false;
                     break;
@@ -2340,6 +2371,37 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 }
 
 
+
+LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch(message)
+    {
+
+        case WM_KILLFOCUS: {
+            DestroyWindow(hwnd);
+        } break;
+
+        case WM_LBUTTONDOWN: {
+            global_ghoster.state.appRunning = false;
+        } break;
+
+        case WM_PAINT: {
+            PAINTSTRUCT ps;
+            HDC hdc = BeginPaint(hwnd, &ps);
+
+            // All painting occurs here, between BeginPaint and EndPaint.
+
+            FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+
+            EndPaint(hwnd, &ps);
+            return 0;
+        } break;
+
+    }
+    return DefWindowProc(hwnd, message, wParam, lParam);
+}
+
+
 int CALLBACK WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -2363,6 +2425,15 @@ int CALLBACK WinMain(
     wc2.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc2.lpszClassName = WALLPAPER_CLASS_NAME;
     if (!RegisterClass(&wc2)) { MsgBox("RegisterClass for wallpaper window failed."); return 1; }
+
+    // register class for menu popup window if we ever use one
+    WNDCLASS wc3 = {};
+    wc3.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc3.lpfnWndProc =  PopupWndProc;
+    wc3.hInstance = global_hInstance;
+    wc3.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc3.lpszClassName = POPUP_CLASS_NAME;
+    if (!RegisterClass(&wc3)) { MsgBox("RegisterClass for popup window failed."); return 1; }
 
 
 
