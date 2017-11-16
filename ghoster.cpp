@@ -10,6 +10,15 @@
 #pragma comment(lib, "shell32.lib")
 
 
+// for themes
+#include <Uxtheme.h>
+#include <Vsstyle.h> // parts and
+#include <Vssym32.h> // states defns
+#pragma comment(lib, "UxTheme.lib")
+
+
+#include <Windowsx.h> // SelectFont
+
 
 #include "resource.h"
 
@@ -1145,7 +1154,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 struct menuItem
 {
     int code;
-    char *string;
+    WCHAR *string;
     HBITMAP image;
 };
 
@@ -1155,20 +1164,20 @@ const int MI_HEI = 20;
 //asdf
 menuItem menuItems[] =
 {
-    {ID_PAUSE        ,  "Play"                          , 0},
-    {ID_PASTE        ,  "Paste Clipboard URL"           , 0},
-    {ID_FULLSCREEN   ,  "Fullscreen"                    , 0},
-    {ID_VOLUME       ,  "Volume"                        , 0},
-    {ID_REPEAT       ,  "Repeat"                        , 0},
-    {ID_RESET_RES    ,  "Resize To Native Resolution"   , 0},
-    {ID_ASPECT       ,  "Lock Aspect Ratio"             , 0},
-    {ID_SNAPPING     ,  "Snap To Edges"                 , 0},
-    {ID_SET_R        ,  "Choose Icon"                   , 0},
-    {ID_TOPMOST      ,  "Always On Top"                 , 0},
-    {ID_CLICKTHRU    ,  "Ghost Mode (Click-Through)"    , 0},
-    {ID_WALLPAPER    ,  "Wallpaper Mode"                , 0},
-    {ID_TRANSPARENCY ,  "Toggle Transparency"           , 0},
-    {ID_EXIT         ,  "Exit"                          , 0},
+    {ID_PAUSE        ,  L"Play"                          , 0},
+    {ID_PASTE        ,  L"Paste Clipboard URL"           , 0},
+    {ID_FULLSCREEN   ,  L"Fullscreen"                    , 0},
+    {ID_VOLUME       ,  L"Volume"                        , 0},
+    {ID_REPEAT       ,  L"Repeat"                        , 0},
+    {ID_RESET_RES    ,  L"Resize To Native Resolution"   , 0},
+    {ID_ASPECT       ,  L"Lock Aspect Ratio"             , 0},
+    {ID_SNAPPING     ,  L"Snap To Edges"                 , 0},
+    {ID_SET_R        ,  L"Choose Icon"                   , 0},
+    {ID_TOPMOST      ,  L"Always On Top"                 , 0},
+    {ID_CLICKTHRU    ,  L"Ghost Mode (Click-Through)"    , 0},
+    {ID_WALLPAPER    ,  L"Wallpaper Mode"                , 0},
+    {ID_TRANSPARENCY ,  L"Toggle Transparency"           , 0},
+    {ID_EXIT         ,  L"Exit"                          , 0},
 };
 
 
@@ -2538,7 +2547,19 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             // All painting occurs here, between BeginPaint and EndPaint.
 
-            FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+            // FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
+
+            FillRect(hdc, &ps.rcPaint, GetSysColorBrush(COLOR_MENUBAR));
+
+
+            HTHEME theme = OpenThemeData(hwnd, L"MENU");
+            DrawThemeBackground(theme, hdc, MENU_POPUPBACKGROUND, 0, &ps.rcPaint, 0);
+            DrawThemeBackground(theme, hdc, MENU_POPUPBORDERS, 0, &ps.rcPaint, 0);
+
+            LOGFONTW outFont;
+            GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
+
+            SelectFont(hdc, CreateFontIndirectW(&outFont));
 
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
             {//asdf
@@ -2551,8 +2572,6 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 itemRect.top += 2;
                 itemRect.right -= 1;
                 itemRect.bottom -= 1;
-
-                SetBkMode(hdc, OPAQUE);
 
                 // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
                 // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
@@ -2568,7 +2587,10 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
                 // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
 
-                DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+                SetBkMode(hdc, TRANSPARENT);
+
+                // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+                DrawThemeText(theme, hdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
 
 
             }
