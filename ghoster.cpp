@@ -1144,6 +1144,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_SNAPPING 1012
 #define ID_WALLPAPER 1013
 #define ID_VOLUME 1014
+#define ID_SEP 1015
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -1160,23 +1161,30 @@ struct menuItem
 
 const int MI_WID = 250;
 const int MI_HEI = 23;
+const int MI_HEI_SEP = 15;
 
 //asdf
 menuItem menuItems[] =
 {
     {ID_PAUSE        ,  L"Play"                          , 0},
-    {ID_PASTE        ,  L"Paste Clipboard URL"           , 0},
     {ID_FULLSCREEN   ,  L"Fullscreen"                    , 0},
-    {ID_VOLUME       ,  L"Volume"                        , 0},
     {ID_REPEAT       ,  L"Repeat"                        , 0},
+    {ID_VOLUME       ,  L"Volume"                        , 0},
+    {ID_SEP          ,  L""                              , 0},
+    {ID_PASTE        ,  L"Paste Clipboard URL"           , 0},
+    {ID_PASTE        ,  L"Copy URL To Clipboard"         , 0},
+    {ID_SEP          ,  L""                              , 0},
     {ID_RESET_RES    ,  L"Resize To Native Resolution"   , 0},
     {ID_ASPECT       ,  L"Lock Aspect Ratio"             , 0},
     {ID_SNAPPING     ,  L"Snap To Edges"                 , 0},
+    {ID_SEP          ,  L""                              , 0},
     {ID_SET_R        ,  L"Choose Icon"                   , 0},
+    {ID_SEP          ,  L""                              , 0},
     {ID_TOPMOST      ,  L"Always On Top"                 , 0},
     {ID_CLICKTHRU    ,  L"Ghost Mode (Click-Through)"    , 0},
     {ID_WALLPAPER    ,  L"Wallpaper Mode"                , 0},
     {ID_TRANSPARENCY ,  L"Toggle Transparency"           , 0},
+    {ID_SEP          ,  L""                              , 0},
     {ID_EXIT         ,  L"Exit"                          , 0},
 };
 
@@ -1187,7 +1195,13 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     int itemCount = sizeof(menuItems) / sizeof(menuItem);
 
     int width = MI_WID;
-    int height = MI_HEI * itemCount;
+    // int height = MI_HEI * itemCount;
+    int height = 0;
+    for (int i = 0; i < itemCount; i++)
+    {
+        if (menuItems[i].code == ID_SEP) height += MI_HEI_SEP;
+        else height += MI_HEI;
+    }
 
     int posX = point.x;
     int posY = point.y;
@@ -2519,6 +2533,9 @@ void onMenuItemClick(HWND hwnd, int code)
         case ID_WALLPAPER:
             setWallpaperMode(hwnd, !global_ghoster.state.wallpaperMode);
             break;
+        case ID_SEP:
+            return; // don't close popup
+            break;
     }
     ClosePopup(hwnd);
 }
@@ -2537,7 +2554,23 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             POINT click = { LOWORD(lParam), HIWORD(lParam) };
 
-            int indexOfClick = click.y / MI_HEI;
+            // int indexOfClick = click.y / MI_HEI;
+            int indexOfClick = 0;
+
+            int currentY = 0;
+            for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
+            {
+                int thisH = MI_HEI;
+                if (menuItems[i].code == ID_SEP)
+                    thisH = MI_HEI_SEP;
+                currentY += thisH;
+
+                if (click.y < currentY)
+                    break;
+
+                indexOfClick++;
+            }
+
             onMenuItemClick(hwnd, menuItems[indexOfClick].code);
         } break;
 
@@ -2570,11 +2603,18 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
             SelectFont(hdc, CreateFontIndirectW(&outFont));
 
+            SetBkMode(hdc, TRANSPARENT);
 
+            int currentY = 0;
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
             {//asdf
 
-                RECT itemRect = {0, i*MI_HEI, MI_WID, i*MI_HEI+MI_HEI};
+                int thisH = MI_HEI;
+                if (menuItems[i].code == ID_SEP)
+                    thisH = MI_HEI_SEP;
+
+                RECT itemRect = {0, currentY, MI_WID, currentY+thisH};
+                currentY += thisH;
 
                 // pad
                 itemRect.left += gutterSize+2;
@@ -2583,29 +2623,32 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 itemRect.bottom -= 1;
 
 
-            // GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &itemRect, &thisRect);
-            // DrawThemeBackground(theme, hdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
+                if (menuItems[i].code == ID_SEP)
+                {
+                    GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &itemRect, &thisRect);
+                    DrawThemeBackground(theme, hdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
+                }
+                else
+                {
+
+                    // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
+                    // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
+                    // Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
+
+                    // SetBkMode(lpdis->hDC, TRANSPARENT);
+
+                    // SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
+                    // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+                    // Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
+
+                    // SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
+                    // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+                    // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
 
 
-                // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
-                // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
-                // Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
-
-                // SetBkMode(lpdis->hDC, TRANSPARENT);
-
-                // SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
-                // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-                // Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
-
-                // SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
-                // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-                // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
-
-                SetBkMode(hdc, TRANSPARENT);
-
-                // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
-                DrawThemeText(theme, hdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
-
+                    // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+                    DrawThemeText(theme, hdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
+                }
 
             }
 
