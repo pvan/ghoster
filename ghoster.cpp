@@ -2599,6 +2599,15 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
+
+            int width = ps.rcPaint.right-ps.rcPaint.left;
+            int height = ps.rcPaint.bottom-ps.rcPaint.top;
+
+            HDC memhdc = CreateCompatibleDC(hdc);
+            HBITMAP bitmap = CreateCompatibleBitmap(hdc, width, height);
+            SelectObject(memhdc, bitmap);
+
+
             RECT menu = ps.rcPaint;
 
             int gutterSize = 30;//GetSystemMetrics(SM_CXMENUCHECK);
@@ -2616,15 +2625,15 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             RECT thisRect;
             thisRect = menu;
 
-            DrawThemeBackground(theme, hdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
-            DrawThemeBackground(theme, hdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
+            DrawThemeBackground(theme, memhdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
+            DrawThemeBackground(theme, memhdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
 
 
             LOGFONTW outFont;
             GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
-            SelectFont(hdc, CreateFontIndirectW(&outFont));
+            SelectFont(memhdc, CreateFontIndirectW(&outFont));
 
-            SetBkMode(hdc, TRANSPARENT);
+            SetBkMode(memhdc, TRANSPARENT);
 
             int currentY = 4;
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
@@ -2651,8 +2660,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                     sepRect.left += 4; sepRect.right -= 2;
                     sepRect.top -= 3;
                     sepRect.bottom -= 3;
-                    GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
-                    DrawThemeBackground(theme, hdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
+                    GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
+                    DrawThemeBackground(theme, memhdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
                 }
                 else
                 {
@@ -2667,8 +2676,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                         hlRect.top -= 2;
                         hlRect.bottom += 1;
 
-                        // GetThemeBackgroundContentRect(theme, hdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
-                        DrawThemeBackground(theme, hdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
+                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
+                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
                     }
 
                     // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
@@ -2689,12 +2698,18 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                     // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
                     itemRect.left += 2;
                     itemRect.top += 3;
-                    DrawThemeText(theme, hdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
+                    DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
                 }
 
             }
 
+            BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
+            DeleteObject(bitmap);
+            DeleteDC    (memhdc);
+            DeleteDC    (hdc);
+
             EndPaint(hwnd, &ps);
+
             return 0;
         } break;
 
