@@ -1182,6 +1182,9 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
+
+    // i think this is what was causing our hidden window to appear..
+    // but also it's needed for the menu to close correctly, so...
     SetForegroundWindow(hwnd);
 
     global_ghoster.state.globalContextMenuOpen = true;
@@ -1650,7 +1653,7 @@ void setWallpaperMode(HWND hwnd, bool enable)
     {
         // SetParent(hwnd, 0);
 
-        if (global_workerw) CloseWindow(global_workerw);  // doesn't seem to help
+        // if (global_workerw) CloseWindow(global_workerw);  // doesn't seem to help
 
         if (global_wallpaper_window) DestroyWindow(global_wallpaper_window);
 
@@ -2248,13 +2251,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         case ID_SYSTRAY_MSG: {
             switch (lParam) {
                 case WM_LBUTTONUP:
-                    SetForegroundWindow(hwnd);
-                    setGhostMode(hwnd, !global_ghoster.state.clickThrough);
+                    // if (!global_ghoster.state.wallpaperMode)
+                    // {
+                        SetForegroundWindow(hwnd);
+                        setGhostMode(hwnd, !global_ghoster.state.clickThrough);
+                    // }
                 break;
                 case WM_RBUTTONUP:
                     POINT mousePos;
                     GetCursorPos(&mousePos);
-                    SetForegroundWindow(hwnd); // supposedly needed for menu to work as expected?
+                    // SetForegroundWindow(hwnd); // this is done in openRclick
                     OpenRClickMenuAt(hwnd, mousePos);
                 break;
             }
@@ -2359,7 +2365,7 @@ int CALLBACK WinMain(
         }
     }
 
-    if (global_workerw) CloseWindow(global_workerw);
+    // if (global_workerw) CloseWindow(global_workerw);
     RemoveSysTrayIcon(global_ghoster.state.window);
 
     return 0;
