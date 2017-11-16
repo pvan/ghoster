@@ -1,4 +1,8 @@
 
+[ ] transparency slider
+
+[ ] command line options
+
 
 [ ] load urls with timestamps
 [ ] copy url to clipboard with timestamp
