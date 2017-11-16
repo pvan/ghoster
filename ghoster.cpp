@@ -33,6 +33,7 @@ HWND global_workerw;
 HWND global_wallpaper_window;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 const char *WALLPAPER_CLASS_NAME = "ghoster wallpaper window class";
+HINSTANCE global_hInstance;
 
 
 UINT singleClickTimerID;
@@ -598,20 +599,20 @@ struct GhosterWindow
         }
 
 
-        // if (state.wallpaperMode)
-        // {
-        //     RenderToScreenGL((void*)loaded_video.vid_buffer,
-        //                     960,
-        //                     720, //todo: extra bar bug qwer
-        //                     // loaded_video.vidWID,
-        //                     // loaded_video.vidHEI,
-        //                     state.winWID,
-        //                     state.winHEI,
-        //                     global_wallpaper_window,
-        //                     percent, drawProgressBar, state.bufferingOrLoading);
-        // }
-        // else
-        // {
+        if (state.wallpaperMode)
+        {
+            RenderToScreenGL((void*)loaded_video.vid_buffer,
+                            960,
+                            720, //todo: extra bar bug qwer
+                            // loaded_video.vidWID,
+                            // loaded_video.vidHEI,
+                            state.winWID,
+                            state.winHEI,
+                            global_wallpaper_window,
+                            percent, drawProgressBar, state.bufferingOrLoading);
+        }
+        else
+        {
             RenderToScreenGL((void*)loaded_video.vid_buffer,
                             960,
                             720, //todo: extra bar bug qwer
@@ -621,7 +622,7 @@ struct GhosterWindow
                             state.winHEI,
                             state.window,
                             percent, drawProgressBar, state.bufferingOrLoading);
-        // }
+        }
 
 
         // REPEAT
@@ -1394,7 +1395,7 @@ void SetIcon(HWND hwnd, HICON icon)
     SendMessage (hwnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
     SendMessage (hwnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
 
-    // not really needed anymore, we're no longer using the new window icon in the taskbar
+    // only needed if we're using the new wallpaper window icon in the taskbar
     // set wallpaper window same for now
     if (hwnd != global_wallpaper_window) SetIcon(global_wallpaper_window, icon);
 }
@@ -1538,10 +1539,6 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
     return true;
 }
 
-HWND cachedParent;
-
-HINSTANCE global_hInstance;
-
 void setWallpaperMode(HWND hwnd, bool enable)
 {
     global_ghoster.state.wallpaperMode = enable;
@@ -1581,61 +1578,81 @@ void setWallpaperMode(HWND hwnd, bool enable)
         if (global_workerw)
         {
 
-            SetParent(hwnd, global_workerw);
+            // SetParent(hwnd, progman);
 
-            // // effecively disable current window without losing taskbar icon...
+
+            // method to draw on desktop depends on windows version?
+            HWND newParent = global_workerw; // guessing this will maybe work on 8+
+            if (bool win7 = true)
+            {
+                newParent = progman;
+            }
+
+
+
+            // create our new window
+            // we need a new window so we can discard it when we're done with wallpaper mode
+            // trying to salvage a window after setparent seems to cause a number of issues
+
+            RECT win;
+            GetWindowRect(hwnd, &win);
+
+            // might have to move into position first in some cases? maybe if we use global_workerw?
+            // SetWindowPos(newParent, HWND_BOTTOM, win.left, win.top, win.right-win.left, win.bottom-win.top, 0);
+            // ShowWindow(newParent, SW_MAXIMIZE);
+
+            global_wallpaper_window = CreateWindowEx(
+                0,
+                // WS_EX_TOOLWINDOW, // don't show taskbar
+                WALLPAPER_CLASS_NAME, "ghoster video player wallpaper",
+                WS_POPUP | WS_VISIBLE,
+                win.left, win.top,
+                win.right - win.left,
+                win.bottom - win.top,
+                0,
+                0, global_hInstance, 0);
+
+            // set dc format to be same as our main dc
+            HDC hdc = GetDC(global_wallpaper_window);
+            PIXELFORMATDESCRIPTOR pixel_format = {};
+            pixel_format.nSize = sizeof(pixel_format);
+            pixel_format.nVersion = 1;
+            pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+            pixel_format.iPixelType = PFD_TYPE_RGBA;
+            pixel_format.cColorBits = 32;
+            pixel_format.cAlphaBits = 8;
+            int format_index = ChoosePixelFormat(hdc, &pixel_format);
+            SetPixelFormat(hdc, format_index, &pixel_format);
+            if (!global_ghoster.state.window) { MsgBox("Couldn't open wallpaper window."); }
+
+            // only needed if we're using the wallpaper window icon in the taskbar
+            if (global_ghoster.state.clickThrough)
+                SetIcon(global_wallpaper_window, global_icon_w);
+            else
+                SetIcon(global_wallpaper_window, global_ghoster.icon);
+
+
+            // only seems to work when setting after window has been created
+            SetParent(global_wallpaper_window, newParent);
+
+
+            // actually this method seems to work pretty well...
+            ShowWindow(hwnd, SW_HIDE);
+            // with this method, not sure how to prevent main window from showing when clicking on sys tray icon
             // SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);  // make invisible
             // setClickThrough(hwnd, true);
-
-            // // method to draw on desktop depends on if aero mode is enabled
-            // HWND newParent = global_workerw;
-            // if (bool notAeroMode = false)
-            // {
-            //     newParent = progman;
-            // }
-
-            // // create our new window
-            // RECT win;
-            // GetWindowRect(hwnd, &win);
-            // global_wallpaper_window = CreateWindowEx(
-            //     WS_EX_TOOLWINDOW, // don't show taskbar
-            //     WALLPAPER_CLASS_NAME, "ghoster video player wallpaper",
-            //     WS_POPUP | WS_VISIBLE,
-            //     win.left, win.top,
-            //     win.right - win.left,
-            //     win.bottom - win.top,
-            //     global_workerw,
-            //     0, global_hInstance, 0);
-
-            // // set dc format to be same as our main dc
-            // HDC hdc = GetDC(global_wallpaper_window);
-            // PIXELFORMATDESCRIPTOR pixel_format = {};
-            // pixel_format.nSize = sizeof(pixel_format);
-            // pixel_format.nVersion = 1;
-            // pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-            // pixel_format.iPixelType = PFD_TYPE_RGBA;
-            // pixel_format.cColorBits = 32;
-            // pixel_format.cAlphaBits = 8;
-            // int format_index = ChoosePixelFormat(hdc, &pixel_format);
-            // SetPixelFormat(hdc, format_index, &pixel_format);
-            // if (!global_ghoster.state.window) { MsgBox("Couldn't open wallpaper window."); }
-
-            // // not really needed, we're no longer using the new window icon in the taskbar
-            // if (global_ghoster.state.clickThrough)
-            //     SetIcon(global_wallpaper_window, global_icon_w);
-            // else
-            //     SetIcon(global_wallpaper_window, global_ghoster.icon);
-
         }
 
     }
     else
     {
-        SetParent(hwnd, 0);
-        // if (global_workerw) CloseWindow(global_workerw);  // doesn't seem to help
+        // SetParent(hwnd, 0);
 
-        // if (global_wallpaper_window) DestroyWindow(global_wallpaper_window);
+        if (global_workerw) CloseWindow(global_workerw);  // doesn't seem to help
 
+        if (global_wallpaper_window) DestroyWindow(global_wallpaper_window);
+
+        ShowWindow(hwnd, SW_SHOW);
         // setWindowOpacity(hwnd, global_ghoster.state.opacity);
         // setClickThrough(hwnd, global_ghoster.state.clickThrough);
     }
@@ -2262,14 +2279,14 @@ int CALLBACK WinMain(
 
 
 
-    // // register class for wallpaper window if we ever use one
-    // WNDCLASS wc2 = {};
-    // wc2.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
-    // wc2.lpfnWndProc =  DefWindowProc;//WndProc;
-    // wc2.hInstance = global_hInstance;
-    // wc2.hCursor = LoadCursor(NULL, IDC_ARROW);
-    // wc2.lpszClassName = WALLPAPER_CLASS_NAME;
-    // if (!RegisterClass(&wc2)) { MsgBox("RegisterClass for wallpaper window failed."); return 1; }
+    // register class for wallpaper window if we ever use one
+    WNDCLASS wc2 = {};
+    wc2.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
+    wc2.lpfnWndProc =  DefWindowProc;//WndProc;
+    wc2.hInstance = global_hInstance;
+    wc2.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc2.lpszClassName = WALLPAPER_CLASS_NAME;
+    if (!RegisterClass(&wc2)) { MsgBox("RegisterClass for wallpaper window failed."); return 1; }
 
 
 
