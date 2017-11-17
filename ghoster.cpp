@@ -1164,7 +1164,7 @@ struct menuItem
 };
 
 const int MI_WID = 250;
-const int MI_HEI = 23;
+const int MI_HEI = 21;
 const int MI_HEI_SEP = 10;
 
 //asdf
@@ -1200,7 +1200,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
     int width = MI_WID;
     // int height = MI_HEI * itemCount;
-    int height = 8; // 4 top 4 bottom
+    int height = 8; // 5 top 3 bottom
     for (int i = 0; i < itemCount; i++)
     {
         if (menuItems[i].code == ID_SEP) height += MI_HEI_SEP;
@@ -2556,7 +2556,7 @@ int MouseOverMenuItem(POINT point, menuItem *menu, int count)
 {
     int indexOfClick = 0;
 
-    int currentY = 0;
+    int currentY = 5;
     for (int i = 0; i < count; i++)
     {
         int thisH = MI_HEI;
@@ -2620,7 +2620,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             RECT menu = ps.rcPaint;
 
-            int gutterSize = 30;//GetSystemMetrics(SM_CXMENUCHECK);
+            int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
 
             // SetBkColor(hdc, GetSysColor(COLOR_MENU));
 
@@ -2645,7 +2645,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             SetBkMode(memhdc, TRANSPARENT);
 
-            int currentY = 4;
+            int currentY = 5;
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
             {//asdf
 
@@ -2709,6 +2709,21 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                         DeleteDC    (bitmapDC);
                     }
 
+
+                    // HIGHLIGHT
+                    if (i == selectedItem)
+                    {
+                        RECT hlRect = itemRect;
+                        hlRect.left -= gutterSize;
+                        hlRect.left += 3;
+                        hlRect.right -= 3;
+                        hlRect.top -= 1;
+                        hlRect.bottom += 0;
+
+                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
+                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
+                    }
+
                     // CHECKMARKS
                     if (menuItems[i].checked)  //pointer exists
                     {
@@ -2726,19 +2741,6 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                         }
                     }
 
-                    // HIGHLIGHT
-                    if (i == selectedItem)
-                    {
-                        RECT hlRect = itemRect;
-                        hlRect.left -= gutterSize;
-                        hlRect.left += 3;
-                        hlRect.right -= 3;
-                        hlRect.top -= 2;
-                        hlRect.bottom += 0;
-
-                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
-                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
-                    }
 
                     // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
                     // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
@@ -2757,7 +2759,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
                     // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
                     itemRect.left += 2;
-                    itemRect.top += 3;
+                    itemRect.top += 2;
                     itemRect.left += 5; // more gutter gap
                     DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
                 }
