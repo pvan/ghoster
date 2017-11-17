@@ -2548,6 +2548,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
     }
 
+    // actually i don't think this ever triggers now that we check popupSliderCapture on mouseup
     if (item.value) return;  // don't close if clicking on slider
 
     ClosePopup(hwnd);
@@ -2575,11 +2576,17 @@ int MouseOverMenuItem(POINT point, menuItem *menu, int count)
     return indexOfClick;
 }
 
-double PercentClickedOnSlider(POINT point, RECT winRect)
+double PercentClickedOnSlider(HWND hwnd, POINT point, RECT winRect)
 {
 
     double win_width = winRect.right - winRect.left;
 
+    // // looks like we're actually getting wrap around on this..
+    // // as though a negative int is getting cast as a u16 somewhere
+    // // ah, of course LOWORD() was doing it, switched to GET_X_LPARAM
+    // char buf[123];
+    // sprintf(buf, "%i\n", (int)point.x);
+    // OutputDebugString(buf);
 
     // gross!
     double min = 27; //guttersize
@@ -2594,6 +2601,14 @@ double PercentClickedOnSlider(POINT point, RECT winRect)
     if (result < 0) result = 0;
     if (result > 1.0) result = 1.0;
 
+    // // another idea
+    // POINT TL = {(LONG)min, winRect.top};
+    // POINT BR = {(LONG)max+1, winRect.bottom};
+    // ClientToScreen(hwnd, &TL);
+    // ClientToScreen(hwnd, &BR);
+    // RECT sliderZone = {TL.x, TL.y, BR.x, BR.y};
+    // ClipCursor(&sliderZone);
+
     // char buf[123];
     // sprintf(buf, "%f\n", result);
     // OutputDebugString(buf);
@@ -2601,24 +2616,36 @@ double PercentClickedOnSlider(POINT point, RECT winRect)
     return result;
 }
 
-void updateSlider(HWND hwnd, POINT mouse)
+
+bool popupMouseDown = false;
+double *popupSliderCapture = 0;  // are we dragging a slider? if so don't register mup on other items
+
+// returns pointer to value of slider we clicked on (or are dragging a slider) false otherwise
+double *updateSliders(HWND hwnd, POINT mouse)
 {
     int index = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
-    if (menuItems[index].value)
+    if (menuItems[index].value
+        || popupSliderCapture)  // also update if we're off the slider but dragging it around
     {
+        double *destination_value;
+        if (popupSliderCapture != 0) // feels a bit awkward
+            destination_value = popupSliderCapture;
+        else
+            destination_value = menuItems[index].value;
+
         RECT winRect; GetClientRect(hwnd, &winRect);
         // todo: really need a getMenuItemRect(index)
-        double *destination_value = menuItems[index].value;
-        double result = PercentClickedOnSlider(mouse, winRect);
+        double result = PercentClickedOnSlider(hwnd, mouse, winRect);
         *destination_value = result;
 
         // actually we need to call the official handlers... for now just check each one
         if (destination_value == &global_ghoster.state.opacity)
             setWindowOpacity(global_ghoster.state.window, result);
-    }
-}
 
-bool popupMouseDown = false;
+        return destination_value;
+    }
+    return 0;
+}
 
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2630,12 +2657,12 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_MOUSEMOVE: {
-            // OutputDebugString("MOVE\n");
-            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
+            OutputDebugString("MOVE\n");
+            POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 
             if (popupMouseDown)
             {
-                updateSlider(hwnd, mouse);
+                updateSliders(hwnd, mouse);
             }
 
             selectedItem = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
@@ -2648,17 +2675,27 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
         case WM_LBUTTONDOWN: {
             popupMouseDown = true;
-            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
-            updateSlider(hwnd, mouse);
+            POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            double *slider = updateSliders(hwnd, mouse);
+            if (slider)
+            {
+                SetCapture(hwnd); // sure why not, this way we can get mmove & mup even if off our window
+                popupSliderCapture = slider;
+            }
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
         } break;
 
         case WM_LBUTTONUP: {
             popupMouseDown = false;
-            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
-            int indexOfClick = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
-            onMenuItemClick(hwnd, menuItems[indexOfClick]);
-            RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+            if (!popupSliderCapture)
+            {
+                POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+                int indexOfClick = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
+                onMenuItemClick(hwnd, menuItems[indexOfClick]);
+                RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+            }
+            if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
+            popupSliderCapture = false;
         } break;
 
 
