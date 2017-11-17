@@ -2707,6 +2707,16 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             SetCapture(hwnd);
         } break;
 
+        case WM_RBUTTONDOWN: {
+            // close if we right-click outside the window..
+            POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) < 0)
+            {
+                ClosePopup(hwnd);
+                // i think to match windows we should somehow register this hit wherever it lands
+            }
+        } break;
+
         case WM_LBUTTONDOWN: {
             // OutputDebugString("POPUP MDOWN\n");
             popupMouseDown = true;
@@ -2718,7 +2728,11 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             }
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
 
-            SetCapture(hwnd);
+            // only keep capture if on window
+            if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) > 0)
+            {
+                SetCapture(hwnd);
+            }
         } break;
 
         case WM_LBUTTONUP: {
@@ -2810,6 +2824,21 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 else
                 {
 
+                    // HIGHLIGHT   // draw first to match win 7 native
+                    if (i == selectedItem
+                        && !menuItems[i].value)  // don't HL sliders
+                    {
+                        RECT hlRect = itemRect;
+                        hlRect.left -= gutterSize;
+                        hlRect.left += 3;
+                        hlRect.right -= 3;
+                        hlRect.top -= 1;
+                        hlRect.bottom += 0;
+
+                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
+                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
+                    }
+
                     // BITMAPS
                     if (menuItems[i].hbitmap != 0)
                     {
@@ -2842,21 +2871,6 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                         DeleteDC    (bitmapDC);
                     }
 
-
-                    // HIGHLIGHT
-                    if (i == selectedItem
-                        && !menuItems[i].value)  // don't HL sliders
-                    {
-                        RECT hlRect = itemRect;
-                        hlRect.left -= gutterSize;
-                        hlRect.left += 3;
-                        hlRect.right -= 3;
-                        hlRect.top -= 1;
-                        hlRect.bottom += 0;
-
-                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
-                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
-                    }
 
                     // CHECKMARKS
                     if (menuItems[i].checked)  //pointer exists
