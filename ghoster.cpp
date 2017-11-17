@@ -1066,9 +1066,9 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
         0, 0, 0);
 
 
-    char linbuf[123];
-    sprintf(linbuf, "linesize: %i\n", *outMovie->frame_output->linesize);
-    OutputDebugString(linbuf);
+    // char linbuf[123];
+    // sprintf(linbuf, "linesize: %i\n", *outMovie->frame_output->linesize);
+    // OutputDebugString(linbuf);
 
 
 
@@ -1993,7 +1993,7 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 
 VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
-    OutputDebugString("DELAYED M UP\n");
+    // OutputDebugString("DELAYED M LUP\n");
 
     KillTimer(0, singleClickTimerID);
 
@@ -2009,7 +2009,7 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
 
 void onMouseUpL()
 {
-    OutputDebugString("LUP\n");
+    // OutputDebugString("LUP\n");
 
     global_ghoster.state.mDown = false;
 
@@ -2091,7 +2091,7 @@ void onDoubleClickDownL()
 
 void onMouseDownL(int clientX, int clientY)
 {
-    OutputDebugString("LDOWN\n");
+    // OutputDebugString("LDOWN\n");
 
     // i think we can just ignore if context menu is open
     if (global_ghoster.state.contextMenuOpen)
@@ -2708,7 +2708,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_LBUTTONDOWN: {
-            OutputDebugString("POPUP MDOWN\n");
+            // OutputDebugString("POPUP MDOWN\n");
             popupMouseDown = true;
             POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             double *slider = updateSliders(hwnd, mouse);
@@ -2722,7 +2722,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_LBUTTONUP: {
-            OutputDebugString("POPUP MUP\n");
+            // OutputDebugString("POPUP MUP\n");
             popupMouseDown = false;
             if (!popupSliderCapture)
             {
@@ -2731,7 +2731,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 onMenuItemClick(hwnd, menuItems[indexOfClick]);
                 RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             }
-            if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
+            // if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
             popupSliderCapture = false;
 
             SetCapture(hwnd);
