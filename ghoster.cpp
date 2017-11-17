@@ -17,7 +17,7 @@
 #pragma comment(lib, "UxTheme.lib")
 
 
-#include <Windowsx.h> // SelectFont
+#include <Windowsx.h> // SelectFont, GET_X_LPARAM
 
 
 #include "resource.h"
@@ -378,6 +378,7 @@ struct GhosterWindow
 
     AppState state;
     SoundBuffer ffmpeg_to_sdl_buffer;
+    SoundBuffer volume_adjusted_buffer;
     SDLStuff sdl_stuff;
     RunningMovie loaded_video;
     HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
@@ -514,7 +515,23 @@ struct GhosterWindow
 
                     if (bytes_queued_up > 0)
                     {
-                        if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
+                        // remix to adjust volume
+                        // need a second buffer
+                        memset(volume_adjusted_buffer.data, 0, bytes_queued_up); // make sure we mix with silence
+                        SDL_MixAudioFormat(
+                            volume_adjusted_buffer.data,
+                            ffmpeg_to_sdl_buffer.data,
+                            sdl_stuff.format,
+                            bytes_queued_up,
+                            nearestInt(state.volume * SDL_MIX_MAXVOLUME));
+
+                        // a raw copy would just be max volume
+                        // memcpy(volume_adjusted_buffer.data,
+                        //        ffmpeg_to_sdl_buffer.data,
+                        //        bytes_queued_up);
+
+                        // if (SDL_QueueAudio(sdl_stuff.audio_device, ffmpeg_to_sdl_buffer.data, bytes_queued_up) < 0)
+                        if (SDL_QueueAudio(sdl_stuff.audio_device, volume_adjusted_buffer.data, bytes_queued_up) < 0)
                         {
                             char audioerr[256];
                             sprintf(audioerr, "SDL: Error queueing audio: %s\n", SDL_GetError());
@@ -977,6 +994,7 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff);
 
     SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
+    SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
 
 
 
@@ -2659,7 +2677,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_MOUSEMOVE: {
-            OutputDebugString("MOVE\n");
+            // OutputDebugString("MOVE\n");
             POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
 
             if (popupMouseDown)
@@ -2741,7 +2759,9 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             int currentY = 5;
             for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
-            {//asdf
+            {
+
+                // TODO: omg what a mess
 
                 int thisH = MI_HEI;
                 if (menuItems[i].code == ID_SEP)

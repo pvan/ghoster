@@ -15,6 +15,7 @@ struct SDLStuff
     int desired_bytes_in_sdl_queue;
     SDL_AudioDeviceID audio_device;
     // SDL_AudioSpec spec;
+    SDL_AudioFormat format;
     double estimated_audio_latency_ms;
 };
 
@@ -112,6 +113,8 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
         OutputDebugString(audioerr);
         return false;
     }
+
+    sdl_stuff->format = spec.format;
 
     OutputDebugString("SDL: audio spec wanted:\n");
     logSpec(&wanted_spec);
