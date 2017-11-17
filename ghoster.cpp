@@ -1726,16 +1726,6 @@ void setWallpaperMode(HWND hwnd, bool enable)
     {
         setTopMost(hwnd, false); // todo: test if needed
 
-
-        // // cache our position
-        // // todo: use different variable than fullscreen one?
-        // global_ghoster.state.last_win_pos.length = sizeof(WINDOWPLACEMENT);
-        // if (!GetWindowPlacement(hwnd, &global_ghoster.state.last_win_pos))
-        // {
-        //     MsgBox("Error caching position");
-        // }
-
-
         // wallpaper mode method via
         // https://www.codeproject.com/Articles/856020/Draw-Behind-Desktop-Icons-in-Windows
 
@@ -1760,17 +1750,19 @@ void setWallpaperMode(HWND hwnd, bool enable)
             MsgBox("Unable to find WorkerW!");
         }
 
-        // SetParent(hwnd, progman);
-
-
         // which of these work seems a bit intermittent
         // maybe something we're doing is effecting which one works
-        HWND newParent = global_workerw;
-        // HWND newParent = progman;
+        // right now the known working method is...
+        // -SW_HIDE workerw
+        // -create window
+        // -setparent of window to progman
+
+        // HWND newParent = global_workerw;  // may have to use this in 8+
+        HWND newParent = progman;
 
 
-        // hide it actually
-        ShowWindow(newParent, SW_HIDE);
+        // trick is to hide this or it could intermittently hide our own window
+        ShowWindow(global_workerw, SW_HIDE);
 
 
         // create our new window
@@ -1780,7 +1772,7 @@ void setWallpaperMode(HWND hwnd, bool enable)
         RECT win;
         GetWindowRect(hwnd, &win);
 
-        // might have to move into position first in some cases? maybe if we use global_workerw?
+        // // not sure if these are needed, has worked with and without
         // SetWindowPos(newParent, HWND_BOTTOM, win.left, win.top, win.right-win.left, win.bottom-win.top, 0);
         // ShowWindow(newParent, SW_MAXIMIZE);
 
@@ -1808,7 +1800,7 @@ void setWallpaperMode(HWND hwnd, bool enable)
         SetPixelFormat(hdc, format_index, &pixel_format);
         if (!global_ghoster.state.window) { MsgBox("Couldn't open wallpaper window."); }
 
-        // only needed if we're using the wallpaper window icon in the taskbar
+        // only need this if we're using the new wallpaper window icon in the taskbar
         if (global_ghoster.state.clickThrough)
             SetIcon(global_wallpaper_window, global_icon_w);
         else
@@ -1828,11 +1820,8 @@ void setWallpaperMode(HWND hwnd, bool enable)
     }
     else
     {
-        // SetParent(hwnd, 0);
-
-        // if (global_workerw) CloseWindow(global_workerw);  // doesn't seem to help
-
-        if (global_wallpaper_window) DestroyWindow(global_wallpaper_window);
+        if (global_wallpaper_window)
+            DestroyWindow(global_wallpaper_window);
 
         ShowWindow(hwnd, SW_SHOW);
         // setWindowOpacity(hwnd, global_ghoster.state.opacity);
