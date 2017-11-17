@@ -13,6 +13,7 @@ struct SDLStuff
 {
     bool setup_at_least_once = false;
     int desired_bytes_in_sdl_queue;
+    int bytes_per_second;
     SDL_AudioDeviceID audio_device;
     // SDL_AudioSpec spec;
     SDL_AudioFormat format;
@@ -164,8 +165,15 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 
     // todo: we should be able to adjust seconds desired in queue without messing up our sync
 
-    // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    double desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
-    int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-    sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
+    // // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
+    // double desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
+    // int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
+
+    // actually keep this as small as possible so we can adjust volume responsively
+    // 4096 is about what we get per frame from ffmpeg (how to set?)
+    // todo: make this twice the bytes per frame? (calc/measured from ffmpeg)
+    sdl_stuff->desired_bytes_in_sdl_queue = 4096*2;//desired_samples_in_queue * bytes_per_sample;
+    // double desired_samples_in_queue = (double)sdl_stuff->desired_bytes_in_sdl_queue / (double)bytes_per_sample;
+    sdl_stuff->bytes_per_second = bytes_per_sample * acc->sample_rate;
+    // sdl_stuff->desired_seconds_in_queue = (double)desired_samples_in_queue / (double)acc->sample_rate;
 }

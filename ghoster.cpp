@@ -538,8 +538,8 @@ struct GhosterWindow
                             OutputDebugString(audioerr);
                         }
                            // char msg2[256];
-                           // sprintf(msg2, "bytes_queued_up: %i  seconds: %.1f\n", bytes_queued_up,
-                           //         (double)bytes_queued_up / (double)sdl_stuff.desired_bytes_in_sdl_queue);
+                           // sprintf(msg2, "bytes_queued_up: %i  seconds: %.3f\n", bytes_queued_up,
+                           //         (double)bytes_queued_up / (double)sdl_stuff.bytes_per_second);
                            // OutputDebugString(msg2);
                     }
                 }
@@ -552,10 +552,9 @@ struct GhosterWindow
 
 
                 int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
-                double bytes_per_second = sdl_stuff.desired_bytes_in_sdl_queue / 1.0; // 1 second in queue at the moment
-                double seconds_left_in_queue = (double)bytes_left / bytes_per_second;
+                double seconds_left_in_queue = (double)bytes_left / (double)sdl_stuff.bytes_per_second;
                     // char secquebuf[123];
-                    // sprintf(secquebuf, "seconds_left_in_queue: %.1f\n", seconds_left_in_queue);
+                    // sprintf(secquebuf, "seconds_left_in_queue: %.3f\n", seconds_left_in_queue);
                     // OutputDebugString(secquebuf);
 
                 timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
@@ -627,10 +626,10 @@ struct GhosterWindow
                 double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
                 double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
 
-                // char ptsbuf[123];
-                // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-                //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-                // OutputDebugString(ptsbuf);
+                char ptsbuf[123];
+                sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+                        vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+                OutputDebugString(ptsbuf);
 
             }
         }
@@ -1629,41 +1628,6 @@ void setWindowOpacity(HWND hwnd, double opacity)
 void setVolume(double volume)
 {
     global_ghoster.state.volume = volume;
-
-    // todo: check if change before remixing all samples
-
-    // here we basically pull all the data we already sent to sdl,
-    // remix it to a different volume
-    // then send it back to sdl
-
-    int bytes = SDL_GetQueuedAudioSize(global_ghoster.sdl_stuff.audio_device);
-
-    u8 *data = (u8*)malloc(bytes);
-    SDL_DequeueAudio(global_ghoster.sdl_stuff.audio_device, (void*)data, bytes);
-
-    u8 *mixed_data = (u8*)malloc(bytes);
-    memset(mixed_data, 0, bytes); // make sure we mix with silence
-    SDL_MixAudioFormat(
-        mixed_data,
-        data,
-        global_ghoster.sdl_stuff.format,
-        bytes,
-        nearestInt(volume * SDL_MIX_MAXVOLUME));
-
-    // a raw copy would just be max volume
-    // memcpy(volume_adjusted_buffer.data,
-    //        ffmpeg_to_sdl_buffer.data,
-    //        bytes_queued_up);
-
-    if (SDL_QueueAudio(global_ghoster.sdl_stuff.audio_device, mixed_data, bytes) < 0)
-    {
-        char audioerr[256];
-        sprintf(audioerr, "SDL: Error queueing audio in setVolume: %s\n", SDL_GetError());
-        OutputDebugString(audioerr);
-    }
-
-    free(data);
-    free(mixed_data);
 }
 
 void setGhostMode(HWND hwnd, bool enable)
