@@ -438,7 +438,6 @@ struct GhosterWindow
         double percent;
 
 
-        // feels a bit clunky.. maybe have is_playing flag somewhere?
         if (state.bufferingOrLoading)
         {
             appPause();
@@ -2756,12 +2755,15 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                     // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
                     // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
 
+                    // little override for play/pause
+                    WCHAR *display = menuItems[i].string;
+                    if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
 
                     // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
                     itemRect.left += 2;
                     itemRect.top += 2;
                     itemRect.left += 5; // more gutter gap
-                    DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, (WCHAR*)menuItems[i].string, -1, 0, 0, &itemRect);
+                    DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
                 }
 
             }
