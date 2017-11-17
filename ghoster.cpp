@@ -1159,6 +1159,7 @@ struct menuItem
     int code;
     WCHAR *string;
     bool *checked;
+    double *value;
     HBITMAP *hbitmap;
 };
 
@@ -1169,26 +1170,26 @@ const int MI_HEI_SEP = 10;
 //asdf
 menuItem menuItems[] =
 {
-    {ID_PAUSE        , L"Play"                        , 0                                    , 0                 },
-    {ID_FULLSCREEN   , L"Fullscreen"                  , &global_ghoster.state.fullscreen     , 0                 },
-    {ID_REPEAT       , L"Repeat"                      , &global_ghoster.state.repeat         , 0                 },
-    {ID_VOLUME       , L"Volume"                      , 0                                    , 0                 },
-    {ID_SEP          , L""                            , 0                                    , 0                 },
-    {ID_PASTE        , L"Paste Clipboard URL"         , 0                                    , 0                 },
-    {ID_PASTE        , L"Copy URL To Clipboard"       , 0                                    , 0                 },
-    {ID_SEP          , L""                            , 0                                    , 0                 },
-    {ID_RESET_RES    , L"Resize To Native Resolution" , 0                                    , 0                 },
-    {ID_ASPECT       , L"Lock Aspect Ratio"           , &global_ghoster.state.lock_aspect    , 0                 },
-    {ID_SNAPPING     , L"Snap To Edges"               , &global_ghoster.state.enableSnapping , 0                 },
-    {ID_SEP          , L""                            , 0                                    , 0                 },
-    {ID_SET_R        , L"Choose Icon"                 , 0                                    , &global_bitmap_r1 },
-    {ID_SEP          , L""                            , 0                                    , 0                 },
-    {ID_TOPMOST      , L"Always On Top"               , &global_ghoster.state.topMost        , 0                 },
-    {ID_CLICKTHRU    , L"Ghost Mode (Click-Through)"  , &global_ghoster.state.clickThrough   , 0                 },
-    {ID_WALLPAPER    , L"Wallpaper Mode"              , &global_ghoster.state.wallpaperMode  , 0                 },
-    {ID_TRANSPARENCY , L"Toggle Transparency"         , &global_ghoster.state.transparent    , 0                 },
-    {ID_SEP          , L""                            , 0                                    , 0                 },
-    {ID_EXIT         , L"Exit"                        , 0                                    , 0                 },
+    {ID_PAUSE        , L"Play"                        , 0                                       , 0 , 0                 },
+    {ID_FULLSCREEN   , L"Fullscreen"                  , &global_ghoster.state.fullscreen        , 0 , 0                 },
+    {ID_REPEAT       , L"Repeat"                      , &global_ghoster.state.repeat            , 0 , 0                 },
+    {ID_VOLUME       , L"Volume"                      , 0,        &global_ghoster.state.opacity     , 0                 },
+    {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
+    {ID_PASTE        , L"Paste Clipboard URL"         , 0                                       , 0 , 0                 },
+    {ID_PASTE        , L"Copy URL To Clipboard"       , 0                                       , 0 , 0                 },
+    {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
+    {ID_RESET_RES    , L"Resize To Native Resolution" , 0                                       , 0 , 0                 },
+    {ID_ASPECT       , L"Lock Aspect Ratio"           , &global_ghoster.state.lock_aspect       , 0 , 0                 },
+    {ID_SNAPPING     , L"Snap To Edges"               , &global_ghoster.state.enableSnapping    , 0 , 0                 },
+    {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
+    {ID_SET_R        , L"Choose Icon"                 , 0                                       , 0 , &global_bitmap_r1 },
+    {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
+    {ID_TOPMOST      , L"Always On Top"               , &global_ghoster.state.topMost           , 0 , 0                 },
+    {ID_CLICKTHRU    , L"Ghost Mode (Click-Through)"  , &global_ghoster.state.clickThrough      , 0 , 0                 },
+    {ID_WALLPAPER    , L"Wallpaper Mode"              , &global_ghoster.state.wallpaperMode     , 0 , 0                 },
+    {ID_TRANSPARENCY , L"Toggle Transparency"         , &global_ghoster.state.transparent       , 0 , 0                 },
+    {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
+    {ID_EXIT         , L"Exit"                        , 0                                       , 0 , 0                 },
 };
 
 
@@ -2464,9 +2465,9 @@ void ClosePopup(HWND hwnd)
     // global_ghoster.state.menuCloseTimer.Start();
 }
 
-void onMenuItemClick(HWND hwnd, int code)
+void onMenuItemClick(HWND hwnd, menuItem item)
 {
-    switch (code)
+    switch (item.code)
     {
         case ID_VOLUME:
             break;
@@ -2546,6 +2547,9 @@ void onMenuItemClick(HWND hwnd, int code)
             return; // don't close popup
             break;
     }
+
+    if (item.value) return;  // don't close if clicking on slider
+
     ClosePopup(hwnd);
 }
 
@@ -2571,6 +2575,51 @@ int MouseOverMenuItem(POINT point, menuItem *menu, int count)
     return indexOfClick;
 }
 
+double PercentClickedOnSlider(POINT point, RECT winRect)
+{
+
+    double win_width = winRect.right - winRect.left;
+
+
+    // gross!
+    double min = 27; //guttersize
+    min += 3; // "highlight"
+    min += 5; // shrink for slider
+    double max = win_width;
+    max -= 3;
+    max -= (27+5);
+
+    double result = (point.x - min) / (max-min);
+
+    if (result < 0) result = 0;
+    if (result > 1.0) result = 1.0;
+
+    // char buf[123];
+    // sprintf(buf, "%f\n", result);
+    // OutputDebugString(buf);
+
+    return result;
+}
+
+void updateSlider(HWND hwnd, POINT mouse)
+{
+    int index = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
+    if (menuItems[index].value)
+    {
+        RECT winRect; GetClientRect(hwnd, &winRect);
+        // todo: really need a getMenuItemRect(index)
+        double *destination_value = menuItems[index].value;
+        double result = PercentClickedOnSlider(mouse, winRect);
+        *destination_value = result;
+
+        // actually we need to call the official handlers... for now just check each one
+        if (destination_value == &global_ghoster.state.opacity)
+            setWindowOpacity(global_ghoster.state.window, result);
+    }
+}
+
+bool popupMouseDown = false;
+
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
@@ -2583,28 +2632,42 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         case WM_MOUSEMOVE: {
             // OutputDebugString("MOVE\n");
             POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
+
+            if (popupMouseDown)
+            {
+                updateSlider(hwnd, mouse);
+            }
+
             selectedItem = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
 
-            RECT winRect; GetWindowRect(hwnd, &winRect);
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             // InvalidateRect(hwnd, NULL, NULL);
             // UpdateWindow(hwnd);
             // return false;
         } break;
 
-        case WM_LBUTTONUP: {
+        case WM_LBUTTONDOWN: {
+            popupMouseDown = true;
             POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
-            int indexOfClick = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
-            onMenuItemClick(hwnd, menuItems[indexOfClick].code);
+            updateSlider(hwnd, mouse);
+            RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
         } break;
 
-        // doesn't help with flicker
-        // case WM_ERASEBKGND: {
-        //     return true; // don't erase
-        // } break;
+        case WM_LBUTTONUP: {
+            popupMouseDown = false;
+            POINT mouse = { LOWORD(lParam), HIWORD(lParam) };
+            int indexOfClick = MouseOverMenuItem(mouse, menuItems, sizeof(menuItems) / sizeof(menuItem));
+            onMenuItemClick(hwnd, menuItems[indexOfClick]);
+            RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+        } break;
+
 
         case WM_PAINT: {
             // OutputDebugString("PAINT\n");
+
+            // TODO: cleanup the magic numbers in this paint handling
+            // todo: support other windows styles? hrm
+
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hwnd, &ps);
 
@@ -2620,13 +2683,6 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             RECT menu = ps.rcPaint;
 
             int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
-
-            // SetBkColor(hdc, GetSysColor(COLOR_MENU));
-
-            // FillRect(hdc, &ps.rcPaint, (HBRUSH) (COLOR_WINDOW+1));
-            // FillRect(hdc, &ps.rcPaint, GetSysColorBrush(COLOR_MENUBAR));
-            // FillRect(hdc, &menu, CreateSolidBrush(0xE6D8AD));
-
 
 
             HTHEME theme = OpenThemeData(hwnd, L"MENU");
@@ -2710,7 +2766,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 
                     // HIGHLIGHT
-                    if (i == selectedItem)
+                    if (i == selectedItem
+                        && !menuItems[i].value)  // don't HL sliders
                     {
                         RECT hlRect = itemRect;
                         hlRect.left -= gutterSize;
@@ -2741,29 +2798,73 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                     }
 
 
-                    // SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
-                    // SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
-                    // Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
+                    // SLIDERS
+                    if (menuItems[i].value)  //pointer exists
+                    {
+                        RECT bedRect = itemRect;
 
-                    // SetBkMode(lpdis->hDC, TRANSPARENT);
+                        // like highlight
+                        bedRect.left += 3;
+                        bedRect.right -= 3;
+                        bedRect.top -= 1;
+                        bedRect.bottom += 0;
 
-                    // SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
-                    // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-                    // Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
+                        // shrink for slider
+                        bedRect.left += 5;
+                        bedRect.right -= (gutterSize+5);
+                        bedRect.top += 2;
+                        bedRect.bottom -= 0;
 
-                    // SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
-                    // SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-                    // Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
 
-                    // little override for play/pause
-                    WCHAR *display = menuItems[i].string;
-                    if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
+                        RECT blueRect = bedRect;
 
-                    // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
-                    itemRect.left += 2;
-                    itemRect.top += 2;
-                    itemRect.left += 5; // more gutter gap
-                    DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
+                        // make a "track" / recessed
+                        blueRect.top++;
+                        blueRect.left++;
+                        blueRect.bottom++;
+                        blueRect.right++;
+
+                        RECT grayRect = blueRect;
+                        grayRect.left--; // scoot up against end of blue
+
+                        double percent = *(menuItems[i].value); // i guess we assume a value of 0-1 for now
+                        int bedWidth = blueRect.right - blueRect.left;  // use "inside" of track to calc percent (does it matter?)
+                        blueRect.right = blueRect.left + nearestInt(bedWidth * percent);
+                        grayRect.left = grayRect.left + nearestInt(bedWidth * percent);
+
+                        if (grayRect.left < bedRect.left+1) grayRect.left = bedRect.left+1;  // don't draw to the left
+
+
+                        SelectObject(memhdc, CreatePen(PS_SOLID, 1, 0x888888));
+                        SelectObject(memhdc, GetStockObject(HOLLOW_BRUSH));
+                        Rectangle(memhdc, bedRect.left, bedRect.top, bedRect.right, bedRect.bottom);
+
+                        SelectObject(memhdc, CreateSolidBrush(0xE6D8AD));
+                        SelectObject(memhdc, GetStockObject(NULL_PEN));
+                        Rectangle(memhdc, blueRect.left, blueRect.top, blueRect.right, blueRect.bottom);
+
+                        SelectObject(memhdc,  CreateSolidBrush(0xe0e0e0));
+                        SelectObject(memhdc, GetStockObject(NULL_PEN));
+                        Rectangle(memhdc, grayRect.left, grayRect.top, grayRect.right, grayRect.bottom);
+
+                        WCHAR display[64];
+                        swprintf(display, L"%s %i", menuItems[i].string, nearestInt(percent*100.0));
+                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1,
+                                      DT_CENTER|DT_VCENTER|DT_SINGLELINE, 0, &bedRect);
+
+                    }
+                    else
+                    {
+                        // little override for play/pause
+                        WCHAR *display = menuItems[i].string;
+                        if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
+
+                        // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
+                        itemRect.left += 2;
+                        itemRect.top += 2;
+                        itemRect.left += 5; // more gutter gap
+                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
+                    }
                 }
 
             }
