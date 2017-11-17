@@ -1755,73 +1755,75 @@ void setWallpaperMode(HWND hwnd, bool enable)
 
         EnumWindows(EnumWindowsProc, 0);
 
-        if (global_workerw)
+        if (!global_workerw)
         {
-
-            // SetParent(hwnd, progman);
-
-
-            // method to draw on desktop depends on windows version?
-            HWND newParent = global_workerw; // guessing this will maybe work on 8+
-            if (bool win7 = true)
-            {
-                newParent = progman;
-            }
-
-
-
-            // create our new window
-            // we need a new window so we can discard it when we're done with wallpaper mode
-            // trying to salvage a window after setparent seems to cause a number of issues
-
-            RECT win;
-            GetWindowRect(hwnd, &win);
-
-            // might have to move into position first in some cases? maybe if we use global_workerw?
-            // SetWindowPos(newParent, HWND_BOTTOM, win.left, win.top, win.right-win.left, win.bottom-win.top, 0);
-            // ShowWindow(newParent, SW_MAXIMIZE);
-
-            global_wallpaper_window = CreateWindowEx(
-                0,
-                // WS_EX_TOOLWINDOW, // don't show taskbar
-                WALLPAPER_CLASS_NAME, "ghoster video player wallpaper",
-                WS_POPUP | WS_VISIBLE,
-                win.left, win.top,
-                win.right - win.left,
-                win.bottom - win.top,
-                0,
-                0, global_hInstance, 0);
-
-            // set dc format to be same as our main dc
-            HDC hdc = GetDC(global_wallpaper_window);
-            PIXELFORMATDESCRIPTOR pixel_format = {};
-            pixel_format.nSize = sizeof(pixel_format);
-            pixel_format.nVersion = 1;
-            pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-            pixel_format.iPixelType = PFD_TYPE_RGBA;
-            pixel_format.cColorBits = 32;
-            pixel_format.cAlphaBits = 8;
-            int format_index = ChoosePixelFormat(hdc, &pixel_format);
-            SetPixelFormat(hdc, format_index, &pixel_format);
-            if (!global_ghoster.state.window) { MsgBox("Couldn't open wallpaper window."); }
-
-            // only needed if we're using the wallpaper window icon in the taskbar
-            if (global_ghoster.state.clickThrough)
-                SetIcon(global_wallpaper_window, global_icon_w);
-            else
-                SetIcon(global_wallpaper_window, global_ghoster.icon);
-
-
-            // only seems to work when setting after window has been created
-            SetParent(global_wallpaper_window, newParent);
-
-
-            // actually this method seems to work pretty well...
-            ShowWindow(hwnd, SW_HIDE);
-            // with this method, not sure how to prevent main window from showing when clicking on sys tray icon
-            // SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);  // make invisible
-            // setClickThrough(hwnd, true);
+            MsgBox("Unable to find WorkerW!");
         }
+
+        // SetParent(hwnd, progman);
+
+
+        // which of these work seems a bit intermittent
+        // maybe something we're doing is effecting which one works
+        HWND newParent = global_workerw;
+        // HWND newParent = progman;
+
+
+        // hide it actually
+        ShowWindow(newParent, SW_HIDE);
+
+
+        // create our new window
+        // we need a new window so we can discard it when we're done with wallpaper mode
+        // trying to salvage a window after setparent seems to cause a number of issues
+
+        RECT win;
+        GetWindowRect(hwnd, &win);
+
+        // might have to move into position first in some cases? maybe if we use global_workerw?
+        // SetWindowPos(newParent, HWND_BOTTOM, win.left, win.top, win.right-win.left, win.bottom-win.top, 0);
+        // ShowWindow(newParent, SW_MAXIMIZE);
+
+        global_wallpaper_window = CreateWindowEx(
+            0,
+            // WS_EX_TOOLWINDOW, // don't show taskbar
+            WALLPAPER_CLASS_NAME, "ghoster video player wallpaper",
+            WS_POPUP | WS_VISIBLE,
+            win.left, win.top,
+            win.right - win.left,
+            win.bottom - win.top,
+            0,
+            0, global_hInstance, 0);
+
+        // set dc format to be same as our main dc
+        HDC hdc = GetDC(global_wallpaper_window);
+        PIXELFORMATDESCRIPTOR pixel_format = {};
+        pixel_format.nSize = sizeof(pixel_format);
+        pixel_format.nVersion = 1;
+        pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+        pixel_format.iPixelType = PFD_TYPE_RGBA;
+        pixel_format.cColorBits = 32;
+        pixel_format.cAlphaBits = 8;
+        int format_index = ChoosePixelFormat(hdc, &pixel_format);
+        SetPixelFormat(hdc, format_index, &pixel_format);
+        if (!global_ghoster.state.window) { MsgBox("Couldn't open wallpaper window."); }
+
+        // only needed if we're using the wallpaper window icon in the taskbar
+        if (global_ghoster.state.clickThrough)
+            SetIcon(global_wallpaper_window, global_icon_w);
+        else
+            SetIcon(global_wallpaper_window, global_ghoster.icon);
+
+
+        // only seems to work when setting after window has been created
+        SetParent(global_wallpaper_window, newParent);
+
+
+        // actually this method seems to work pretty well...
+        ShowWindow(hwnd, SW_HIDE);
+        // with this method, not sure how to prevent main window from showing when clicking on sys tray icon
+        // SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);  // make invisible
+        // setClickThrough(hwnd, true);
 
     }
     else
