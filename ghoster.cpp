@@ -37,6 +37,8 @@
 #define i64 int64_t
 
 
+const bool DEBUG_MCLICK_MSGS = true;
+
 
 HWND global_workerw;
 HWND global_wallpaper_window;
@@ -46,6 +48,7 @@ const char *POPUP_CLASS_NAME = "ghoster popup window class";
 const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
 HINSTANCE global_hInstance;
 
+bool global_awkward_next_mup_was_closing_menu = false;
 
 HWND global_popup_window;
 HWND global_icon_menu_window;
@@ -1292,9 +1295,9 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     if (!global_popup_window) { MsgBox("Failed to create popup window."); }
 
 
+    // // try this
+    // SetCapture(global_popup_window);
 
-    // try this
-    // SetCapture(newPopup);
 
     return;
 
@@ -2029,7 +2032,7 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
 
 VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
-    // OutputDebugString("DELAYED M LUP\n");
+    if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
 
     KillTimer(0, singleClickTimerID);
 
@@ -2045,9 +2048,12 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
 
 void onMouseUpL()
 {
-    // OutputDebugString("LUP\n");
+    if (DEBUG_MCLICK_MSGS) OutputDebugString("LUP\n");
 
     global_ghoster.state.mDown = false;
+
+    if (global_awkward_next_mup_was_closing_menu)
+        return;
 
     if (global_ghoster.state.mouseHasMovedSinceDownL)
     {
@@ -2106,7 +2112,7 @@ void onMouseUpL()
 
 void onDoubleClickDownL()
 {
-    // OutputDebugString("LDOUBLECLICK\n");
+    OutputDebugString("LDOUBLECLICK\n");
 
     if (clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
     {
@@ -3130,7 +3136,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_LBUTTONDOWN: {
-            // OutputDebugString("POPUP MDOWN\n");
+            if (DEBUG_MCLICK_MSGS) OutputDebugString("POPUP MDOWN\n");
             SetCapture(hwnd); // this seems ok
 
             popupMouseDown = true;
@@ -3156,7 +3162,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         } break;
 
         case WM_LBUTTONUP: {
-            // OutputDebugString("POPUP MUP\n");
+            if (DEBUG_MCLICK_MSGS) OutputDebugString("POPUP MUP\n");
             popupMouseDown = false;
             if (!popupSliderCapture)
             {
@@ -3203,6 +3209,10 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
         GetWindowRect(global_icon_menu_window, &submenuRect);
         if (!PtInRect(&popupRect, point) && !PtInRect(&submenuRect, point))
         {
+            if (global_ghoster.state.contextMenuOpen)
+            {
+                global_awkward_next_mup_was_closing_menu = true;
+            }
             HideSubMenu();
             ClosePopup(global_popup_window);
         }
