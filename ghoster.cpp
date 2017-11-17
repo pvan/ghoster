@@ -1224,6 +1224,7 @@ menuItem menuItems[] =
 };
 
 
+HWND global_popup_window;
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
@@ -1259,7 +1260,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     SetForegroundWindow(hwnd);
 
 
-    HWND newPopup = CreateWindowEx(
+    global_popup_window = CreateWindowEx(
         WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
         POPUP_CLASS_NAME,
         "ghoster popup menu",
@@ -1270,7 +1271,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
         global_hInstance,
         0);
 
-    if (!newPopup) { MsgBox("Failed to create popup window."); }
+    if (!global_popup_window) { MsgBox("Failed to create popup window."); }
 
 
 
@@ -2936,6 +2937,21 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
 
 static int subMenuSelectedItem;
 
+static bool global_is_submenu_shown = false;
+void ShowSubMenu(int posX, int posY, int wid, int hei)
+{
+    global_is_submenu_shown = true;
+    SetWindowPos(
+        global_icon_menu_window,
+        0, posX, posY, wid, hei, 0);
+    ShowWindow(global_icon_menu_window, SW_SHOW);
+}
+void HideSubMenu()
+{
+    global_is_submenu_shown = false;
+    ShowWindow(global_icon_menu_window, SW_HIDE);
+}
+
 // hmm feels like this is getting out of hand?
 LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2958,16 +2974,23 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
         } break;
 
+
+        case WM_LBUTTONDOWN: {
+            SetCapture(hwnd); // this seems ok
+        } break;
+
         case WM_LBUTTONUP: {
             // if (!popupSliderCapture)
             // {
                 POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
                 int indexOfClick = MouseOverMenuItem(mouse, hwnd, menu, menuCount);
                 onMenuItemClick(hwnd, menu[indexOfClick]);
-                ShowWindow(hwnd, SW_HIDE);
+                HideSubMenu();
+                ClosePopup(global_popup_window); // close main menu, not this submenu!
                 // RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             // }
             popupMouseDown = false;
+            ReleaseCapture(); // undo capture in WM_LBUTTONDOWN
         } break;
 
         case WM_PAINT: {
@@ -2978,20 +3001,6 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-bool global_is_submenu_shown = false;
-void ShowSubMenu(int posX, int posY, int wid, int hei)
-{
-    global_is_submenu_shown = true;
-    SetWindowPos(
-        global_icon_menu_window,
-        0, posX, posY, wid, hei, 0);
-    ShowWindow(global_icon_menu_window, SW_SHOW);
-}
-void HideSubMenu()
-{
-    global_is_submenu_shown = false;
-    ShowWindow(global_icon_menu_window, SW_HIDE);
-}
 
 void onLoseFocus(HWND hwnd)
 {
@@ -3076,6 +3085,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
         case WM_LBUTTONDOWN: {
             // OutputDebugString("POPUP MDOWN\n");
+            SetCapture(hwnd); // this seems ok
+
             popupMouseDown = true;
             POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             double *slider = updateSliders(hwnd, mouse);
@@ -3113,6 +3124,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
             popupSliderCapture = false;
 
+            ReleaseCapture(); // undo capture in WM_LBUTTONDOWN
             // SetCapture(hwnd);
         } break;
 
@@ -3174,7 +3186,7 @@ int CALLBACK WinMain(
     wc4.lpszClassName = ICONMENU_CLASS_NAME;
     if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 1; }
 
-    global_icon_menu_window = CreateWindowEx(  //asdf
+    global_icon_menu_window = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         wc4.lpszClassName, "ghoster video player",
         WS_POPUP,
