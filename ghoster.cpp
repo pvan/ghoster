@@ -39,6 +39,8 @@
 
 const bool DEBUG_MCLICK_MSGS = true;
 
+const bool FORCE_NON_ZERO_OPACITY = false;
+
 
 HWND global_workerw;
 HWND global_wallpaper_window;
@@ -1663,6 +1665,11 @@ void setWindowOpacity(HWND hwnd, double opacity)
 {
     if (global_ghoster.state.clickThrough && opacity > GHOST_MODE_MAX_OPACITY)
         opacity = GHOST_MODE_MAX_OPACITY;
+    if (FORCE_NON_ZERO_OPACITY)
+    {
+        if (opacity < 0.01) // if we become completely invisible, we'll lose clicks
+            opacity = 0.01;
+    }
     global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.state.window, 0, 255.0*opacity, LWA_ALPHA);
 }
