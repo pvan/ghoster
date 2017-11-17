@@ -196,6 +196,8 @@ struct AppState {
     double last_opacity;
     bool had_to_cache_opacity = false;
 
+    double volume = 1.0;
+
     bool fullscreen = false;
     WINDOWPLACEMENT last_win_pos;
 
@@ -1166,13 +1168,13 @@ const int MI_WID = 250;
 const int MI_HEI = 21;
 const int MI_HEI_SEP = 10;
 
-//asdf
+// todo: how to clean this up
 menuItem menuItems[] =
 {
     {ID_PAUSE        , L"Play"                        , 0                                       , 0 , 0                 },
     {ID_FULLSCREEN   , L"Fullscreen"                  , &global_ghoster.state.fullscreen        , 0 , 0                 },
     {ID_REPEAT       , L"Repeat"                      , &global_ghoster.state.repeat            , 0 , 0                 },
-    {ID_VOLUME       , L"Volume"                      , 0,        &global_ghoster.state.opacity     , 0                 },
+    {ID_VOLUME       , L"Volume"                      , 0,        &global_ghoster.state.volume      , 0                 },
     {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
     {ID_PASTE        , L"Paste Clipboard URL"         , 0                                       , 0 , 0                 },
     {ID_PASTE        , L"Copy URL To Clipboard"       , 0                                       , 0 , 0                 },
@@ -1184,9 +1186,10 @@ menuItem menuItems[] =
     {ID_SET_R        , L"Choose Icon"                 , 0                                       , 0 , &global_bitmap_r1 },
     {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
     {ID_TOPMOST      , L"Always On Top"               , &global_ghoster.state.topMost           , 0 , 0                 },
-    {ID_CLICKTHRU    , L"Ghost Mode (Click-Through)"  , &global_ghoster.state.clickThrough      , 0 , 0                 },
+    {ID_CLICKTHRU    , L"Ghost Mode (Cannot Be Clicked)"  , &global_ghoster.state.clickThrough      , 0 , 0                 },
     {ID_WALLPAPER    , L"Wallpaper Mode"              , &global_ghoster.state.wallpaperMode     , 0 , 0                 },
-    {ID_TRANSPARENCY , L"Toggle Transparency"         , &global_ghoster.state.transparent       , 0 , 0                 },
+ // {ID_TRANSPARENCY , L"Toggle Transparency"         , &global_ghoster.state.transparent       , 0 , 0                 },
+    {ID_TRANSPARENCY , L"Opacity"                     , 0,        &global_ghoster.state.opacity     , 0                 },
     {ID_SEP          , L""                            , 0                                       , 0 , 0                 },
     {ID_EXIT         , L"Exit"                        , 0                                       , 0 , 0                 },
 };
