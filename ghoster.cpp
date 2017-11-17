@@ -46,7 +46,12 @@ const char *POPUP_CLASS_NAME = "ghoster popup window class";
 const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
 HINSTANCE global_hInstance;
 
+
+HWND global_popup_window;
 HWND global_icon_menu_window;
+static int selectedItem = -1;
+static int subMenuSelectedItem = -1;
+static bool global_is_submenu_shown = false;
 
 
 UINT singleClickTimerID;
@@ -437,6 +442,18 @@ struct GhosterWindow
             state.mDown = false;
             state.mouseHasMovedSinceDownL = false;
             state.clickingOnProgressBar = false;
+        }
+
+        // awkward way to detect if mouse leaves the menu (and hide highlighting)
+        GetWindowRect(global_icon_menu_window, &winRect);
+        if (!PtInRect(&winRect, mPos)) {
+            subMenuSelectedItem = -1;
+            RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+        }
+        GetWindowRect(global_popup_window, &winRect);
+        if (!PtInRect(&winRect, mPos)) {
+            selectedItem = -1;
+            RedrawWindow(global_popup_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
         }
 
 
@@ -1224,7 +1241,6 @@ menuItem menuItems[] =
 };
 
 
-HWND global_popup_window;
 
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
@@ -2600,7 +2616,6 @@ void onMenuItemClick(HWND hwnd, menuItem item)
     //     ShowWindow(hwnd, SW_HIDE);
 }
 
-static int selectedItem = -1;
 
 int MouseOverMenuItem(POINT point, HWND hwnd, menuItem *menu, int count)
 {
@@ -2935,9 +2950,6 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
     EndPaint(hwnd, &ps);
 }
 
-static int subMenuSelectedItem;
-
-static bool global_is_submenu_shown = false;
 void ShowSubMenu(int posX, int posY, int wid, int hei)
 {
     global_is_submenu_shown = true;
