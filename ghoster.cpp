@@ -1204,6 +1204,7 @@ struct menuItem
 };
 
 const int MI_WID = 250;
+const int SMI_WID = 100;
 const int MI_HEI = 21;
 const int MI_HEI_SEP = 10;
 
@@ -2805,6 +2806,12 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
                 hlRect.top -= 1;
                 hlRect.bottom += 0;
 
+                // todo: submenu width is hardcoded for now
+                if (menu == iconMenuItems)
+                {
+                    hlRect.right -= (MI_WID-SMI_WID);
+                }
+
                 // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
                 DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
             }
@@ -3071,10 +3078,10 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // calc submenu pos
             // do inside ShowSubMenu() ?
             RECT winRect; GetWindowRect(hwnd, &winRect);
-            int menuItemPos = 220;  // need a getmenuitemrect
+            int menuItemPos = 220;  // todo: need a getmenuitemrect
             int posX = winRect.right - 7;  // they overlap a bit
             int posY = winRect.top + menuItemPos;
-            int wid = 100;
+            int wid = SMI_WID;
             int hei = MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)) + 8;
 
             // lock submenu to monitor
