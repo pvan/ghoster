@@ -1626,6 +1626,45 @@ void setWindowOpacity(HWND hwnd, double opacity)
     global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.state.window, 0, 255.0*opacity, LWA_ALPHA);
 }
+void setVolume(double volume)
+{
+    global_ghoster.state.volume = volume;
+
+    // todo: check if change before remixing all samples
+
+    // here we basically pull all the data we already sent to sdl,
+    // remix it to a different volume
+    // then send it back to sdl
+
+    int bytes = SDL_GetQueuedAudioSize(global_ghoster.sdl_stuff.audio_device);
+
+    u8 *data = (u8*)malloc(bytes);
+    SDL_DequeueAudio(global_ghoster.sdl_stuff.audio_device, (void*)data, bytes);
+
+    u8 *mixed_data = (u8*)malloc(bytes);
+    memset(mixed_data, 0, bytes); // make sure we mix with silence
+    SDL_MixAudioFormat(
+        mixed_data,
+        data,
+        global_ghoster.sdl_stuff.format,
+        bytes,
+        nearestInt(volume * SDL_MIX_MAXVOLUME));
+
+    // a raw copy would just be max volume
+    // memcpy(volume_adjusted_buffer.data,
+    //        ffmpeg_to_sdl_buffer.data,
+    //        bytes_queued_up);
+
+    if (SDL_QueueAudio(global_ghoster.sdl_stuff.audio_device, mixed_data, bytes) < 0)
+    {
+        char audioerr[256];
+        sprintf(audioerr, "SDL: Error queueing audio in setVolume: %s\n", SDL_GetError());
+        OutputDebugString(audioerr);
+    }
+
+    free(data);
+    free(mixed_data);
+}
 
 void setGhostMode(HWND hwnd, bool enable)
 {
@@ -2661,6 +2700,8 @@ double *updateSliders(HWND hwnd, POINT mouse)
         // actually we need to call the official handlers... for now just check each one
         if (destination_value == &global_ghoster.state.opacity)
             setWindowOpacity(global_ghoster.state.window, result);
+        if (destination_value == &global_ghoster.state.volume)
+            setVolume(result);
 
         return destination_value;
     }

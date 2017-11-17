@@ -162,8 +162,10 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     // right place for this or better place??
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
 
+    // todo: we should be able to adjust seconds desired in queue without messing up our sync
+
     // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    int desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
+    double desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
     int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
     sdl_stuff->desired_bytes_in_sdl_queue = desired_samples_in_queue * bytes_per_sample;
 }
