@@ -2581,15 +2581,18 @@ void onMenuItemClick(HWND hwnd, menuItem item)
         case ID_WALLPAPER:
             setWallpaperMode(global_ghoster.state.window, !global_ghoster.state.wallpaperMode);
             break;
-        case ID_SEP:
-            return; // don't close popup
-            break;
+        // case ID_SEP:
+        //     return; // don't close popup
+        //     break;
     }
 
     // actually i don't think this ever triggers now that we check popupSliderCapture on mouseup
     if (item.value) return;  // don't close if clicking on slider
 
-    ClosePopup(hwnd);
+    // if (closeDontHide)
+        // ClosePopup(hwnd);
+    // else
+    //     ShowWindow(hwnd, SW_HIDE);
 }
 
 static int selectedItem = -1;
@@ -2696,7 +2699,7 @@ double *updateSliders(HWND hwnd, POINT mouse)
     return 0;
 }
 
-void PaintMenu(HWND hwnd, menuItem *menu, int menuCount)
+void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
 {
     // TODO: cleanup the magic numbers in this paint handling
     // todo: support other windows styles? hrm
@@ -2771,7 +2774,7 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount)
         {
 
             // HIGHLIGHT   // draw first to match win 7 native
-            if (i == selectedItem
+            if (i == selectedIndex
                 && !menu[i].value)  // don't HL sliders
             {
                 RECT hlRect = itemRect;
@@ -2903,7 +2906,9 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount)
             {
                 // little override for play/pause
                 WCHAR *display = menu[i].string;
-                if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
+                if (i == 0 && !global_ghoster.loaded_video.is_paused
+                    && menu == menuItems) // so hokey
+                    display = L"Pause";
 
                 // DrawText(hdc, menu[i].string, -1, &itemRect, 0);
                 itemRect.left += 2;
@@ -2925,34 +2930,45 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount)
     EndPaint(hwnd, &ps);
 }
 
+static int subMenuSelectedItem;
+
 // hmm feels like this is getting out of hand?
 LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+    menuItem *menu = iconMenuItems;
+    int menuCount = sizeof(iconMenuItems) / sizeof(menuItem);
+
     switch(message)
     {
 
-        // case WM_MOUSEMOVE: {
-        //     global_mouse_on_submenu = true;
-        // } break;
+        case WM_MOUSEMOVE: {
+            POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+
+            // if (popupMouseDown)
+            // {
+            //     updateSliders(hwnd, mouse);
+            // }
+
+            subMenuSelectedItem = MouseOverMenuItem(mouse, hwnd, menu, menuCount);
+
+            RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+
+            // SetCapture(hwnd);
+        } break;
 
         case WM_LBUTTONUP: {
             // if (!popupSliderCapture)
             // {
                 POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-                int indexOfClick = MouseOverMenuItem(mouse, hwnd, iconMenuItems, sizeof(iconMenuItems) / sizeof(menuItem));
-                onMenuItemClick(hwnd, iconMenuItems[indexOfClick]);
+                int indexOfClick = MouseOverMenuItem(mouse, hwnd, menu, menuCount);
+                onMenuItemClick(hwnd, menu[indexOfClick]);
+                ShowWindow(hwnd, SW_HIDE);
                 // RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             // }
         } break;
 
         case WM_PAINT: {
-            // OutputDebugString("PAINT\n");
-
-            // TODO: cleanup the magic numbers in this paint handling
-            // todo: support other windows styles? hrm
-
-            PaintMenu(hwnd, iconMenuItems, sizeof(iconMenuItems)/sizeof(menuItem));
-
+            PaintMenu(hwnd, menu, sizeof(iconMenuItems)/sizeof(menuItem), subMenuSelectedItem);
             return 0;
         } break;
     }
@@ -2965,7 +2981,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     {
 
         // case WM_KILLFOCUS: {
-        //     ClosePopup(hwnd);
+        //     // ClosePopup(hwnd);
+        //     popupMouseDown = false; // maybe we still want this though
         // } break;
 
         case WM_MOUSEMOVE: {
@@ -3066,6 +3083,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
                 int indexOfClick = MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem));
                 onMenuItemClick(hwnd, menuItems[indexOfClick]);
+                if (menuItems[indexOfClick].code != ID_SEP)
+                    ClosePopup(hwnd);
                 RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             }
             // if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
@@ -3078,7 +3097,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         case WM_PAINT: {
             // OutputDebugString("PAINT\n");
 
-            PaintMenu(hwnd, menuItems, sizeof(menuItems)/sizeof(menuItem));
+            PaintMenu(hwnd, menuItems, sizeof(menuItems)/sizeof(menuItem), selectedItem);
 
             return 0;
         } break;
