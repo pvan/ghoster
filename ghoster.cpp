@@ -2775,10 +2775,11 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
 
 
-            HTHEME theme = OpenThemeData(hwnd, L"MENU");
-
             RECT thisRect;
             thisRect = menu;
+
+
+            HTHEME theme = OpenThemeData(hwnd, L"MENU");
 
             DrawThemeBackground(theme, memhdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
             DrawThemeBackground(theme, memhdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
@@ -2786,7 +2787,9 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             LOGFONTW outFont;
             GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
-            SelectFont(memhdc, CreateFontIndirectW(&outFont));
+            HFONT font = CreateFontIndirectW(&outFont);
+            SelectFont(memhdc, font);
+            DeleteObject(font);
 
             SetBkMode(memhdc, TRANSPARENT);
 
@@ -2927,17 +2930,25 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                         if (grayRect.left < bedRect.left+1) grayRect.left = bedRect.left+1;  // don't draw to the left
 
 
-                        SelectObject(memhdc, CreatePen(PS_SOLID, 1, 0x888888));
-                        SelectObject(memhdc, GetStockObject(HOLLOW_BRUSH));
+                        HPEN grayPen = CreatePen(PS_SOLID, 1, 0x888888);
+                        HBRUSH blueBrush = CreateSolidBrush(0xE6D8AD);
+                        HBRUSH lightGrayBrush = CreateSolidBrush(0xe0e0e0);
+
+                        SelectObject(memhdc, grayPen);
+                        SelectObject(memhdc, GetStockObject(NULL_BRUSH)); // supposedly not needed to delete stock objs
                         Rectangle(memhdc, bedRect.left, bedRect.top, bedRect.right, bedRect.bottom);
 
-                        SelectObject(memhdc, CreateSolidBrush(0xE6D8AD));
                         SelectObject(memhdc, GetStockObject(NULL_PEN));
+                        SelectObject(memhdc, blueBrush);
                         Rectangle(memhdc, blueRect.left, blueRect.top, blueRect.right, blueRect.bottom);
 
-                        SelectObject(memhdc,  CreateSolidBrush(0xe0e0e0));
                         SelectObject(memhdc, GetStockObject(NULL_PEN));
+                        SelectObject(memhdc,  lightGrayBrush);
                         Rectangle(memhdc, grayRect.left, grayRect.top, grayRect.right, grayRect.bottom);
+
+                        DeleteObject(grayPen);  // or create once and reuse?
+                        DeleteObject(blueBrush);
+                        DeleteObject(lightGrayBrush);
 
                         WCHAR display[64];
                         swprintf(display, L"%s %i", menuItems[i].string, nearestInt(percent*100.0));
@@ -2960,6 +2971,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 }
 
             }
+
+            CloseThemeData(theme); // or open/close on window creation?
 
             BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
             DeleteObject(buffer_bitmap);
