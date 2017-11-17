@@ -2929,6 +2929,11 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 {
     switch(message)
     {
+
+        // case WM_MOUSEMOVE: {
+        //     global_mouse_on_submenu = true;
+        // } break;
+
         case WM_LBUTTONUP: {
             // if (!popupSliderCapture)
             // {
@@ -2940,7 +2945,7 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         } break;
 
         case WM_PAINT: {
-            OutputDebugString("PAINT\n");
+            // OutputDebugString("PAINT\n");
 
             // TODO: cleanup the magic numbers in this paint handling
             // todo: support other windows styles? hrm
@@ -2958,9 +2963,9 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     switch(message)
     {
 
-        case WM_KILLFOCUS: {
-            ClosePopup(hwnd);
-        } break;
+        // case WM_KILLFOCUS: {
+        //     ClosePopup(hwnd);
+        // } break;
 
         case WM_MOUSEMOVE: {
             // OutputDebugString("MOVE\n");
@@ -2973,22 +2978,34 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             selectedItem = MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem));
 
+            // calc submenu pos
+            RECT winRect; GetWindowRect(hwnd, &winRect);
+            int menuItemPos = 220;  // need a getmenuitemrect
+            int posX = winRect.right - 10;  // they overlap a bit
+            int posY = winRect.top + menuItemPos;
+            int wid = 100;
+            int hei = MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)) + 8;
+            POINT screenMousePos = mouse;
+            ClientToScreen(hwnd, &screenMousePos);
+            bool mouseOnSubMenu =
+                screenMousePos.x > posX && screenMousePos.x < posX+wid &&
+                screenMousePos.y > posY && screenMousePos.y < posY+hei;
+
             if (menuItems[selectedItem].code == ID_ICONMENU)
             {
 
-                // ShowWindow(global_icon_menu_window, SW_SHOW);
-
-                // SetWindowPos(
-                //     global_icon_menu_window,
-                //     0,
-                //     mouse.x, mouse.y,
-                //     MI_WID, MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)),
-                //     0);
+                SetWindowPos(
+                    global_icon_menu_window,
+                    0, posX, posY, wid, hei, 0);
+                ShowWindow(global_icon_menu_window, SW_SHOW);
 
             }
             else
             {
-                // ShowWindow(global_icon_menu_window, SW_HIDE);
+                if (!mouseOnSubMenu)
+                {
+                    ShowWindow(global_icon_menu_window, SW_HIDE);
+                }
             }
 
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
@@ -3021,6 +3038,12 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) > 0)
             {
                 SetCapture(hwnd);
+            }
+
+            // since we're no longer closing on WM_KILLFOCUS, try manual close like this
+            if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) < 0)
+            {
+                ClosePopup(hwnd);
             }
         } break;
 
@@ -3099,9 +3122,9 @@ int CALLBACK WinMain(
     if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 1; }
 
     global_icon_menu_window = CreateWindowEx(  //asdf
-        WS_EX_LAYERED | WS_EX_TOOLWINDOW,
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
         wc4.lpszClassName, "ghoster video player",
-        WS_POPUP | WS_VISIBLE,
+        WS_POPUP,
         20, 20,
         400, 400,
         // CW_USEDEFAULT, CW_USEDEFAULT,
@@ -3109,16 +3132,6 @@ int CALLBACK WinMain(
         0, 0, hInstance, 0);
     if (!global_icon_menu_window) { MsgBox("Couldn't open global_icon_menu_window."); }
 
-    // HWND newPopup = CreateWindowEx(
-    //     WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
-    //     POPUP_CLASS_NAME,
-    //     "ghoster popup menu",
-    //     WS_POPUP | WS_VISIBLE,
-    //     posX, posY,
-    //     width, height,
-    //     0,0,
-    //     global_hInstance,
-    //     0);
 
 
     // WINDOW
