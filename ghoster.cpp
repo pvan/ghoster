@@ -449,6 +449,7 @@ struct GhosterWindow
         if (!PtInRect(&winRect, mPos)) {
             subMenuSelectedItem = -1;
             RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+            global_is_submenu_shown = false;//
         }
         GetWindowRect(global_popup_window, &winRect);
         if (!PtInRect(&winRect, mPos)) {
@@ -3179,6 +3180,29 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
+static HHOOK mouseHook;
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    // PKBDLLHOOKSTRUCT k = (PKBDLLHOOKSTRUCT)(lParam);
+
+    if (wParam == WM_RBUTTONDOWN || wParam == WM_LBUTTONDOWN)
+    {
+        // GetCursorPos(&p);
+        POINT point = ((MSLLHOOKSTRUCT*)(lParam))->pt;
+
+        RECT popupRect;
+        RECT submenuRect;
+        GetWindowRect(global_popup_window, &popupRect);
+        GetWindowRect(global_icon_menu_window, &submenuRect);
+        if (!PtInRect(&popupRect, point) && !PtInRect(&submenuRect, point))
+        {
+            HideSubMenu();
+            ClosePopup(global_popup_window);
+        }
+    }
+
+    return CallNextHookEx(0, nCode, wParam, lParam);
+}
 
 int CALLBACK WinMain(
     HINSTANCE hInstance,
@@ -3193,6 +3217,12 @@ int CALLBACK WinMain(
     // FFMPEG
     InitAV();  // basically just registers all codecs.. call when needed instead?
 
+
+    // install mouse hook so we know when we click outside of a menu (to close it)
+    // (could also use this to detect clicks on an owner-draw menu item)
+    // (probably would have been easier than redrawing our own entire menu)
+    // (but we'd have been stuck with an old non-themed menu that way)
+    mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
 
 
     // register class for wallpaper window if we ever use one
@@ -3306,6 +3336,7 @@ int CALLBACK WinMain(
 
     // if (global_workerw) CloseWindow(global_workerw);
     RemoveSysTrayIcon(global_ghoster.state.window);
+    UnhookWindowsHookEx(mouseHook);
 
     return 0;
 }
