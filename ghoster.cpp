@@ -2859,6 +2859,28 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
             }
 
 
+            // SUBMENU ARROW
+            if (menu[i].code == ID_ICONMENU)  //pointer exists
+            {
+                RECT arrowRect = itemRect;
+                arrowRect.left = arrowRect.right - gutterSize;
+
+                // enlarge
+                arrowRect.left -= 5;
+                arrowRect.top -= 5;
+                arrowRect.right += 5;
+                arrowRect.bottom += 5;
+
+                // shift
+                arrowRect.left -= 2;
+                arrowRect.top -= 1;
+                arrowRect.right -= 2;
+                arrowRect.bottom -= 1;
+
+                DrawThemeBackground(theme, memhdc, MENU_POPUPSUBMENU, MSM_NORMAL, &arrowRect, &arrowRect);
+            }
+
+
             // SLIDERS
             if (menu[i].value)  //pointer exists
             {
@@ -3049,7 +3071,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // do inside ShowSubMenu() ?
             RECT winRect; GetWindowRect(hwnd, &winRect);
             int menuItemPos = 220;  // need a getmenuitemrect
-            int posX = winRect.right - 10;  // they overlap a bit
+            int posX = winRect.right - 7;  // they overlap a bit
             int posY = winRect.top + menuItemPos;
             int wid = 100;
             int hei = MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)) + 8;
