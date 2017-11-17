@@ -2695,6 +2695,235 @@ double *updateSliders(HWND hwnd, POINT mouse)
     return 0;
 }
 
+void PaintMenu(HWND hwnd, menuItem *menu, int menuCount)
+{
+    // TODO: cleanup the magic numbers in this paint handling
+    // todo: support other windows styles? hrm
+
+    PAINTSTRUCT ps;
+    HDC hdc = BeginPaint(hwnd, &ps);
+
+
+    int width = ps.rcPaint.right-ps.rcPaint.left;
+    int height = ps.rcPaint.bottom-ps.rcPaint.top;
+
+    HDC memhdc = CreateCompatibleDC(hdc);
+    HBITMAP buffer_bitmap = CreateCompatibleBitmap(hdc, width, height);
+    SelectObject(memhdc, buffer_bitmap);
+
+
+    RECT menuRect = ps.rcPaint;
+
+    int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
+
+
+    RECT thisRect;
+    thisRect = menuRect;
+
+
+    HTHEME theme = OpenThemeData(hwnd, L"MENU");
+
+    DrawThemeBackground(theme, memhdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
+    DrawThemeBackground(theme, memhdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
+
+
+    LOGFONTW outFont;
+    GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
+    HFONT font = CreateFontIndirectW(&outFont);
+    SelectFont(memhdc, font);
+    DeleteObject(font);
+
+    SetBkMode(memhdc, TRANSPARENT);
+
+    int currentY = 5;
+    for (int i = 0; i < menuCount; i++)
+    {
+
+        // TODO: omg what a mess
+
+        int thisH = MI_HEI;
+        if (menu[i].code == ID_SEP)
+            thisH = MI_HEI_SEP;
+
+        RECT itemRect = {0, currentY, MI_WID, currentY+thisH};
+        currentY += thisH;
+
+        // pad
+        itemRect.left += gutterSize;//+2;
+        // itemRect.top += 1;
+        // itemRect.right -= 1;
+        // itemRect.bottom -= 1;
+
+
+        // SEPARATORS
+        if (menu[i].code == ID_SEP)
+        {
+            RECT sepRect = itemRect;
+            sepRect.left -= gutterSize;
+            sepRect.left += 4; sepRect.right -= 2;
+            sepRect.top -= 3;
+            sepRect.bottom -= 3;
+            GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
+            DrawThemeBackground(theme, memhdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
+        }
+        else
+        {
+
+            // HIGHLIGHT   // draw first to match win 7 native
+            if (i == selectedItem
+                && !menu[i].value)  // don't HL sliders
+            {
+                RECT hlRect = itemRect;
+                hlRect.left -= gutterSize;
+                hlRect.left += 3;
+                hlRect.right -= 3;
+                hlRect.top -= 1;
+                hlRect.bottom += 0;
+
+                // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
+                DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
+            }
+
+            // BITMAPS
+            if (menu[i].hbitmap != 0)
+            {
+                RECT imgRect = itemRect;
+                imgRect.left -= gutterSize;
+                imgRect.left += 3;
+                imgRect.top -= 1;
+                imgRect.bottom -= 0;
+                imgRect.right = gutterSize - 2;
+
+                HBITMAP hbitmap = *(menu[i].hbitmap);
+                HDC bitmapDC = CreateCompatibleDC(memhdc);
+                SelectObject(bitmapDC, hbitmap);
+
+                BITMAP imgBitmap;
+                GetObject(hbitmap, sizeof(BITMAP), &imgBitmap);
+
+                // center image in rect
+                imgRect.left += ( (imgRect.right - imgRect.left) - (imgBitmap.bmWidth) ) /2;
+                imgRect.top += ( (imgRect.bottom - imgRect.top) - (imgBitmap.bmHeight) ) /2;
+
+                BitBlt(memhdc,
+                       imgRect.left,
+                       imgRect.top,
+                       imgBitmap.bmWidth,
+                       imgBitmap.bmHeight,
+                       bitmapDC,
+                       0, 0, SRCCOPY);
+
+                DeleteDC    (bitmapDC);
+            }
+
+
+            // CHECKMARKS
+            if (menu[i].checked)  //pointer exists
+            {
+                if (*(menu[i].checked))  // value is true
+                {
+                    RECT checkRect = itemRect;
+                    checkRect.left -= gutterSize;
+                    checkRect.left += 3;
+                    checkRect.top -= 1;
+                    checkRect.bottom -= 0;
+                    checkRect.right = gutterSize - 2;
+
+                    DrawThemeBackground(theme, memhdc, MENU_POPUPCHECKBACKGROUND, MCB_NORMAL, &checkRect, &checkRect);
+                    DrawThemeBackground(theme, memhdc, MENU_POPUPCHECK, MC_CHECKMARKNORMAL, &checkRect, &checkRect);
+                }
+            }
+
+
+            // SLIDERS
+            if (menu[i].value)  //pointer exists
+            {
+                RECT bedRect = itemRect;
+
+                // like highlight
+                bedRect.left += 3;
+                bedRect.right -= 3;
+                bedRect.top -= 1;
+                bedRect.bottom += 0;
+
+                // shrink for slider
+                bedRect.left += 5;
+                bedRect.right -= (gutterSize+5);
+                bedRect.top += 2;
+                bedRect.bottom -= 0;
+
+
+                RECT blueRect = bedRect;
+
+                // make a "track" / recessed
+                blueRect.top++;
+                blueRect.left++;
+                blueRect.bottom++;
+                blueRect.right++;
+
+                RECT grayRect = blueRect;
+                grayRect.left--; // scoot up against end of blue
+
+                double percent = *(menu[i].value); // i guess we assume a value of 0-1 for now
+                int bedWidth = blueRect.right - blueRect.left;  // use "inside" of track to calc percent (does it matter?)
+                blueRect.right = blueRect.left + nearestInt(bedWidth * percent);
+                grayRect.left = grayRect.left + nearestInt(bedWidth * percent);
+
+                if (grayRect.left < bedRect.left+1) grayRect.left = bedRect.left+1;  // don't draw to the left
+
+
+                HPEN grayPen = CreatePen(PS_SOLID, 1, 0x888888);
+                HBRUSH blueBrush = CreateSolidBrush(0xE6D8AD);
+                HBRUSH lightGrayBrush = CreateSolidBrush(0xe0e0e0);
+
+                SelectObject(memhdc, grayPen);
+                SelectObject(memhdc, GetStockObject(NULL_BRUSH)); // supposedly not needed to delete stock objs
+                Rectangle(memhdc, bedRect.left, bedRect.top, bedRect.right, bedRect.bottom);
+
+                SelectObject(memhdc, GetStockObject(NULL_PEN));
+                SelectObject(memhdc, blueBrush);
+                Rectangle(memhdc, blueRect.left, blueRect.top, blueRect.right, blueRect.bottom);
+
+                SelectObject(memhdc, GetStockObject(NULL_PEN));
+                SelectObject(memhdc,  lightGrayBrush);
+                Rectangle(memhdc, grayRect.left, grayRect.top, grayRect.right, grayRect.bottom);
+
+                DeleteObject(grayPen);  // or create once and reuse?
+                DeleteObject(blueBrush);
+                DeleteObject(lightGrayBrush);
+
+                WCHAR display[64];
+                swprintf(display, L"%s %i", menu[i].string, nearestInt(percent*100.0));
+                DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1,
+                              DT_CENTER|DT_VCENTER|DT_SINGLELINE, 0, &bedRect);
+
+            }
+            else
+            {
+                // little override for play/pause
+                WCHAR *display = menu[i].string;
+                if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
+
+                // DrawText(hdc, menu[i].string, -1, &itemRect, 0);
+                itemRect.left += 2;
+                itemRect.top += 2;
+                itemRect.left += 5; // more gutter gap
+                DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
+            }
+        }
+
+    }
+
+    CloseThemeData(theme); // or open/close on window creation?
+
+    BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
+    DeleteObject(buffer_bitmap);
+    DeleteDC    (memhdc);
+    DeleteDC    (hdc);
+
+    EndPaint(hwnd, &ps);
+}
+
 // hmm feels like this is getting out of hand?
 LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2711,233 +2940,12 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
         } break;
 
         case WM_PAINT: {
-            // OutputDebugString("PAINT\n");
+            OutputDebugString("PAINT\n");
 
             // TODO: cleanup the magic numbers in this paint handling
             // todo: support other windows styles? hrm
 
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-
-            int width = ps.rcPaint.right-ps.rcPaint.left;
-            int height = ps.rcPaint.bottom-ps.rcPaint.top;
-
-            HDC memhdc = CreateCompatibleDC(hdc);
-            HBITMAP buffer_bitmap = CreateCompatibleBitmap(hdc, width, height);
-            SelectObject(memhdc, buffer_bitmap);
-
-
-            RECT menu = ps.rcPaint;
-
-            int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
-
-
-            RECT thisRect;
-            thisRect = menu;
-
-
-            HTHEME theme = OpenThemeData(hwnd, L"MENU");
-
-            DrawThemeBackground(theme, memhdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
-            DrawThemeBackground(theme, memhdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
-
-
-            LOGFONTW outFont;
-            GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
-            HFONT font = CreateFontIndirectW(&outFont);
-            SelectFont(memhdc, font);
-            DeleteObject(font);
-
-            SetBkMode(memhdc, TRANSPARENT);
-
-            int currentY = 5;
-            for (int i = 0; i < sizeof(iconMenuItems) / sizeof(menuItem); i++)
-            {
-
-                // TODO: omg what a mess
-
-                int thisH = MI_HEI;
-                if (iconMenuItems[i].code == ID_SEP)
-                    thisH = MI_HEI_SEP;
-
-                RECT itemRect = {0, currentY, MI_WID, currentY+thisH};
-                currentY += thisH;
-
-                // pad
-                itemRect.left += gutterSize;//+2;
-                // itemRect.top += 1;
-                // itemRect.right -= 1;
-                // itemRect.bottom -= 1;
-
-
-                // SEPARATORS
-                if (iconMenuItems[i].code == ID_SEP)
-                {
-                    RECT sepRect = itemRect;
-                    sepRect.left -= gutterSize;
-                    sepRect.left += 4; sepRect.right -= 2;
-                    sepRect.top -= 3;
-                    sepRect.bottom -= 3;
-                    GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
-                    DrawThemeBackground(theme, memhdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
-                }
-                else
-                {
-
-                    // HIGHLIGHT   // draw first to match win 7 native
-                    if (i == selectedItem
-                        && !iconMenuItems[i].value)  // don't HL sliders
-                    {
-                        RECT hlRect = itemRect;
-                        hlRect.left -= gutterSize;
-                        hlRect.left += 3;
-                        hlRect.right -= 3;
-                        hlRect.top -= 1;
-                        hlRect.bottom += 0;
-
-                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
-                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
-                    }
-
-                    // BITMAPS
-                    if (iconMenuItems[i].hbitmap != 0)
-                    {
-                        RECT imgRect = itemRect;
-                        imgRect.left -= gutterSize;
-                        imgRect.left += 3;
-                        imgRect.top -= 1;
-                        imgRect.bottom -= 0;
-                        imgRect.right = gutterSize - 2;
-
-                        HBITMAP hbitmap = *(iconMenuItems[i].hbitmap);
-                        HDC bitmapDC = CreateCompatibleDC(memhdc);
-                        SelectObject(bitmapDC, hbitmap);
-
-                        BITMAP imgBitmap;
-                        GetObject(hbitmap, sizeof(BITMAP), &imgBitmap);
-
-                        // center image in rect
-                        imgRect.left += ( (imgRect.right - imgRect.left) - (imgBitmap.bmWidth) ) /2;
-                        imgRect.top += ( (imgRect.bottom - imgRect.top) - (imgBitmap.bmHeight) ) /2;
-
-                        BitBlt(memhdc,
-                               imgRect.left,
-                               imgRect.top,
-                               imgBitmap.bmWidth,
-                               imgBitmap.bmHeight,
-                               bitmapDC,
-                               0, 0, SRCCOPY);
-
-                        DeleteDC    (bitmapDC);
-                    }
-
-
-                    // CHECKMARKS
-                    if (iconMenuItems[i].checked)  //pointer exists
-                    {
-                        if (*(iconMenuItems[i].checked))  // value is true
-                        {
-                            RECT checkRect = itemRect;
-                            checkRect.left -= gutterSize;
-                            checkRect.left += 3;
-                            checkRect.top -= 1;
-                            checkRect.bottom -= 0;
-                            checkRect.right = gutterSize - 2;
-
-                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECKBACKGROUND, MCB_NORMAL, &checkRect, &checkRect);
-                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECK, MC_CHECKMARKNORMAL, &checkRect, &checkRect);
-                        }
-                    }
-
-
-                    // SLIDERS
-                    if (iconMenuItems[i].value)  //pointer exists
-                    {
-                        RECT bedRect = itemRect;
-
-                        // like highlight
-                        bedRect.left += 3;
-                        bedRect.right -= 3;
-                        bedRect.top -= 1;
-                        bedRect.bottom += 0;
-
-                        // shrink for slider
-                        bedRect.left += 5;
-                        bedRect.right -= (gutterSize+5);
-                        bedRect.top += 2;
-                        bedRect.bottom -= 0;
-
-
-                        RECT blueRect = bedRect;
-
-                        // make a "track" / recessed
-                        blueRect.top++;
-                        blueRect.left++;
-                        blueRect.bottom++;
-                        blueRect.right++;
-
-                        RECT grayRect = blueRect;
-                        grayRect.left--; // scoot up against end of blue
-
-                        double percent = *(iconMenuItems[i].value); // i guess we assume a value of 0-1 for now
-                        int bedWidth = blueRect.right - blueRect.left;  // use "inside" of track to calc percent (does it matter?)
-                        blueRect.right = blueRect.left + nearestInt(bedWidth * percent);
-                        grayRect.left = grayRect.left + nearestInt(bedWidth * percent);
-
-                        if (grayRect.left < bedRect.left+1) grayRect.left = bedRect.left+1;  // don't draw to the left
-
-
-                        HPEN grayPen = CreatePen(PS_SOLID, 1, 0x888888);
-                        HBRUSH blueBrush = CreateSolidBrush(0xE6D8AD);
-                        HBRUSH lightGrayBrush = CreateSolidBrush(0xe0e0e0);
-
-                        SelectObject(memhdc, grayPen);
-                        SelectObject(memhdc, GetStockObject(NULL_BRUSH)); // supposedly not needed to delete stock objs
-                        Rectangle(memhdc, bedRect.left, bedRect.top, bedRect.right, bedRect.bottom);
-
-                        SelectObject(memhdc, GetStockObject(NULL_PEN));
-                        SelectObject(memhdc, blueBrush);
-                        Rectangle(memhdc, blueRect.left, blueRect.top, blueRect.right, blueRect.bottom);
-
-                        SelectObject(memhdc, GetStockObject(NULL_PEN));
-                        SelectObject(memhdc,  lightGrayBrush);
-                        Rectangle(memhdc, grayRect.left, grayRect.top, grayRect.right, grayRect.bottom);
-
-                        DeleteObject(grayPen);  // or create once and reuse?
-                        DeleteObject(blueBrush);
-                        DeleteObject(lightGrayBrush);
-
-                        WCHAR display[64];
-                        swprintf(display, L"%s %i", iconMenuItems[i].string, nearestInt(percent*100.0));
-                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1,
-                                      DT_CENTER|DT_VCENTER|DT_SINGLELINE, 0, &bedRect);
-
-                    }
-                    else
-                    {
-                        // little override for play/pause
-                        WCHAR *display = iconMenuItems[i].string;
-                        if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
-
-                        // DrawText(hdc, iconMenuItems[i].string, -1, &itemRect, 0);
-                        itemRect.left += 2;
-                        itemRect.top += 2;
-                        itemRect.left += 5; // more gutter gap
-                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
-                    }
-                }
-
-            }
-
-            CloseThemeData(theme); // or open/close on window creation?
-
-            BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
-            DeleteObject(buffer_bitmap);
-            DeleteDC    (memhdc);
-            DeleteDC    (hdc);
-
-            EndPaint(hwnd, &ps);
+            PaintMenu(hwnd, iconMenuItems, sizeof(iconMenuItems)/sizeof(menuItem));
 
             return 0;
         } break;
@@ -2968,19 +2976,19 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             if (menuItems[selectedItem].code == ID_ICONMENU)
             {
 
-                ShowWindow(global_icon_menu_window, SW_SHOW);
+                // ShowWindow(global_icon_menu_window, SW_SHOW);
 
-                SetWindowPos(
-                    global_icon_menu_window,
-                    0,
-                    mouse.x, mouse.y,
-                    MI_WID, MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)),
-                    0);
+                // SetWindowPos(
+                //     global_icon_menu_window,
+                //     0,
+                //     mouse.x, mouse.y,
+                //     MI_WID, MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)),
+                //     0);
 
             }
             else
             {
-                ShowWindow(global_icon_menu_window, SW_HIDE);
+                // ShowWindow(global_icon_menu_window, SW_HIDE);
             }
 
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
@@ -3036,231 +3044,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
         case WM_PAINT: {
             // OutputDebugString("PAINT\n");
 
-            // TODO: cleanup the magic numbers in this paint handling
-            // todo: support other windows styles? hrm
-
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hwnd, &ps);
-
-
-            int width = ps.rcPaint.right-ps.rcPaint.left;
-            int height = ps.rcPaint.bottom-ps.rcPaint.top;
-
-            HDC memhdc = CreateCompatibleDC(hdc);
-            HBITMAP buffer_bitmap = CreateCompatibleBitmap(hdc, width, height);
-            SelectObject(memhdc, buffer_bitmap);
-
-
-            RECT menu = ps.rcPaint;
-
-            int gutterSize = 27;//GetSystemMetrics(SM_CXMENUCHECK);
-
-
-            RECT thisRect;
-            thisRect = menu;
-
-
-            HTHEME theme = OpenThemeData(hwnd, L"MENU");
-
-            DrawThemeBackground(theme, memhdc, MENU_POPUPGUTTER, 0, &thisRect, &thisRect);
-            DrawThemeBackground(theme, memhdc, MENU_POPUPBORDERS, 0, &thisRect, &thisRect);
-
-
-            LOGFONTW outFont;
-            GetThemeSysFont(theme, TMT_MENUFONT, &outFont);
-            HFONT font = CreateFontIndirectW(&outFont);
-            SelectFont(memhdc, font);
-            DeleteObject(font);
-
-            SetBkMode(memhdc, TRANSPARENT);
-
-            int currentY = 5;
-            for (int i = 0; i < sizeof(menuItems) / sizeof(menuItem); i++)
-            {
-
-                // TODO: omg what a mess
-
-                int thisH = MI_HEI;
-                if (menuItems[i].code == ID_SEP)
-                    thisH = MI_HEI_SEP;
-
-                RECT itemRect = {0, currentY, MI_WID, currentY+thisH};
-                currentY += thisH;
-
-                // pad
-                itemRect.left += gutterSize;//+2;
-                // itemRect.top += 1;
-                // itemRect.right -= 1;
-                // itemRect.bottom -= 1;
-
-
-                // SEPARATORS
-                if (menuItems[i].code == ID_SEP)
-                {
-                    RECT sepRect = itemRect;
-                    sepRect.left -= gutterSize;
-                    sepRect.left += 4; sepRect.right -= 2;
-                    sepRect.top -= 3;
-                    sepRect.bottom -= 3;
-                    GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPSEPARATOR, 0, &sepRect, &thisRect);
-                    DrawThemeBackground(theme, memhdc, MENU_POPUPSEPARATOR, 0, &thisRect, &thisRect);
-                }
-                else
-                {
-
-                    // HIGHLIGHT   // draw first to match win 7 native
-                    if (i == selectedItem
-                        && !menuItems[i].value)  // don't HL sliders
-                    {
-                        RECT hlRect = itemRect;
-                        hlRect.left -= gutterSize;
-                        hlRect.left += 3;
-                        hlRect.right -= 3;
-                        hlRect.top -= 1;
-                        hlRect.bottom += 0;
-
-                        // GetThemeBackgroundContentRect(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect); //needed?
-                        DrawThemeBackground(theme, memhdc, MENU_POPUPITEM, MPI_HOT, &hlRect, &hlRect);
-                    }
-
-                    // BITMAPS
-                    if (menuItems[i].hbitmap != 0)
-                    {
-                        RECT imgRect = itemRect;
-                        imgRect.left -= gutterSize;
-                        imgRect.left += 3;
-                        imgRect.top -= 1;
-                        imgRect.bottom -= 0;
-                        imgRect.right = gutterSize - 2;
-
-                        HBITMAP hbitmap = *(menuItems[i].hbitmap);
-                        HDC bitmapDC = CreateCompatibleDC(memhdc);
-                        SelectObject(bitmapDC, hbitmap);
-
-                        BITMAP imgBitmap;
-                        GetObject(hbitmap, sizeof(BITMAP), &imgBitmap);
-
-                        // center image in rect
-                        imgRect.left += ( (imgRect.right - imgRect.left) - (imgBitmap.bmWidth) ) /2;
-                        imgRect.top += ( (imgRect.bottom - imgRect.top) - (imgBitmap.bmHeight) ) /2;
-
-                        BitBlt(memhdc,
-                               imgRect.left,
-                               imgRect.top,
-                               imgBitmap.bmWidth,
-                               imgBitmap.bmHeight,
-                               bitmapDC,
-                               0, 0, SRCCOPY);
-
-                        DeleteDC    (bitmapDC);
-                    }
-
-
-                    // CHECKMARKS
-                    if (menuItems[i].checked)  //pointer exists
-                    {
-                        if (*(menuItems[i].checked))  // value is true
-                        {
-                            RECT checkRect = itemRect;
-                            checkRect.left -= gutterSize;
-                            checkRect.left += 3;
-                            checkRect.top -= 1;
-                            checkRect.bottom -= 0;
-                            checkRect.right = gutterSize - 2;
-
-                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECKBACKGROUND, MCB_NORMAL, &checkRect, &checkRect);
-                            DrawThemeBackground(theme, memhdc, MENU_POPUPCHECK, MC_CHECKMARKNORMAL, &checkRect, &checkRect);
-                        }
-                    }
-
-
-                    // SLIDERS
-                    if (menuItems[i].value)  //pointer exists
-                    {
-                        RECT bedRect = itemRect;
-
-                        // like highlight
-                        bedRect.left += 3;
-                        bedRect.right -= 3;
-                        bedRect.top -= 1;
-                        bedRect.bottom += 0;
-
-                        // shrink for slider
-                        bedRect.left += 5;
-                        bedRect.right -= (gutterSize+5);
-                        bedRect.top += 2;
-                        bedRect.bottom -= 0;
-
-
-                        RECT blueRect = bedRect;
-
-                        // make a "track" / recessed
-                        blueRect.top++;
-                        blueRect.left++;
-                        blueRect.bottom++;
-                        blueRect.right++;
-
-                        RECT grayRect = blueRect;
-                        grayRect.left--; // scoot up against end of blue
-
-                        double percent = *(menuItems[i].value); // i guess we assume a value of 0-1 for now
-                        int bedWidth = blueRect.right - blueRect.left;  // use "inside" of track to calc percent (does it matter?)
-                        blueRect.right = blueRect.left + nearestInt(bedWidth * percent);
-                        grayRect.left = grayRect.left + nearestInt(bedWidth * percent);
-
-                        if (grayRect.left < bedRect.left+1) grayRect.left = bedRect.left+1;  // don't draw to the left
-
-
-                        HPEN grayPen = CreatePen(PS_SOLID, 1, 0x888888);
-                        HBRUSH blueBrush = CreateSolidBrush(0xE6D8AD);
-                        HBRUSH lightGrayBrush = CreateSolidBrush(0xe0e0e0);
-
-                        SelectObject(memhdc, grayPen);
-                        SelectObject(memhdc, GetStockObject(NULL_BRUSH)); // supposedly not needed to delete stock objs
-                        Rectangle(memhdc, bedRect.left, bedRect.top, bedRect.right, bedRect.bottom);
-
-                        SelectObject(memhdc, GetStockObject(NULL_PEN));
-                        SelectObject(memhdc, blueBrush);
-                        Rectangle(memhdc, blueRect.left, blueRect.top, blueRect.right, blueRect.bottom);
-
-                        SelectObject(memhdc, GetStockObject(NULL_PEN));
-                        SelectObject(memhdc,  lightGrayBrush);
-                        Rectangle(memhdc, grayRect.left, grayRect.top, grayRect.right, grayRect.bottom);
-
-                        DeleteObject(grayPen);  // or create once and reuse?
-                        DeleteObject(blueBrush);
-                        DeleteObject(lightGrayBrush);
-
-                        WCHAR display[64];
-                        swprintf(display, L"%s %i", menuItems[i].string, nearestInt(percent*100.0));
-                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1,
-                                      DT_CENTER|DT_VCENTER|DT_SINGLELINE, 0, &bedRect);
-
-                    }
-                    else
-                    {
-                        // little override for play/pause
-                        WCHAR *display = menuItems[i].string;
-                        if (i == 0 && !global_ghoster.loaded_video.is_paused) display = L"Pause";
-
-                        // DrawText(hdc, menuItems[i].string, -1, &itemRect, 0);
-                        itemRect.left += 2;
-                        itemRect.top += 2;
-                        itemRect.left += 5; // more gutter gap
-                        DrawThemeText(theme, memhdc, MENU_POPUPITEM, MPI_NORMAL, display, -1, 0, 0, &itemRect);
-                    }
-                }
-
-            }
-
-            CloseThemeData(theme); // or open/close on window creation?
-
-            BitBlt(hdc, 0, 0, width, height, memhdc, 0, 0, SRCCOPY);
-            DeleteObject(buffer_bitmap);
-            DeleteDC    (memhdc);
-            DeleteDC    (hdc);
-
-            EndPaint(hwnd, &ps);
+            PaintMenu(hwnd, menuItems, sizeof(menuItems)/sizeof(menuItem));
 
             return 0;
         } break;
@@ -3309,7 +3093,7 @@ int CALLBACK WinMain(
     WNDCLASS wc4 = {};
     wc4.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wc4.lpfnWndProc =  IconMenuWndProc;
-    wc3.hInstance = global_hInstance;
+    wc4.hInstance = global_hInstance;
     wc4.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc4.lpszClassName = ICONMENU_CLASS_NAME;
     if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 1; }
@@ -3318,9 +3102,12 @@ int CALLBACK WinMain(
         WS_EX_LAYERED | WS_EX_TOOLWINDOW,
         wc4.lpszClassName, "ghoster video player",
         WS_POPUP | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        CW_USEDEFAULT, CW_USEDEFAULT,
+        20, 20,
+        400, 400,
+        // CW_USEDEFAULT, CW_USEDEFAULT,
+        // CW_USEDEFAULT, CW_USEDEFAULT,
         0, 0, hInstance, 0);
+    if (!global_icon_menu_window) { MsgBox("Couldn't open global_icon_menu_window."); }
 
     // HWND newPopup = CreateWindowEx(
     //     WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
