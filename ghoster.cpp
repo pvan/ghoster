@@ -1,4 +1,3 @@
-#define OEMRESOURCE
 #include <windows.h>
 #include <stdio.h>
 #include <stdint.h> // types
@@ -49,7 +48,7 @@ HINSTANCE global_hInstance;
 
 UINT singleClickTimerID;
 
-static HBITMAP gobal_bitmap_checkmark;
+// static HBITMAP gobal_bitmap_checkmark;
 
 static HBITMAP global_bitmap_w;
 static HBITMAP global_bitmap_b;
@@ -1371,8 +1370,8 @@ HICON MakeIconFromBitmap(HINSTANCE hInstance, HBITMAP hbm)
 void MakeIcons(HINSTANCE hInstance)
 {
 
-    // also this bitmap here
-    gobal_bitmap_checkmark = LoadBitmap((HINSTANCE) NULL, (LPTSTR) OBM_CHECK);
+    // // also this bitmap here
+    // gobal_bitmap_checkmark = LoadBitmap((HINSTANCE) NULL, (LPTSTR) OBM_CHECK);
 
 
     global_icon = (HICON)LoadImage(
@@ -1542,8 +1541,8 @@ void toggleFullscreen()
 
 
             // make this an option... (we might want to keep it in the corner eg)
-            // int mouseX = LOWORD(lParam); // todo: GET_X_PARAM
-            // int mouseY = HIWORD(lParam);
+            // int mouseX = GET_X_LPARAM(lParam);
+            // int mouseY = GET_Y_LPARAM(lParam);
             // int winX = mouseX - winWID/2;
             // int winY = mouseY - winHEI/2;
             // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
@@ -2173,8 +2172,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_SIZE: {
-            global_ghoster.state.winWID = LOWORD(lParam);
-            global_ghoster.state.winHEI = HIWORD(lParam);
+            global_ghoster.state.winWID = GET_X_LPARAM(lParam);
+            global_ghoster.state.winHEI = GET_Y_LPARAM(lParam);
             return 0;
         }
 
@@ -2223,7 +2222,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (!GetWindowRect(hwnd, &win))
                 return HTNOWHERE;
 
-            POINT pos = { LOWORD(lParam), HIWORD(lParam) }; // todo: won't work on multiple monitors! use GET_X_LPARAM
+            POINT pos = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
 
             bool left   = pos.x < win.left   + pad.x;
@@ -2249,7 +2248,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
         case WM_LBUTTONDOWN: {
-            onMouseDownL(LOWORD(lParam), HIWORD(lParam));
+            onMouseDownL(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         } break;
         // case WM_NCLBUTTONDOWN: {
         // } break;
@@ -2258,7 +2257,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_MOUSEMOVE: {
-            onMouseMove(hwnd, LOWORD(lParam), HIWORD(lParam));  // todo: GET_X_PARAM
+            onMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         } break;
 
         case WM_LBUTTONUP:
@@ -2267,12 +2266,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
-            POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            POINT openPoint = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             ClientToScreen(hwnd, &openPoint);
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
         case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
-            POINT openPoint = { LOWORD(lParam), HIWORD(lParam) };
+            POINT openPoint = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             OpenRClickMenuAt(hwnd, openPoint);
         } break;
 
