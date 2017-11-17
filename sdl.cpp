@@ -17,6 +17,7 @@ struct SDLStuff
     SDL_AudioDeviceID audio_device;
     // SDL_AudioSpec spec;
     SDL_AudioFormat format;
+    int spec_size;
     double estimated_audio_latency_ms;
 };
 
@@ -115,7 +116,12 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
         return false;
     }
 
+    // need to know when remixing volume
     sdl_stuff->format = spec.format;
+
+    // this seems to be how many bytes we consume per frame
+    // good for estimating how many bytes to send to sdl
+    sdl_stuff->spec_size = spec.size;
 
     OutputDebugString("SDL: audio spec wanted:\n");
     logSpec(&wanted_spec);
@@ -128,10 +134,19 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 
 
 
-
+int nearestFactorOf4096(double input)
+{
+    if (input < 0) assert(false);  // something went wrong
+    for (int i = 0; i < 10; i++)
+    {
+        if (input < 4096*i) return 4096*i;
+    }
+    assert(false); // todo: for now alert us about this
+    return 4096*10;
+}
 
 // todo: what to do with this
-void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
+void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff, double video_fps)
 {
     // todo: remove the globals from this function (return an audio_buffer object?)
 
@@ -160,20 +175,25 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     }
 
 
+    // this isn't the same as video_fps... hmm
+    // double targetFPS = ((double)acc->time_base.den /
+    //                     (double)acc->time_base.num) /
+    //                     (double)acc->ticks_per_frame;
+
     // right place for this or better place??
     int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
-
-    // todo: we should be able to adjust seconds desired in queue without messing up our sync
-
-    // // how far ahead do we want our sdl queue to be? (we'll try to keep it full)
-    // double desired_seconds_in_queue = 1; // how far ahead in seconds do we sdl to queue sound data?
-    // int desired_samples_in_queue = desired_seconds_in_queue * acc->sample_rate;
-
-    // actually keep this as small as possible so we can adjust volume responsively
-    // 4096 is about what we get per frame from ffmpeg (how to set?)
-    // todo: make this twice the bytes per frame? (calc/measured from ffmpeg)
-    sdl_stuff->desired_bytes_in_sdl_queue = 4096*2;//desired_samples_in_queue * bytes_per_sample;
-    // double desired_samples_in_queue = (double)sdl_stuff->desired_bytes_in_sdl_queue / (double)bytes_per_sample;
     sdl_stuff->bytes_per_second = bytes_per_sample * acc->sample_rate;
-    // sdl_stuff->desired_seconds_in_queue = (double)desired_samples_in_queue / (double)acc->sample_rate;
+
+    double bytes_per_frame = sdl_stuff->bytes_per_second / video_fps;
+
+    // char buf[123];
+    // sprintf(buf, "fps: %f  bytes_per_frame: %.4f\n", video_fps, bytes_per_frame);
+    // OutputDebugString(buf);
+
+    // todo: test: we should be able to adjust amount in queue without messing up our sync
+    int frames_ahead_to_queue = 2; // or should we do more? (more = slower volume response)
+    sdl_stuff->desired_bytes_in_sdl_queue = nearestFactorOf4096(bytes_per_frame) * frames_ahead_to_queue;
+
+    // bytes_per_frame works so well we haven't tried spec_size
+    // sdl_stuff->desired_bytes_in_sdl_queue = nearestFactorOf4096sdl_stuff->spec_size) * frames_ahead_to_queue;
 }

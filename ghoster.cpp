@@ -626,10 +626,10 @@ struct GhosterWindow
                 double aud_sec_corrected = aud_seconds - estimatedSDLAudioLag/1000.0;
                 double delta_with_correction = (aud_sec_corrected - vid_seconds) * 1000.0;
 
-                char ptsbuf[123];
-                sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
-                        vid_seconds, aud_seconds, delta_ms, delta_with_correction);
-                OutputDebugString(ptsbuf);
+                // char ptsbuf[123];
+                // sprintf(ptsbuf, "vid ts: %.1f, aud ts: %.1f, delta ms: %.1f, correction: %.1f\n",
+                //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
+                // OutputDebugString(ptsbuf);
 
             }
         }
@@ -990,7 +990,7 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff);
+    SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, targetFPS);
 
     SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
     SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
