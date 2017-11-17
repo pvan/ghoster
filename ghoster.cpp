@@ -1271,7 +1271,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 
     // try this
-    SetCapture(newPopup);
+    // SetCapture(newPopup);
 
     return;
 
@@ -2952,8 +2952,6 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
             subMenuSelectedItem = MouseOverMenuItem(mouse, hwnd, menu, menuCount);
 
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-
-            // SetCapture(hwnd);
         } break;
 
         case WM_LBUTTONUP: {
@@ -2976,15 +2974,32 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
+bool global_is_submenu_shown = false;
+void ShowSubMenu(int posX, int posY, int wid, int hei)
+{
+    global_is_submenu_shown = true;
+    SetWindowPos(
+        global_icon_menu_window,
+        0, posX, posY, wid, hei, 0);
+    ShowWindow(global_icon_menu_window, SW_SHOW);
+}
+void HideSubMenu()
+{
+    global_is_submenu_shown = false;
+    ShowWindow(global_icon_menu_window, SW_HIDE);
+}
+
+
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
 
-        // case WM_KILLFOCUS: {
-        //     // ClosePopup(hwnd);
-        //     popupMouseDown = false; // maybe we still want this though
-        // } break;
+        case WM_KILLFOCUS: {
+            if (!global_is_submenu_shown)
+                ClosePopup(hwnd);
+            // popupMouseDown = false; // maybe we still want this though
+        } break;
 
         case WM_MOUSEMOVE: {
             // OutputDebugString("MOVE\n");
@@ -3022,24 +3037,19 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
             if (menuItems[selectedItem].code == ID_ICONMENU)
             {
-
-                SetWindowPos(
-                    global_icon_menu_window,
-                    0, posX, posY, wid, hei, 0);
-                ShowWindow(global_icon_menu_window, SW_SHOW);
-
+                ShowSubMenu(posX, posY, wid, hei);
             }
             else
             {
                 if (!mouseOnSubMenu)
                 {
-                    ShowWindow(global_icon_menu_window, SW_HIDE);
+                    HideSubMenu();
                 }
             }
 
             RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
 
-            SetCapture(hwnd);
+            // SetCapture(hwnd);
         } break;
 
         case WM_RBUTTONDOWN: {
@@ -3066,7 +3076,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // only keep capture if on window
             if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) > 0)
             {
-                SetCapture(hwnd);
+                // SetCapture(hwnd);
             }
 
             // since we're no longer closing on WM_KILLFOCUS, try manual close like this
@@ -3091,7 +3101,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not
             popupSliderCapture = false;
 
-            SetCapture(hwnd);
+            // SetCapture(hwnd);
         } break;
 
 

@@ -1,4 +1,9 @@
 
+
+
+[ ] hide/show menu window instead of creating and destroying?
+
+
 [ ] transparency slider
 
 [ ] command line options
