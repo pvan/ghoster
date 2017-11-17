@@ -1253,8 +1253,11 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 
     global_ghoster.state.contextMenuOpen = true;
-    // global_ghoster.state.menuCloseTimer.Stop();
-    // TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
+
+    // try this for making our notification menu close correctly
+    // (seems to work)
+    SetForegroundWindow(hwnd);
+
 
     HWND newPopup = CreateWindowEx(
         WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
@@ -1268,6 +1271,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
         0);
 
     if (!newPopup) { MsgBox("Failed to create popup window."); }
+
 
 
     // try this
@@ -2989,6 +2993,11 @@ void HideSubMenu()
     ShowWindow(global_icon_menu_window, SW_HIDE);
 }
 
+void onLoseFocus(HWND hwnd)
+{
+    if (!global_is_submenu_shown)
+        ClosePopup(hwnd);
+}
 
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -2996,10 +3005,13 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     {
 
         case WM_KILLFOCUS: {
-            if (!global_is_submenu_shown)
-                ClosePopup(hwnd);
+            onLoseFocus(hwnd);
             // popupMouseDown = false; // maybe we still want this though
         } break;
+        // case WM_ACTIVATE: {  // lets wait until this actually seems needed to enable it
+        //     if (LOWORD(wParam) == WA_INACTIVE)
+        //         onLoseFocus(hwnd);
+        // } break;
 
         case WM_MOUSEMOVE: {
             // OutputDebugString("MOVE\n");
