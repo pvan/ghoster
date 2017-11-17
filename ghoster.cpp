@@ -2616,6 +2616,7 @@ int MouseOverMenuItem(POINT point, HWND hwnd, menuItem *menu, int count)
 
         indexOfClick++;
     }
+    if (indexOfClick >= count) return -1;
     return indexOfClick;
 }
 
@@ -2985,6 +2986,16 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             int posY = winRect.top + menuItemPos;
             int wid = 100;
             int hei = MI_HEI * (sizeof(iconMenuItems)/sizeof(menuItem)) + 8;
+
+            // lock submenu to monitor
+            MONITORINFO mi = { sizeof(mi) };
+            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+            {
+                if (posX+wid > mi.rcWork.right) posX -= (posX+wid - mi.rcWork.right);
+                if (posY+hei > mi.rcWork.bottom) posY -= (posY+hei - mi.rcWork.bottom);
+            }
+
+            // check if mouse is on submenu
             POINT screenMousePos = mouse;
             ClientToScreen(hwnd, &screenMousePos);
             bool mouseOnSubMenu =
