@@ -3034,6 +3034,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             selectedItem = MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem));
 
             // calc submenu pos
+            // do inside ShowSubMenu() ?
             RECT winRect; GetWindowRect(hwnd, &winRect);
             int menuItemPos = 220;  // need a getmenuitemrect
             int posX = winRect.right - 10;  // they overlap a bit
@@ -3055,6 +3056,9 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             bool mouseOnSubMenu =
                 screenMousePos.x > posX && screenMousePos.x < posX+wid &&
                 screenMousePos.y > posY && screenMousePos.y < posY+hei;
+
+            if (!mouseOnSubMenu)
+                subMenuSelectedItem = -1; // prevent highlight if we're not over the menu
 
             if (menuItems[selectedItem].code == ID_ICONMENU)
             {
