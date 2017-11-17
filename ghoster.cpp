@@ -2965,6 +2965,7 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 ShowWindow(hwnd, SW_HIDE);
                 // RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             // }
+            popupMouseDown = false;
         } break;
 
         case WM_PAINT: {
