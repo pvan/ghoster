@@ -1769,7 +1769,20 @@ void setWallpaperMode(HWND hwnd, bool enable)
 
 
         // trick is to hide this or it could intermittently hide our own window
+        // todo: bug: once we hide this, if we minimize our window it appears on the desktop again!
         ShowWindow(global_workerw, SW_HIDE);
+
+
+        // // alt idea.. might be able to get something like this to work instead of
+        // // making a whole new window and parenting it to progman...
+        // // though, I couldn't get this work right
+        // // it seems the "show desktop" function in the bottom right is
+        // // different than just a SW_MINIMIZE
+        // // source: when we do a "show desktop" after SW_HIDEing workerW, we get a kind of wallpaper mode
+        // // (if you test again, don't forget to continue to render to our main window)
+        // setTopMost(hwnd, false); // todo: test if needed
+        // ShowWindow(global_ghoster.state.window, SW_MINIMIZE);
+
 
 
         // create our new window
@@ -1827,6 +1840,14 @@ void setWallpaperMode(HWND hwnd, bool enable)
     }
     else
     {
+        // try this to undo our unwanted wallpaper mode bug when using "show desktop"
+        // seems to work, but we also have to show on program exit
+        // the only problem is if we have two ghoster apps open, one could hide this
+        // and the other one could be bugged out when using "show desktop" when not topmost
+        // not to mention any other apps that could be bugged out by hiding this
+        if (global_workerw)
+            ShowWindow(global_workerw, SW_SHOW);
+
         if (global_wallpaper_window)
             DestroyWindow(global_wallpaper_window);
 
@@ -3352,6 +3373,14 @@ int CALLBACK WinMain(
     // if (global_workerw) CloseWindow(global_workerw);
     RemoveSysTrayIcon(global_ghoster.state.window);
     UnhookWindowsHookEx(mouseHook);
+
+    // show this again if we happen to be in wallpaper mode on exit
+    // if not, the next time user changes wallpaper it won't transition gradually
+    // (but only on the first transition)
+    // there could be other consequences too like windows being "put on the desktop"
+    // rather than minimized when using "show desktop" (which is how we found this is needed)
+    if (global_workerw)
+        ShowWindow(global_workerw, SW_SHOW);
 
     return 0;
 }
