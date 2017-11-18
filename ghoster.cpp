@@ -1241,7 +1241,7 @@ menuItem menuItems[] =
     {ID_SEP          , L""                               , 0                                    , 0, 0 },
     {ID_TOPMOST      , L"Always On Top"                  , &global_ghoster.state.topMost        , 0, 0 },
     {ID_CLICKTHRU    , L"Ghost Mode (Cannot Be Clicked)" , &global_ghoster.state.clickThrough   , 0, 0 },
-    {ID_WALLPAPER    , L"Wallpaper Mode"                 , &global_ghoster.state.wallpaperMode  , 0, 0 },
+    {ID_WALLPAPER    , L"Stick To Wallpaper"             , &global_ghoster.state.wallpaperMode  , 0, 0 },
     {ID_TRANSPARENCY , L"Opacity"                        , 0, &global_ghoster.state.opacity        , 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0 },
     {ID_EXIT         , L"Exit"                           , 0                                    , 0, 0 },
