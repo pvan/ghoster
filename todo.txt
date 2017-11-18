@@ -1,12 +1,16 @@
 
+[ ] debug and release build folders?
 
+[ ] alt tab should close the menu probably
 
 [ ] hide/show menu window instead of creating and destroying?
 
 
-[ ] transparency slider
+[x] transparency slider
 
 [ ] command line options
+
+[ ] overlay display: play/pause feedback, etc
 
 
 [ ] load urls with timestamps
@@ -16,10 +20,13 @@
 [ ] percent bar incorrect when seeking some urls?
 
 
-[/] proper fullscreen/pause/unpause behavior
+[x] proper fullscreen/pause/unpause behavior
     [x] cache state on first click
-    [ ] should compromise and pause, like, halfway through our allowed double click time
+    [x] should compromise and pause, like, halfway through our allowed double click time
 
+[ ] opacity doesn't seem to work in wallpaper mode, but not really wanted too badly anyway
+    could maybe do something funny with workerW to get it to work, 
+    since workerW is originally for fading between wallpapers
 
 [ ] a sort of message system for update loop communication? load video, seek, etc
 
@@ -47,9 +54,6 @@
     (definite delay but maybe not correlated to vid size)
 
 
-[ ] overlay display: play/pause feedback, etc
-
-
 
 [ ] add black bars when aspect ratio is locked and full screen
 
@@ -60,10 +64,8 @@
 
 
 
-[ ] volume! 
+[x] volume! 
 
-
-[ ] transparency slider
 
 
 
