@@ -201,7 +201,7 @@ struct AppState {
     bool repeat = true;
     bool transparent = false;
     bool clickThrough = false;
-    bool topMost = true;
+    bool topMost = false;
     bool enableSnapping = true;
     bool wallpaperMode = false;
 
@@ -1845,6 +1845,13 @@ void setWallpaperMode(HWND hwnd, bool enable)
         // the only problem is if we have two ghoster apps open, one could hide this
         // and the other one could be bugged out when using "show desktop" when not topmost
         // not to mention any other apps that could be bugged out by hiding this
+        // UPDATE: some more info on this,
+        // when "show desktop" is done, it first minimizes all "minimizable" windows
+        // then brings the Z order of the desktop to the front...
+        // so maybe is there a way to make our main window minimizable?
+        // EDIT: WS_MINIMIZEBOX seemed to do the trick, now everything works as expected
+        // (though there could theoretically be other windows that aren't minimizable
+        // (that are effected while a ghoster window is in wallpaper mode)
         if (global_workerw)
             ShowWindow(global_workerw, SW_SHOW);
 
@@ -2412,6 +2419,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 GlobalLoadMovie(TEST_FILES[wParam - 0x30]);
             }
         } break;
+
+        // note this is NOT called via show desktop unless we are already able to be minimized, i think
+        // case WM_SYSCOMMAND: {
+        //     switch (wParam) {
+        //         case SC_MINIMIZE:
+        //             OutputDebugString("MINIMIZE!");
+        //             break;
+        //     }
+        // } break;
 
         // case WM_COMMAND: {
         //     OutputDebugString("COMMAD");
@@ -3324,7 +3340,8 @@ int CALLBACK WinMain(
     global_ghoster.state.window = CreateWindowEx(
         WS_EX_LAYERED,
         wc.lpszClassName, "ghoster video player",
-        WS_POPUP | WS_VISIBLE,  // ^ WS_THICKFRAME ^ WS_MAXIMIZEBOX
+        WS_MINIMIZEBOX |   // i swear sometimes we can't shrink (via show desktop) without WS_MINIMIZEBOX
+        WS_POPUP | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT,
         neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
         0, 0, hInstance, 0);
