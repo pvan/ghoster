@@ -37,9 +37,9 @@
 #define i64 int64_t
 
 
-const bool DEBUG_MCLICK_MSGS = true;
+const bool DEBUG_MCLICK_MSGS = false;
 
-const bool FORCE_NON_ZERO_OPACITY = false;
+const bool FORCE_NON_ZERO_OPACITY = false;  // not sure if we want this or not
 
 
 HWND global_workerw;
