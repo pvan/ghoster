@@ -444,8 +444,8 @@ bool GetNextVideoFrame(
                 av_frame_free(&frame);
 
                 // for now try only returning when frame_finished,
-                // before it was every avcodec_decode_video2
-                // even if we didn't get a compelte frame
+                // (before it was every avcodec_decode_video2
+                // even if we didn't get a compelte frame)
                 return true;
 
             }

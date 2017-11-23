@@ -2128,7 +2128,7 @@ void onMouseUpL()
 
 void onDoubleClickDownL()
 {
-    OutputDebugString("LDOUBLECLICK\n");
+    if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOUBLECLICK\n");
 
     if (clientPointIsOnProgressBar(global_ghoster.state.mDownPoint.x, global_ghoster.state.mDownPoint.y))
     {

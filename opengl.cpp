@@ -282,6 +282,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
     // if window size changed.. could also call in WM_SIZE and not pass dWID here
+    // or get from destination window?
     glViewport(0, 0, dWID, dHEI);
 
 
