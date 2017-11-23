@@ -343,18 +343,18 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
 
     // kinda awkward
-    SoundBuffer dummyBuffyJunkData;
-    dummyBuffyJunkData.data = (u8*)malloc(1024 * 10);
-    dummyBuffyJunkData.size_in_bytes = 1024 * 10;
+    SoundBuffer dummyBufferJunkData;
+    dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
+    dummyBufferJunkData.size_in_bytes = 1024 * 10;
     int bytes_queued_up = GetNextAudioFrame(
         movie->av_movie.afc,
         movie->av_movie.audio.codecContext,
         movie->av_movie.audio.index,
-        dummyBuffyJunkData,
+        dummyBufferJunkData,
         1024,
         realTimeMs,
         &movie->ptsOfLastAudio);
-    free(dummyBuffyJunkData.data);
+    free(dummyBufferJunkData.data);
 
 
     i64 streamIndex = movie->av_movie.video.index;
