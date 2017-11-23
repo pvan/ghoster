@@ -42,6 +42,10 @@
 
 
 [ ] needs a few abstraction cleanup passes
+    [ ] menu windows
+    [ ] wallpaper window?
+    [ ] app/plat interface?
+    [ ] app/plat inter thread communication
 
 
 [ ] decouple display from frames decoded so we can decode from network easier? 
