@@ -126,6 +126,9 @@ const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
+void MsgBoxW(wchar_t* s) {
+    MessageBoxW(0, s, L"vid player", MB_OK);
+}
 // this is case sensitive
 bool StringBeginsWith(const char *str, const char *front)
 {
@@ -246,7 +249,7 @@ struct AppState {
     bool messageLoadNewMovie = false;
     MovieAV newMovieToRun;
 
-    bool bufferingOrLoading = false;
+    bool bufferingOrLoading = true;
 
 
 
@@ -920,7 +923,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
         char *audio_url;
         if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
         {
-            *newMovie = OpenMovieAV(video_url, audio_url);
+            if (!OpenMovieAV(video_url, audio_url, newMovie))
+                return false;
         }
         else
         {
@@ -930,7 +934,9 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
     }
     else if (path[1] == ':')
     {
-        *newMovie = OpenMovieAV(path, path);
+        // *newMovie = OpenMovieAV(path, path);
+        if (!OpenMovieAV(path, path, newMovie))
+            return false;
     }
     else
     {
@@ -1148,7 +1154,8 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 
     // LOAD FILE
-    GlobalLoadMovie(TEST_FILES[0]);
+    if (!global_load_new_file)
+        GlobalLoadMovie(TEST_FILES[0]);
 
 
 
@@ -3263,8 +3270,30 @@ int CALLBACK WinMain(
     int nCmdShow
 )
 {
-
     global_hInstance = hInstance;
+
+
+    // char *cmdLine = GetCommandLine();
+    // MsgBox(cmdLine);
+
+    wchar_t **argList;
+    int argCount;
+    argList = CommandLineToArgvW(GetCommandLineW(), &argCount);
+    if (argList == 0)
+    {
+        MsgBox("CommandLineToArgvW failed.");
+    }
+    for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
+    {
+        char filePathOrUrl[256]; // todo what max to use
+        wcstombs(filePathOrUrl, argList[i], 256);
+        if (filePathOrUrl[0] != '-')
+        {
+            GlobalLoadMovie(filePathOrUrl);
+        }
+        //MsgBoxW(argList[i]);
+    }
+
 
     // FFMPEG
     InitAV();  // basically just registers all codecs.. call when needed instead?

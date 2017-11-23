@@ -485,7 +485,7 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     return result;
 }
 
-MovieAV OpenMovieAV(char *videopath, char *audiopath)
+bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
 {
 
     MovieAV file;
@@ -502,7 +502,7 @@ MovieAV OpenMovieAV(char *videopath, char *audiopath)
         char msg[2048];
         sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
         MsgBox(msg);
-        return file;
+        return false;
     }
 
     // populate fc->streams
@@ -510,7 +510,7 @@ MovieAV OpenMovieAV(char *videopath, char *audiopath)
         avformat_find_stream_info(file.afc, 0) < 0)
     {
         MsgBox("ffmpeg: Can't find stream info in file.");
-        return file;
+        return false;
     }
 
     // this must be sending to stdout or something? (not showing up anywhere)
@@ -546,8 +546,8 @@ MovieAV OpenMovieAV(char *videopath, char *audiopath)
         file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
     }
 
-
-    return file;
+    *outMovie = file;
+    return true;
 }
 
 
