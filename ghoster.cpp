@@ -793,7 +793,10 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
         &si, &pi))
     {
         //OutputDebugString("Error creating youtube-dl process.");
-        MsgBox("Error creating youtube-dl process.");
+        char errmsg[123];
+        sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
+        MsgBox(errmsg);
+        // MsgBox("Error creating youtube-dl process.");
         return false;
     }
 

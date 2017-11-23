@@ -1,4 +1,8 @@
 
+
+[ ] when exe launched from batch file, cannot find youtube-dl.exe.. use exe path to build abs paths?
+
+
 [ ] debug and release build folders?
 
 [ ] alt tab should close the menu probably
