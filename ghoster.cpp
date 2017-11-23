@@ -661,30 +661,20 @@ struct GhosterWindow
         }
 
 
+        HWND destWin = state.window;
         if (state.wallpaperMode)
         {
-            RenderToScreenGL((void*)loaded_video.vid_buffer,
-                            960,
-                            720, //todo: extra bar bug qwer
-                            // loaded_video.vidWID,
-                            // loaded_video.vidHEI,
-                            state.winWID,
-                            state.winHEI,
-                            global_wallpaper_window,
-                            percent, drawProgressBar, state.bufferingOrLoading);
+            destWin = global_wallpaper_window;
         }
-        else
-        {
-            RenderToScreenGL((void*)loaded_video.vid_buffer,
-                            960,
-                            720, //todo: extra bar bug qwer
-                            // loaded_video.vidWID,
-                            // loaded_video.vidHEI,
-                            state.winWID,
-                            state.winHEI,
-                            state.window,
-                            percent, drawProgressBar, state.bufferingOrLoading);
-        }
+        RenderToScreenGL((void*)loaded_video.vid_buffer,
+                        960,
+                        720, //todo: extra bar bug qwer
+                        // loaded_video.vidWID,
+                        // loaded_video.vidHEI,
+                        state.winWID,
+                        state.winHEI,
+                        destWin,
+                        percent, drawProgressBar, state.bufferingOrLoading);
 
 
         // REPEAT
