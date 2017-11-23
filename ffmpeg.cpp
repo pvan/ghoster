@@ -335,7 +335,8 @@ bool GetNextVideoFrame(
     AVFrame *outFrame,
     double msOfDesiredFrame,
     double msAllowableAudioLead,
-    i64 *outPTS)
+    i64 *outPTS,
+    int *frames_skipped)
 {
     AVPacket packet;
 
@@ -357,7 +358,7 @@ bool GetNextVideoFrame(
     //     OutputDebugString(frambuf2);
     // bool displayedSkipMsg = false;
 
-    int frames_skipped = 0;
+    // int frames_skipped = 0;
 
     while(av_read_frame(fc, &packet) >= 0)
     {
@@ -394,7 +395,7 @@ bool GetNextVideoFrame(
                 if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead)
                 {
                     // OutputDebugString("skipped a frame\n");
-                    frames_skipped++;
+                    *frames_skipped++;
 
                     // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
 
@@ -410,11 +411,11 @@ bool GetNextVideoFrame(
 
                     continue;
                 }
-                if (frames_skipped > 0) {
-                    char skipbuf[256];
-                    sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
-                    OutputDebugString(skipbuf);
-                }
+                // if (frames_skipped > 0) {
+                //     char skipbuf[256];
+                //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                //     OutputDebugString(skipbuf);
+                // }
 
 
                 *outPTS = av_frame_get_best_effort_timestamp(frame);

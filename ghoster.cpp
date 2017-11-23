@@ -329,6 +329,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
     // step through frames for both contexts until we reach our desired timestamp
 
+    int frames_skipped;
     GetNextVideoFrame(
         movie->av_movie.vfc,
         movie->av_movie.video.codecContext,
@@ -337,7 +338,8 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->frame_output,
         movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
         0,
-        &movie->ptsOfLastVideo);
+        &movie->ptsOfLastVideo,
+        &frames_skipped);
 
 
     // kinda awkward
@@ -624,6 +626,7 @@ struct GhosterWindow
                 // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
                 if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0) // time for a new frame if audio is this far behind
                 {
+                    int frames_skipped;
                     GetNextVideoFrame(
                         loaded_video.av_movie.vfc,
                         loaded_video.av_movie.video.codecContext,
@@ -632,7 +635,14 @@ struct GhosterWindow
                         loaded_video.frame_output,
                         aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
-                        &loaded_video.ptsOfLastVideo);
+                        &loaded_video.ptsOfLastVideo,
+                        &frames_skipped);
+
+                    if (frames_skipped > 0) {
+                        char skipbuf[256];
+                        sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                        OutputDebugString(skipbuf);
+                    }
 
                 }
                 else
