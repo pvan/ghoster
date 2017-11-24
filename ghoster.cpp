@@ -58,6 +58,8 @@ static int selectedItem = -1;
 static int subMenuSelectedItem = -1;
 static bool global_is_submenu_shown = false;
 
+static char *global_exe_directory;
+
 
 UINT singleClickTimerID;
 
@@ -781,11 +783,16 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
     si.wShowWindow = SW_HIDE;
 
+    char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
+    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_exe_directory);
+
     char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "youtube-dl.exe -g %s", path);
+    sprintf(args, "%syoutube-dl.exe -g %s", global_exe_directory, path);
+    // MsgBox(args);
 
     if (!CreateProcess(
-        "youtube-dl.exe",
+        youtube_dl_path,
+        //"youtube-dl.exe",
         args,  // todo: UNSAFE
         0, 0, TRUE,
         CREATE_NEW_CONSOLE,
@@ -3266,8 +3273,6 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(0, nCode, wParam, lParam);
 }
 
-static char *global_exe_directory;
-
 void DirectoryFromPath(char *path)
 {
     char *new_end = 0;
@@ -3305,9 +3310,9 @@ int CALLBACK WinMain(
     global_exe_directory = (char*)malloc(MAX_PATH); // todo: what to use?
     wcstombs(global_exe_directory, argList[0], MAX_PATH);
     DirectoryFromPath(global_exe_directory);
-        OutputDebugString("\n\n\n\n");
-        OutputDebugString(global_exe_directory);
-        OutputDebugString("\n\n\n\n");
+        // OutputDebugString("\n\n\n\n");
+        // OutputDebugString(global_exe_directory);
+        // OutputDebugString("\n\n\n\n");
 
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
