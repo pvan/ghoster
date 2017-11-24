@@ -1,4 +1,6 @@
 
+[ ] set notification popup and window title to video name
+
 
 [ ] when exe launched from batch file, cannot find youtube-dl.exe.. use exe path to build abs paths?
 

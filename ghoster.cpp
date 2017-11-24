@@ -110,7 +110,7 @@ const int PROGRESS_BAR_B = 0;
 // hide progress bar after this many ms
 const double PROGRESS_BAR_TIMEOUT = 1000;
 
-// disallow opacity greater than this when in ghost ode
+// disallow opacity greater than this when in ghost mode
 const double GHOST_MODE_MAX_OPACITY = 0.95;
 
 // how long to wait before toggling pause when single click (which could be start of double click)
