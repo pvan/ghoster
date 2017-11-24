@@ -3266,6 +3266,20 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
     return CallNextHookEx(0, nCode, wParam, lParam);
 }
 
+static char *global_exe_directory;
+
+void DirectoryFromPath(char *path)
+{
+    char *new_end = 0;
+    for (char *c = path; *c; c++)
+    {
+        if (*c == '\\' || *c == '/')
+            new_end = c+1;
+    }
+    if (new_end != 0)
+        *new_end = '\0';
+}
+
 int CALLBACK WinMain(
     HINSTANCE hInstance,
     HINSTANCE hPrevInstance,
@@ -3286,6 +3300,15 @@ int CALLBACK WinMain(
     {
         MsgBox("CommandLineToArgvW failed.");
     }
+
+    // make note of exe directory
+    global_exe_directory = (char*)malloc(MAX_PATH); // todo: what to use?
+    wcstombs(global_exe_directory, argList[0], MAX_PATH);
+    DirectoryFromPath(global_exe_directory);
+        OutputDebugString("\n\n\n\n");
+        OutputDebugString(global_exe_directory);
+        OutputDebugString("\n\n\n\n");
+
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
         char filePathOrUrl[256]; // todo what max to use
