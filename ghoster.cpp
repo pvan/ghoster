@@ -3597,6 +3597,7 @@ int CALLBACK WinMain(
             TranslateMessage(&Message);
             DispatchMessage(&Message);
         }
+        Sleep(1);
     }
 
     // if (global_workerw) CloseWindow(global_workerw);

@@ -1,4 +1,7 @@
 
+[ ] window controls are laggy on second ghoster window
+
+
 [ ] test no internet
 
 
