@@ -3413,6 +3413,23 @@ int CALLBACK WinMain(
             global_ghoster.state.fullscreen = false;
         }
 
+        if (strcmp(filePathOrUrl, "-blinky") == 0)
+        {
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*2);
+        }
+        if (strcmp(filePathOrUrl, "-pinky") == 0)
+        {
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*1);
+        }
+        if (strcmp(filePathOrUrl, "-inky") == 0)
+        {
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*0);
+        }
+        if (strcmp(filePathOrUrl, "-clyde") == 0)
+        {
+            global_ghoster.icon = GetIconByInt(randomInt(4) + 4*3);
+        }
+
         // MsgBox(filePathOrUrl); // asdf
     }
 
@@ -3503,6 +3520,7 @@ int CALLBACK WinMain(
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
 
+    // /*
     // setup starting options based on command args / defaults (defaults are set in struct)....
 
     if (!global_ghoster.icon)
@@ -3524,8 +3542,8 @@ int CALLBACK WinMain(
     // if (global_ghoster.state.wallpaperMode)
     //     setWallpaperMode(global_ghoster.state.window, global_ghoster.state.wallpaperMode);
 
-
-    //
+    // end options setup
+    // */
 
 
     // ENABLE DRAG DROP
