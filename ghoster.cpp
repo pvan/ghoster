@@ -3430,6 +3430,12 @@ int CALLBACK WinMain(
             global_ghoster.icon = GetIconByInt(randomInt(4) + 4*3);
         }
 
+        if (StringBeginsWith(filePathOrUrl, "-opac"))
+        {
+            char *opacNum = filePathOrUrl + 5; // 5 = length of "-opac"
+            global_ghoster.state.opacity = atoi(opacNum);
+        }
+
         // MsgBox(filePathOrUrl); // asdf
     }
 
@@ -3532,7 +3538,6 @@ int CALLBACK WinMain(
 
     setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
-
     setFullscreen(global_ghoster.state.fullscreen);
 
     if (startInGhostMode)
