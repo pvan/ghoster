@@ -204,7 +204,6 @@ struct AppState {
 
     bool lock_aspect = true;
     bool repeat = true;
-    bool transparent = false;
     bool clickThrough = false;
     bool topMost = false;
     bool enableSnapping = true;
@@ -1595,17 +1594,38 @@ void SetIcon(HWND hwnd, HICON icon)
 }
 
 
-
-void toggleFullscreen()
+void setFullscreen(bool enable)
 {
-    WINDOWPLACEMENT winpos;
-    winpos.length = sizeof(WINDOWPLACEMENT);
-    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    if (enable)
     {
-        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.state.fullscreen)
-        {
-            // ShowWindow(global_ghoster.state.window, SW_RESTORE);
+        // todo: BUG: transparency is lost when we full screen
+        // ShowWindow(global_ghoster.state.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
 
+        // for now just change our window size to the monitor
+        // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
+        global_ghoster.state.last_win_pos.length = sizeof(WINDOWPLACEMENT);
+        if (GetWindowPlacement(global_ghoster.state.window, &global_ghoster.state.last_win_pos)); // cache last position
+        //
+        MONITORINFO mi = { sizeof(mi) };
+        if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
+        {
+            SetWindowPos(
+                global_ghoster.state.window,
+                HWND_TOP,
+                mi.rcMonitor.left, mi.rcMonitor.top,
+                mi.rcMonitor.right - mi.rcMonitor.left,
+                mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
+                SWP_NOOWNERZORDER | SWP_FRAMECHANGED
+                );
+            global_ghoster.state.fullscreen = true;
+        }
+    }
+    else
+    {
+        // ShowWindow(global_ghoster.state.window, SW_RESTORE);
+
+        if (global_ghoster.state.last_win_pos.length)
+        {
             // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
             SetWindowPos(
                 global_ghoster.state.window,
@@ -1617,42 +1637,32 @@ void toggleFullscreen()
                 global_ghoster.state.last_win_pos.rcNormalPosition.bottom -
                 global_ghoster.state.last_win_pos.rcNormalPosition.top,
                 0);
-            global_ghoster.state.fullscreen = false;
+        }
+        global_ghoster.state.fullscreen = false;
 
 
-            // make this an option... (we might want to keep it in the corner eg)
-            // int mouseX = GET_X_LPARAM(lParam);
-            // int mouseY = GET_Y_LPARAM(lParam);
-            // int winX = mouseX - winWID/2;
-            // int winY = mouseY - winHEI/2;
-            // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+        // make this an option... (we might want to keep it in the corner eg)
+        // int mouseX = GET_X_LPARAM(lParam);
+        // int mouseY = GET_Y_LPARAM(lParam);
+        // int winX = mouseX - winWID/2;
+        // int winY = mouseY - winHEI/2;
+        // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
+    }
+}
+
+void toggleFullscreen()
+{
+    WINDOWPLACEMENT winpos;
+    winpos.length = sizeof(WINDOWPLACEMENT);
+    if (GetWindowPlacement(global_ghoster.state.window, &winpos))
+    {
+        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.state.fullscreen)
+        {
+            setFullscreen(false);
         }
         else
         {
-            // todo: BUG: transparency is lost when we full screen
-            // ShowWindow(global_ghoster.state.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
-
-            // for now just change our window size to the monitor
-            // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
-            global_ghoster.state.last_win_pos.length = sizeof(WINDOWPLACEMENT);
-            if (GetWindowPlacement(global_ghoster.state.window, &global_ghoster.state.last_win_pos)); // cache last position
-            //
-            MONITORINFO mi = { sizeof(mi) };
-            if (GetMonitorInfo(MonitorFromWindow(global_ghoster.state.window, MONITOR_DEFAULTTOPRIMARY), &mi))
-            {
-                SetWindowPos(
-                    global_ghoster.state.window,
-                    HWND_TOP,
-                    mi.rcMonitor.left, mi.rcMonitor.top,
-                    mi.rcMonitor.right - mi.rcMonitor.left,
-                    mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
-                    SWP_NOOWNERZORDER | SWP_FRAMECHANGED
-                    );
-                global_ghoster.state.fullscreen = true;
-            }
-
-
-
+            setFullscreen(true);
         }
     }
 }
@@ -3316,6 +3326,7 @@ int CALLBACK WinMain(
         // OutputDebugString(global_exe_directory);
         // OutputDebugString("\n\n\n\n");
 
+    bool startInGhostMode;
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
         char filePathOrUrl[256]; // todo what max to use
@@ -3324,35 +3335,75 @@ int CALLBACK WinMain(
         {
             GlobalLoadMovie(filePathOrUrl);
         }
+
         if (strcmp(filePathOrUrl, "-top") == 0)
         {
             global_ghoster.state.topMost = true;
         }
+        if (strcmp(filePathOrUrl, "-notop") == 0)
+        {
+            global_ghoster.state.topMost = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-aspect") == 0)
+        {
+            global_ghoster.state.lock_aspect = true;
+        }
+        if (strcmp(filePathOrUrl, "-noaspect") == 0 || strcmp(filePathOrUrl, "-stretch") == 0)
+        {
+            global_ghoster.state.lock_aspect = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-repeat") == 0)
+        {
+            global_ghoster.state.repeat = true;
+        }
+        if (strcmp(filePathOrUrl, "-norepeat") == 0)
+        {
+            global_ghoster.state.repeat = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-ghost") == 0)
+        {
+            startInGhostMode = true;
+        }
+        if (strcmp(filePathOrUrl, "-noghost") == 0)
+        {
+            startInGhostMode = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-snap") == 0)
+        {
+            global_ghoster.state.enableSnapping = true;
+        }
+        if (strcmp(filePathOrUrl, "-nosnap") == 0)
+        {
+            global_ghoster.state.enableSnapping = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-wall") == 0)
+        {
+            global_ghoster.state.wallpaperMode = true;
+        }
+        if (strcmp(filePathOrUrl, "-nowall") == 0)
+        {
+            global_ghoster.state.wallpaperMode = false;
+        }
+
+        if (strcmp(filePathOrUrl, "-fullscreen") == 0)
+        {
+            global_ghoster.state.fullscreen = true;
+        }
+        if (strcmp(filePathOrUrl, "-nofullscreen") == 0)
+        {
+            global_ghoster.state.fullscreen = false;
+        }
+
         // MsgBox(filePathOrUrl); // asdf
     }
 
-
-    // bool lock_aspect = true;
-    // bool repeat = true;
-    // bool transparent = false;
-    // bool clickThrough = false;
-    // bool topMost = false;
-    // bool enableSnapping = true;
-    // bool wallpaperMode = false;
-
     // double opacity = 1.0;
-    // double last_opacity;
-    // bool had_to_cache_opacity = false;
-
     // double volume = 1.0;
-
-    // bool fullscreen = false;
-    // WINDOWPLACEMENT last_win_pos;
-
-    // bool savestate_is_saved = false;
-    // bool toggledPauseOnLastSingleClick = false;
-    // bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
-
 
 
     // FFMPEG
@@ -3438,10 +3489,16 @@ int CALLBACK WinMain(
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
 
-    // setup some defaults....
+    // setup starting options based on command args / defaults (defaults are whatever is set in struct)....
 
     setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
+
+    setFullscreen(global_ghoster.state.fullscreen);
+
+    if (startInGhostMode)
+        setGhostMode(global_ghoster.state.window, startInGhostMode);
+
 
     if (!global_ghoster.icon)
         global_ghoster.icon = RandomIcon();
