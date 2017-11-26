@@ -3588,16 +3588,30 @@ int CALLBACK WinMain(
     while (global_ghoster.state.appRunning)
     {
         MSG Message;
-        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-        {
-            // char msgbuf[123];
-            // sprintf(msgbuf, "msg: %i\n", Message.message);
-            // OutputDebugString(msgbuf);
+        // while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
+        // {
+        //     // char msgbuf[123];
+        //     // sprintf(msgbuf, "msg: %i\n", Message.message);
+        //     // OutputDebugString(msgbuf);
 
-            TranslateMessage(&Message);
-            DispatchMessage(&Message);
+        //     TranslateMessage(&Message);
+        //     DispatchMessage(&Message);
+        // }
+        // Sleep(1);
+
+        BOOL ret;
+        while (ret = GetMessage(&Message, 0, 0, 0) && global_ghoster.state.appRunning)
+        {
+            if (ret == -1)
+            {
+               global_ghoster.state.appRunning = false;
+            }
+            else
+            {
+                TranslateMessage(&Message);
+                DispatchMessage(&Message);
+            }
         }
-        Sleep(1);
     }
 
     // if (global_workerw) CloseWindow(global_workerw);
