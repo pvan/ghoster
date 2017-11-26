@@ -15,7 +15,7 @@
 
 [x] transparency slider
 
-[ ] command line options
+[x] command line options
 
 [ ] overlay display: play/pause feedback, etc
 
@@ -25,6 +25,7 @@
 
 
 [ ] percent bar incorrect when seeking some urls?
+    [ ] which?
 
 
 [x] proper fullscreen/pause/unpause behavior

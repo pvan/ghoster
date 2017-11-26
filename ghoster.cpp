@@ -1696,6 +1696,8 @@ void setClickThrough(HWND hwnd, bool enable)
 }
 void setWindowOpacity(HWND hwnd, double opacity)
 {
+    if (opacity < 0) opacity = 0;
+    if (opacity > 1) opacity = 1;
     if (global_ghoster.state.clickThrough && opacity > GHOST_MODE_MAX_OPACITY)
         opacity = GHOST_MODE_MAX_OPACITY;
     if (FORCE_NON_ZERO_OPACITY)
@@ -1708,6 +1710,8 @@ void setWindowOpacity(HWND hwnd, double opacity)
 }
 void setVolume(double volume)
 {
+    if (volume < 0) volume = 0;
+    if (volume > 1) volume = 1;
     global_ghoster.state.volume = volume;
 }
 
@@ -3441,6 +3445,9 @@ int CALLBACK WinMain(
             char *volNum = filePathOrUrl + 4; // 4 = length of "-vol"
             global_ghoster.state.volume = (double)atoi(volNum) / 100.0;
         }
+
+        // todo: many settings here are coupled with the setX() functions called below
+        // maybe move this whole arg parsing below window creation so we don't have this two-step process?
 
         // MsgBox(filePathOrUrl); // asdf
     }
