@@ -2078,7 +2078,6 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
 
     KillTimer(0, singleClickTimerID);
-
     {
         appTogglePause();
 
@@ -3295,8 +3294,11 @@ int CALLBACK WinMain(
     global_hInstance = hInstance;
 
 
-    // char *cmdLine = GetCommandLine();
-    // MsgBox(cmdLine);
+    // load icons/bitmaps
+    MakeIcons(hInstance);
+
+
+    // COMMAND LINE ARGS
 
     wchar_t **argList;
     int argCount;
@@ -3322,8 +3324,35 @@ int CALLBACK WinMain(
         {
             GlobalLoadMovie(filePathOrUrl);
         }
-        //MsgBoxW(argList[i]);
+        if (strcmp(filePathOrUrl, "-top") == 0)
+        {
+            global_ghoster.state.topMost = true;
+        }
+        // MsgBox(filePathOrUrl); // asdf
     }
+
+
+    // bool lock_aspect = true;
+    // bool repeat = true;
+    // bool transparent = false;
+    // bool clickThrough = false;
+    // bool topMost = false;
+    // bool enableSnapping = true;
+    // bool wallpaperMode = false;
+
+    // double opacity = 1.0;
+    // double last_opacity;
+    // bool had_to_cache_opacity = false;
+
+    // double volume = 1.0;
+
+    // bool fullscreen = false;
+    // WINDOWPLACEMENT last_win_pos;
+
+    // bool savestate_is_saved = false;
+    // bool toggledPauseOnLastSingleClick = false;
+    // bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
+
 
 
     // FFMPEG
@@ -3411,12 +3440,11 @@ int CALLBACK WinMain(
 
     // setup some defaults....
 
-    setWindowOpacity(global_ghoster.state.window, 1.0);
+    setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
 
-    MakeIcons(hInstance);
-
-    global_ghoster.icon = RandomIcon();
+    if (!global_ghoster.icon)
+        global_ghoster.icon = RandomIcon();
 
     AddSysTrayIcon(global_ghoster.state.window); // sets as default icon
     SetIcon(global_ghoster.state.window, global_ghoster.icon);
