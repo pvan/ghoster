@@ -694,6 +694,8 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         destWin,
+                        state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
+                        loaded_video.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading);
 
 
@@ -1620,7 +1622,7 @@ void setFullscreen(bool enable)
                 HWND_TOP,
                 mi.rcMonitor.left, mi.rcMonitor.top,
                 mi.rcMonitor.right - mi.rcMonitor.left,
-                mi.rcMonitor.bottom - mi.rcMonitor.top -1,   //
+                mi.rcMonitor.bottom - mi.rcMonitor.top -1,   // todo: note this workaround for bug explained above
                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED
                 );
             global_ghoster.state.fullscreen = true;

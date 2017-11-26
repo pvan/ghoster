@@ -272,7 +272,7 @@ void InitOpenGL(HWND window)
 // TODO: pull out progress bar rendering from this function
 // need to render to fbo to do so?
 //dfdf
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window,
+void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, bool letterbox, double aspect_ratio,
                       float proportion, bool drawProgressBar, bool drawBuffering)
 {
     HDC hdc = GetDC(window);
@@ -282,7 +282,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
 
     // if window size changed.. could also call in WM_SIZE and not pass dWID here
-    // or get from destination window?
+    // or get  dWID dHEI from destination window?
     glViewport(0, 0, dWID, dHEI);
 
 
@@ -320,6 +320,25 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
         GLuint alpha_loc = glGetUniformLocation(shader_program, "alpha");
         glUniform1f(alpha_loc, 1);
+
+
+        // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+        if (letterbox)
+        {
+            int calcWID = (int)((double)dHEI * aspect_ratio);
+            int calcHEI = (int)((double)dWID / aspect_ratio);
+
+            if (calcWID > dWID)  // letterbox
+                calcWID = dWID;
+            else
+                calcHEI = dHEI;  // pillarbox
+
+
+            int posX = ((double)dWID - (double)calcWID) / 2.0;
+            int posY = ((double)dHEI - (double)calcHEI) / 2.0;
+
+            glViewport(posX, posY, calcWID, calcHEI);
+        }
 
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
