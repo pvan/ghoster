@@ -392,6 +392,8 @@ bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 void appPlay();
 void appPause();
 
+void setWallpaperMode(HWND, bool);
+
 struct GhosterWindow
 {
 
@@ -427,6 +429,10 @@ struct GhosterWindow
             }
             state.bufferingOrLoading = false;
             appPlay();
+
+            // need to recreate wallpaper window basically
+            if (state.wallpaperMode)
+                setWallpaperMode(state.window, state.wallpaperMode);
         }
 
 
@@ -1755,6 +1761,14 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 
 void setWallpaperMode(HWND hwnd, bool enable)
 {
+
+    // cleanup first if we are already in wallpaper mode and trying to enable
+    if (global_ghoster.state.wallpaperMode && enable)
+    {
+        if (global_wallpaper_window)
+            DestroyWindow(global_wallpaper_window);
+    }
+
     global_ghoster.state.wallpaperMode = enable;
     if (enable)
     {
@@ -3489,7 +3503,14 @@ int CALLBACK WinMain(
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
 
 
-    // setup starting options based on command args / defaults (defaults are whatever is set in struct)....
+    // setup starting options based on command args / defaults (defaults are set in struct)....
+
+    if (!global_ghoster.icon)
+        global_ghoster.icon = RandomIcon();
+
+    AddSysTrayIcon(global_ghoster.state.window); // sets as default icon
+    SetIcon(global_ghoster.state.window, global_ghoster.icon);
+
 
     setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
@@ -3499,12 +3520,10 @@ int CALLBACK WinMain(
     if (startInGhostMode)
         setGhostMode(global_ghoster.state.window, startInGhostMode);
 
+    // this has to be called after loading video (it's not called after every new video which is better anyway)
+    // if (global_ghoster.state.wallpaperMode)
+    //     setWallpaperMode(global_ghoster.state.window, global_ghoster.state.wallpaperMode);
 
-    if (!global_ghoster.icon)
-        global_ghoster.icon = RandomIcon();
-
-    AddSysTrayIcon(global_ghoster.state.window); // sets as default icon
-    SetIcon(global_ghoster.state.window, global_ghoster.icon);
 
     //
 
