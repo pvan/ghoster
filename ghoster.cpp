@@ -3433,14 +3433,17 @@ int CALLBACK WinMain(
         if (StringBeginsWith(filePathOrUrl, "-opac"))
         {
             char *opacNum = filePathOrUrl + 5; // 5 = length of "-opac"
-            global_ghoster.state.opacity = atoi(opacNum);
+            global_ghoster.state.opacity = (double)atoi(opacNum) / 100.0;
+        }
+
+        if (StringBeginsWith(filePathOrUrl, "-vol"))
+        {
+            char *volNum = filePathOrUrl + 4; // 4 = length of "-vol"
+            global_ghoster.state.volume = (double)atoi(volNum) / 100.0;
         }
 
         // MsgBox(filePathOrUrl); // asdf
     }
-
-    // double opacity = 1.0;
-    // double volume = 1.0;
 
 
     // FFMPEG
@@ -3539,6 +3542,8 @@ int CALLBACK WinMain(
     setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
     setFullscreen(global_ghoster.state.fullscreen);
+
+    setVolume(global_ghoster.state.volume);
 
     if (startInGhostMode)
         setGhostMode(global_ghoster.state.window, startInGhostMode);
