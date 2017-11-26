@@ -16,6 +16,8 @@
 [x] transparency slider
 
 [x] command line options
+    [x] menu options
+    [ ] positioning/sizing options
 
 [ ] overlay display: play/pause feedback, etc
 

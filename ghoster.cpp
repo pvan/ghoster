@@ -393,6 +393,7 @@ void appPlay();
 void appPause();
 
 void setWallpaperMode(HWND, bool);
+void setFullscreen(bool);
 
 struct GhosterWindow
 {
@@ -403,6 +404,26 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
     RunningMovie loaded_video;
     HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
+
+
+    void LoadNewMovie()
+    {
+        OutputDebugString("Ready to load new movie...\n");
+        state.messageLoadNewMovie = false;
+        if (!SetupForNewMovie(state.newMovieToRun, &loaded_video))
+        {
+            MsgBox("Error in setup for new movie.\n");
+        }
+        state.bufferingOrLoading = false;
+        appPlay();
+
+        // need to recreate wallpaper window basically
+        if (state.wallpaperMode)
+            setWallpaperMode(state.window, state.wallpaperMode);
+
+        if (state.fullscreen)
+            setFullscreen(state.fullscreen); // mostly for launching in fullscreen mode
+    }
 
 
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
@@ -421,18 +442,7 @@ struct GhosterWindow
 
         if (state.messageLoadNewMovie)
         {
-            OutputDebugString("Ready to load new movie...\n");
-            state.messageLoadNewMovie = false;
-            if (!SetupForNewMovie(state.newMovieToRun, &loaded_video))
-            {
-                MsgBox("Error in setup for new movie.\n");
-            }
-            state.bufferingOrLoading = false;
-            appPlay();
-
-            // need to recreate wallpaper window basically
-            if (state.wallpaperMode)
-                setWallpaperMode(state.window, state.wallpaperMode);
+            LoadNewMovie();
         }
 
 
@@ -3450,8 +3460,6 @@ int CALLBACK WinMain(
 
         // todo: many settings here are coupled with the setX() functions called below
         // maybe move this whole arg parsing below window creation so we don't have this two-step process?
-
-        // MsgBox(filePathOrUrl); // asdf
     }
 
 
@@ -3550,14 +3558,17 @@ int CALLBACK WinMain(
 
     setWindowOpacity(global_ghoster.state.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.state.window, global_ghoster.state.topMost);
-    setFullscreen(global_ghoster.state.fullscreen);
+
+    // do not call here, wait until movie as been loaded and window is correct size
+    // setFullscreen(global_ghoster.state.fullscreen);
 
     setVolume(global_ghoster.state.volume);
 
     if (startInGhostMode)
         setGhostMode(global_ghoster.state.window, startInGhostMode);
 
-    // this has to be called after loading video (it's not called after every new video which is better anyway)
+    // this has to be called after loading video so size is correct (maybe other things too)
+    // (it's now called after every new video which is better anyway)
     // if (global_ghoster.state.wallpaperMode)
     //     setWallpaperMode(global_ghoster.state.window, global_ghoster.state.wallpaperMode);
 
