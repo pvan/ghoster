@@ -382,3 +382,146 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 }
 
 
+
+
+//
+
+
+
+GLuint tex_FF;
+
+void InitOpenGL_FF(HWND window)
+{
+    HDC hdc = GetDC(window);
+
+    PIXELFORMATDESCRIPTOR pixel_format = {};
+    pixel_format.nSize = sizeof(pixel_format);
+    pixel_format.nVersion = 1;
+    pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+    pixel_format.iPixelType = PFD_TYPE_RGBA;
+    pixel_format.cColorBits = 32;
+    pixel_format.cAlphaBits = 8;
+
+    int format_index = ChoosePixelFormat(hdc, &pixel_format);
+    SetPixelFormat(hdc, format_index, &pixel_format);
+
+    HGLRC gl_rendering_context = wglCreateContext(hdc);
+    wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
+
+
+    glGenTextures(1, &tex_FF); // not actually needed?
+
+
+    ReleaseDC(window, hdc);
+}
+
+void RenderToScreen_FF(void *memory, int width, int height, HWND window)
+{
+
+    HDC deviceContext = GetDC(window);
+
+
+    glViewport(0,0, width, height);
+
+
+    glBindTexture(GL_TEXTURE_2D, tex_FF);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glEnable(GL_TEXTURE_2D);
+
+
+    glClearColor(0.5f, 0.8f, 1.0f, 0.0f);
+    // glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);  // some offscreen buffer
+
+
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+
+
+    glBegin(GL_TRIANGLES);
+
+
+    // note the texture coords are upside down
+    // to get our texture right side up
+    glTexCoord2f(0, 1); glVertex2f(-1, -1);
+    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+    glTexCoord2f(1, 1); glVertex2f(1, -1);
+
+    glTexCoord2f(0, 0); glVertex2f(-1, 1);
+    glTexCoord2f(1, 0); glVertex2f(1, 1);
+    glTexCoord2f(1, 1); glVertex2f(1, -1);
+    glEnd();
+
+
+    SwapBuffers(deviceContext);
+
+    ReleaseDC(window, deviceContext);
+
+}
+
+
+
+//
+
+
+
+
+void Render_GDI(void *memory, int width, int height, HWND window)
+{
+    HDC hdc = GetDC(window);
+
+    RECT clientRect;
+    GetClientRect(window, &clientRect);
+    int winWID = clientRect.right - clientRect.left;
+    int winHEI = clientRect.bottom - clientRect.top;
+
+    // // here we clear out the edges
+    // PatBlt(hdc, width, 0, winWID - width, winHEI, BLACKNESS);
+    // PatBlt(hdc, 0, height, width, winHEI - height, BLACKNESS);
+
+
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height;  // negative to set origin in top left
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+
+    SetStretchBltMode(hdc, HALFTONE);
+
+    int result = StretchDIBits(
+                  hdc,
+                  0,
+                  0,
+                  winWID,
+                  winHEI,
+                  0,
+                  0,
+                  width,
+                  height,
+                  memory,
+                  &bmi,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
+
+    if (!result)
+    {
+        // todo: seems to error here once at vid start, no memory yet?
+        // MsgBox("error with StretchDIBits");
+        // GetLastError();
+    }
+}
+
+
