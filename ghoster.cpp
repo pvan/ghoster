@@ -708,7 +708,7 @@ struct GhosterWindow
         //                 loaded_video.aspect_ratio,
         //                 percent, drawProgressBar, state.bufferingOrLoading);
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
-        Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
+        // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 
 
         // REPEAT
@@ -1179,8 +1179,8 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
     // OPENGL (note context is thread specific)
-    // InitOpenGL(global_ghoster.state.window);
-    InitOpenGL_FF(global_ghoster.state.window);
+    InitOpenGL(global_ghoster.state.window);
+    // InitOpenGL_FF(global_ghoster.state.window);
 
 
     // LOAD FILE

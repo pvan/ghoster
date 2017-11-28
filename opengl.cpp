@@ -217,45 +217,54 @@ void InitOpenGL(HWND window)
     );
 
 
-    // compile shaders
+    // some odd lag when launching a second exe
+    // unless these are in a pretty particular order
+
+    // seems like generating everything first works best
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vshader, 1, &vertex_shader, 0);
-    glCompileShader(vshader);
-    shader_error_check(vshader, "vertex shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
-
     GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fshader, 1, &fragment_shader, 0);
-    glCompileShader(fshader);
-    shader_error_check(fshader, "fragment shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
-
-    // create program that sitches shaders together
     shader_program = glCreateProgram();
-    glAttachShader(shader_program, vshader);
-    glAttachShader(shader_program, fshader);
-    glLinkProgram(shader_program);
-    shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
-
-
-    // dfdf
     glGenVertexArrays(1, &vao);
             check_gl_error("glGenVertexArrays");
     glGenBuffers(1, &vbo);
             check_gl_error("glGenBuffers");
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
-        glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW); //GL_DYNAMIC_DRAW
-        glBindVertexArray(vao);
-            GLuint loc_position = glGetAttribLocation(shader_program, "position");
-            glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
-            glEnableVertexAttribArray(loc_position);
-        glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-
-
-    // create our texture
     glGenTextures(1, &tex);
+    GLuint loc_position = glGetAttribLocation(shader_program, "position");
+
+
+    // then this first
+    glBindVertexArray(vao);
+
+
+    // the rest i'm not so sure how particular the order is
+    glShaderSource(vshader, 1, &vertex_shader, 0);
+    glShaderSource(fshader, 1, &fragment_shader, 0);
+    glCompileShader(vshader);
+    // shader_error_check(vshader, "vertex shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
+    glCompileShader(fshader);
+    // shader_error_check(fshader, "fragment shader", glGetShaderInfoLog, glGetShaderiv, GL_COMPILE_STATUS);
+
+    // create program that sitches shaders together
+    glAttachShader(shader_program, vshader);
+    glAttachShader(shader_program, fshader);
+    glLinkProgram(shader_program);
+    // shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
+
+
+    // vbo stuff
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW); //GL_DYNAMIC_DRAW
+
+    // vao stuff
+    glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(loc_position);
+
+
+    // pretty sure these could just cause more context switching
+    // glBindVertexArray(0);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 
     glBindTexture(GL_TEXTURE_2D, tex);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -525,3 +534,51 @@ void Render_GDI(void *memory, int width, int height, HWND window)
 }
 
 
+void RenderProgressBar_GDI(void *memory, int width, int height, HWND window)
+{
+
+    HDC hdc = GetDC(window);
+
+    RECT clientRect;
+    GetClientRect(window, &clientRect);
+    int winWID = clientRect.right - clientRect.left;
+    int winHEI = clientRect.bottom - clientRect.top;
+
+    // // here we clear out the edges
+    // PatBlt(hdc, width, 0, winWID - width, winHEI, BLACKNESS);
+    // PatBlt(hdc, 0, height, width, winHEI - height, BLACKNESS);
+
+
+    BITMAPINFO bmi = {0};
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
+    bmi.bmiHeader.biWidth = width;
+    bmi.bmiHeader.biHeight = -height;  // negative to set origin in top left
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+
+    SetStretchBltMode(hdc, HALFTONE);
+
+    int result = StretchDIBits(
+                  hdc,
+                  0,
+                  0,
+                  winWID,
+                  winHEI,
+                  0,
+                  0,
+                  width,
+                  height,
+                  memory,
+                  &bmi,
+                  DIB_RGB_COLORS,
+                  SRCCOPY);
+
+    if (!result)
+    {
+        // todo: seems to error here once at vid start, no memory yet?
+        // MsgBox("error with StretchDIBits");
+        // GetLastError();
+    }
+}
