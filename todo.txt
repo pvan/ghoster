@@ -66,7 +66,8 @@
 ---intermittent bugs---
 
 
-[ ] menu hiding but submenu not if submenu off main window
+[?] menu hiding but submenu not if submenu off main window
+    hiding submenu when closing menu now, keep eye out for this
 
 [ ] menu bar not hiding when mouse stays still (flickers off then on)
 

@@ -2661,10 +2661,26 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 
 
+void ShowSubMenu(int posX, int posY, int wid, int hei)
+{
+    global_is_submenu_shown = true;
+    SetWindowPos(
+        global_icon_menu_window,
+        0, posX, posY, wid, hei, 0);
+    ShowWindow(global_icon_menu_window, SW_SHOW);
+}
+void HideSubMenu()
+{
+    global_is_submenu_shown = false;
+    ShowWindow(global_icon_menu_window, SW_HIDE);
+}
 
 void ClosePopup(HWND hwnd)
 {
     DestroyWindow(hwnd);
+
+    // probably want this right?
+    HideSubMenu();
 
     // now i think we can just set this false right away, no need for a timer
     global_ghoster.state.contextMenuOpen = false;
@@ -3128,19 +3144,6 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
     EndPaint(hwnd, &ps);
 }
 
-void ShowSubMenu(int posX, int posY, int wid, int hei)
-{
-    global_is_submenu_shown = true;
-    SetWindowPos(
-        global_icon_menu_window,
-        0, posX, posY, wid, hei, 0);
-    ShowWindow(global_icon_menu_window, SW_SHOW);
-}
-void HideSubMenu()
-{
-    global_is_submenu_shown = false;
-    ShowWindow(global_icon_menu_window, SW_HIDE);
-}
 
 // hmm feels like this is getting out of hand?
 LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
