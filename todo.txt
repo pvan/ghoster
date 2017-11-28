@@ -1,8 +1,6 @@
 
-[/] window controls are laggy on second ghoster window
-    this is starting to feel like an nvidia driver bug
-    [x] .bat file workaround
-    [ ] "launcher" exe workaround?
+
+[ ] add icon to pause/play menu item
 
 
 [ ] test no internet
@@ -11,15 +9,12 @@
 [ ] set notification popup and window title to video name
 
 
-[x] when exe launched from batch file, cannot find youtube-dl.exe.. use exe path to build abs paths?
-
 
 [ ] debug and release build folders?
 
-[ ] alt tab should close the menu probably
+[ ] alt tab should close the menu probably [didn't work on menu from sys tray]
 
 
-[x] transparency slider
 
 [x] command line options
     [x] menu options
@@ -36,22 +31,7 @@
     [ ] which?
 
 
-[x] proper fullscreen/pause/unpause behavior
-    [x] cache state on first click
-    [x] should compromise and pause, like, halfway through our allowed double click time
-
-[ ] opacity doesn't seem to work in wallpaper mode, but not really wanted too badly anyway
-    could maybe do something funny with workerW to get it to work, 
-    since workerW is originally for fading between wallpapers
-
 [ ] a sort of message system for update loop communication? load video, seek, etc
-
-
-[/] extra bar on right of some vids
-    -fixed but only by using a constant-size buffer
-
-[/] lose transparency on full screen
-    -temp workaround by keeping 1 pixel smaller than monitor size
 
 
 [ ] seems like mem leak on loading files
@@ -75,17 +55,33 @@
 
 
 
-[ ] add black bars when aspect ratio is locked and full screen
-
-
-
 [ ] more than one audio stream
+    [ ] give us a message if we ever see this
+
+
+
+
+---low priority----
+
+
+[ ] opacity doesn't seem to work in wallpaper mode, but not really wanted too badly anyway
+    could maybe do something funny with workerW to get it to work, 
+    since workerW is originally for fading between wallpapers
+
+[/] extra bar on right of some vids
+    -fixed but only by using a constant-size buffer
+
+[/] lose transparency on full screen
+    -temp workaround by keeping 1 pixel smaller than monitor size
+
 [?] more than one video stream??
+    [ ] just get a big collection of different videos to test at some point
 
 
-
-[x] volume! 
-
+[/] window controls are laggy on second ghoster window
+    this is starting to feel like an nvidia driver bug
+    [x] .bat file workaround
+    [ ] "launcher" exe workaround?
 
 
 
