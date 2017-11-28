@@ -90,6 +90,7 @@ static HBITMAP global_bitmap_y4;
 
 
 char *TEST_FILES[] = {
+    "D:/~phil/projects/ghoster/test-vids/tall.mp4",
     "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
     // "D:/~phil/projects/ghoster/test-vids/sync3.mp4",
     "D:/~phil/projects/ghoster/test-vids/sync1.mp4",
@@ -306,14 +307,14 @@ struct timestamp
 void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAudioLatencyEstimate)
 {
     // not entirely sure if this flush usage is right
-    avcodec_flush_buffers(movie->av_movie.video.codecContext);
-    avcodec_flush_buffers(movie->av_movie.audio.codecContext);
+    if (movie->av_movie.video.codecContext) avcodec_flush_buffers(movie->av_movie.video.codecContext);
+    if (movie->av_movie.audio.codecContext) avcodec_flush_buffers(movie->av_movie.audio.codecContext);
 
     i64 seekPos = ts.i64InUnits(AV_TIME_BASE);
 
     // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
-    av_seek_frame(movie->av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-    av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    if (movie->av_movie.video.codecContext) av_seek_frame(movie->av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    if (movie->av_movie.audio.codecContext) av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
 
     // todo: special if at start of file?
@@ -342,6 +343,7 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
         movie->frame_output,
         movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
         0,
+        true,
         &movie->ptsOfLastVideo,
         &frames_skipped);
 
@@ -606,6 +608,13 @@ struct GhosterWindow
                     // OutputDebugString(secquebuf);
 
                 timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
+
+                // if no audio, use video pts (we should basically never skip or repeat in this case)
+                if (!loaded_video.av_movie.IsAudioAvailable())
+                {
+                    ts_audio = timestamp::FromVideoPTS(loaded_video);
+                }
+
                 // assuming we've filled the sdl buffer, we are 1 second ahead
                 // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
                 // and how consistently do we pull audio data? is it sometimes more than others?
@@ -644,7 +653,11 @@ struct GhosterWindow
                 // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
                 // i guess seeking/starting -> best effort sync, and auto-correct in update while running
                 // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
-                if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0) // time for a new frame if audio is this far behind
+
+                // time for a new frame if audio is this far behind
+                if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0
+                    || !loaded_video.av_movie.IsAudioAvailable()
+                )
                 {
                     int frames_skipped;
                     GetNextVideoFrame(
@@ -655,6 +668,7 @@ struct GhosterWindow
                         loaded_video.frame_output,
                         aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
+                        loaded_video.av_movie.IsAudioAvailable(),
                         &loaded_video.ptsOfLastVideo,
                         &frames_skipped);
 
@@ -1051,10 +1065,13 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
     // SDL, for sound atm
 
-    SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, targetFPS);
+    if (movie->audio.codecContext)
+    {
+        SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, targetFPS);
 
-    SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
-    SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
+        SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
+        SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
+    }
 
 
 
@@ -1977,7 +1994,8 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 void appPlay()
 {
     global_ghoster.loaded_video.audio_stopwatch.Start();
-    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
+    if (global_ghoster.loaded_video.av_movie.IsAudioAvailable())
+        SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
     global_ghoster.loaded_video.is_paused = false;
 }
 

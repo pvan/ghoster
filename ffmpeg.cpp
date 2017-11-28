@@ -48,6 +48,12 @@ struct MovieAV
     AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
+
+    bool IsAudioAvailable()
+    {
+        if (afc && audio.codecContext) return true;
+        else return false;
+    }
 };
 
 MovieAV DeepCopyMovieAV(MovieAV source)
@@ -79,6 +85,13 @@ int GetNextAudioFrame(
     double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
     i64 *outPTS)
 {
+
+    if (!fc || !cc)
+    {
+        *outPTS = 0;
+        return 0;
+    }
+
 
     u8 *outBuffer = outBuf.data;
 
@@ -335,9 +348,19 @@ bool GetNextVideoFrame(
     AVFrame *outFrame,
     double msOfDesiredFrame,
     double msAllowableAudioLead,
+    bool skip_if_behind_audio,
     i64 *outPTS,
     int *frames_skipped)
 {
+
+    if (!fc || !cc)
+    {
+        *outPTS = 0;
+        *frames_skipped = 0;
+        return false;
+    }
+
+
     AVPacket packet;
 
     AVFrame *frame = av_frame_alloc();  // just metadata
@@ -392,7 +415,8 @@ bool GetNextVideoFrame(
                 // OutputDebugString(zxcv);
 
 
-                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead)
+                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
+                    && skip_if_behind_audio)
                 {
                     // OutputDebugString("skipped a frame\n");
                     *frames_skipped++;
@@ -475,7 +499,7 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 {
     AVCodecContext *orig = fc->streams[streamIndex]->codec;
     AVCodec *codec = avcodec_find_decoder(orig->codec_id);
-    AVCodecContext *result = avcodec_alloc_context3(codec);
+    AVCodecContext *result = avcodec_alloc_context3(codec);  // todo: check if this is null?
     if (!codec)
         { MsgBox("ffmpeg: Unsupported codec. Yipes."); return false; }
     if (avcodec_copy_context(result, orig) != 0)
@@ -545,6 +569,7 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     {
         file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
     }
+    // todo: handle less than one or more than one of each properly
 
     *outMovie = file;
     return true;
