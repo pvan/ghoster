@@ -654,6 +654,8 @@ struct GhosterWindow
                 // i guess seeking/starting -> best effort sync, and auto-correct in update while running
                 // but the point stands about skipping/repeating... should we do both out here? or ok to keep sep?
 
+                // todo: want to do any special handling here if no video?
+
                 // time for a new frame if audio is this far behind
                 if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0
                     || !loaded_video.av_movie.IsAudioAvailable()
@@ -1000,15 +1002,19 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     // MovieAV *loaded_video = &newMovie->av_movie;
 
     // set window size on video source resolution
-    // global_ghoster.state.winWID = movie->video.codecContext->width;
-    // global_ghoster.state.winHEI = movie->video.codecContext->height;
-    outMovie->vidWID = movie->video.codecContext->width;
-    outMovie->vidHEI = movie->video.codecContext->height;
-        char hwbuf[123];
-        sprintf(hwbuf, "wid: %i  hei: %i\n", movie->video.codecContext->width, movie->video.codecContext->height);
-        OutputDebugString(hwbuf);
-    // global_ghoster.state.winWID = outMovie->vidWID;
-    // global_ghoster.state.winHEI = outMovie->vidHEI;
+    if (movie->video.codecContext)
+    {
+        outMovie->vidWID = movie->video.codecContext->width;
+        outMovie->vidHEI = movie->video.codecContext->height;
+    }
+    else
+    {
+        outMovie->vidWID = 400;
+        outMovie->vidHEI = 400;
+    }
+        // char hwbuf[123];
+        // sprintf(hwbuf, "wid: %i  hei: %i\n", movie->video.codecContext->width, movie->video.codecContext->height);
+        // OutputDebugString(hwbuf);
 
     // RECT winRect;
     // GetWindowRect(global_ghoster.state.window, &winRect);
@@ -1042,17 +1048,27 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
     // SET FPS BASED ON LOADED VIDEO
 
-    double targetFPS = ((double)movie->video.codecContext->time_base.den /
-                        (double)movie->video.codecContext->time_base.num) /
-                        (double)movie->video.codecContext->ticks_per_frame;
-
+    double targetFPS;
     char vidfps[123];
-    sprintf(vidfps, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-        movie->video.codecContext->time_base.num,
-        movie->video.codecContext->time_base.den,
-        targetFPS,
-        movie->video.codecContext->ticks_per_frame
-    );
+    if (movie->video.codecContext)
+    {
+        targetFPS = ((double)movie->video.codecContext->time_base.den /
+                    (double)movie->video.codecContext->time_base.num) /
+                    (double)movie->video.codecContext->ticks_per_frame;
+
+        sprintf(vidfps, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+            movie->video.codecContext->time_base.num,
+            movie->video.codecContext->time_base.den,
+            targetFPS,
+            movie->video.codecContext->ticks_per_frame
+        );
+    }
+    else
+    {
+        targetFPS = 30;
+        sprintf(vidfps, "\nno video found, default to %.2f fps\n", targetFPS);
+    }
+
     OutputDebugString(vidfps);
 
 
@@ -1129,19 +1145,22 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     //     AV_PIX_FMT_RGB32,
     //     SWS_BILINEAR,
     //     0, 0, 0);
-    // this seems to be no help in our extra bar issue
-    outMovie->sws_context = sws_getCachedContext(
-        outMovie->sws_context,
-        movie->video.codecContext->width,
-        movie->video.codecContext->height,
-        movie->video.codecContext->pix_fmt,
-        960,
-        720,
-        // outMovie->vidWID,
-        // outMovie->vidHEI,
-        AV_PIX_FMT_RGB32,
-        SWS_BILINEAR,
-        0, 0, 0);
+    if (movie->video.codecContext)
+    {
+        // this seems to be no help in our extra bar issue
+        outMovie->sws_context = sws_getCachedContext(
+            outMovie->sws_context,
+            movie->video.codecContext->width,
+            movie->video.codecContext->height,
+            movie->video.codecContext->pix_fmt,
+            960,
+            720,
+            // outMovie->vidWID,
+            // outMovie->vidHEI,
+            AV_PIX_FMT_RGB32,
+            SWS_BILINEAR,
+            0, 0, 0);
+    }
 
 
     // char linbuf[123];
