@@ -1142,6 +1142,7 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 }
 
 
+static HANDLE global_asyn_load_thread;
 
 DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
 {
@@ -1168,7 +1169,19 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     global_ghoster.state.bufferingOrLoading = true;
     appPause(); // stop playing movie as well, we'll auto start the next one
 
-    CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
+    // stop previous thread if already loading
+    // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
+    // maybe better would be to finish each thread but not use the movie it retrieves
+    // unless it was the last thread started? (based on some unique identifier?)
+    // but is starting a thread each time we load a new movie really what we want? seems odd
+    if (global_asyn_load_thread != 0)
+    {
+        DWORD exitCode;
+        GetExitCodeThread(global_asyn_load_thread, &exitCode);
+        TerminateThread(global_asyn_load_thread, exitCode);
+    }
+
+    global_asyn_load_thread = CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
 
     return true;
 }
