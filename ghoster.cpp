@@ -903,7 +903,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
 }
 
 
-bool FindAudioAndVideoUrls(char *path, char **video, char **audio, char *outTitle)
+bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 {
 
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
@@ -936,19 +936,21 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio, char *outTitl
     }
 
 
-    // copy out title
+
     strcpy_s(outTitle, 64, segments[0]);
 
+    strcpy_s(video, 1024*10, segments[1]);  // todo: pass in these string limits
 
-    *video = segments[1];
-    *audio = segments[2];
+    strcpy_s(audio, 1024*10, segments[2]);
 
+
+    free(tempString);
 
 
     OutputDebugString("\n");
     OutputDebugString(outTitle); OutputDebugString("\n");
-    OutputDebugString(*video); OutputDebugString("\n");
-    OutputDebugString(*audio); OutputDebugString("\n");
+    OutputDebugString(video); OutputDebugString("\n");
+    OutputDebugString(audio); OutputDebugString("\n");
     OutputDebugString("\n");
 
 
@@ -957,247 +959,6 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio, char *outTitl
 
 }
 
-bool FindAudioAndVideoUrls_OLD(char *path, char **video, char **audio, char *outTitle)
-{
-
-    char *tempString = (char*)malloc(1024*30); // big enough for messy urls
-
-    // -g gets urls (seems like two: video then audio)
-    if (!GetStringFromYoutubeDL(path, "-g", tempString))
-    {
-        return false;
-    }
-
-    // seem to get two urls, first video, second sound
-    *video = tempString;
-    *audio = tempString;
-    for (char *p = tempString; p++; *p)
-    {
-        if (*p == '\n')
-        {
-            *p = 0;
-            *audio = p+1;
-            break;
-        }
-    }
-    for (char *p = *audio; p++; *p)
-    {
-        if (*p == '\n')
-        {
-            *p = 0;
-            break;
-        }
-    }
-
-
-    OutputDebugString(*video); OutputDebugString("\n");
-    OutputDebugString(*audio); OutputDebugString("\n");
-
-
-    char *tempString2 = (char*)malloc(1024*30); // big enough for messy urls
-
-    if (!GetStringFromYoutubeDL(path, "--get-title", tempString2))
-    {
-        return false;
-    }
-
-    OutputDebugString("\n\n TITLE: \n");
-    OutputDebugString(tempString2); OutputDebugString("\n");
-
-
-    // free(tempString);
-
-    return true;
-
-}
-
-
-bool FindAudioAndVideoUrls_VERYOLD(char *path, char **video, char **audio, char *outTitle)
-{
-    // to get the output from running youtube-dl.exe,
-    // we need to make a pipe to capture the stdout
-
-    // setup our custom pipes...
-
-    SECURITY_ATTRIBUTES sa;
-    // Set up the security attributes struct.
-    sa.nLength= sizeof(SECURITY_ATTRIBUTES);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
-
-
-    HANDLE outRead, outWrite;
-    if (!CreatePipe(&outRead, &outWrite, &sa, 0))
-    {
-        OutputDebugString("Error with CreatePipe()");
-        return false;
-    }
-
-
-    // actually run the cmd...
-
-    PROCESS_INFORMATION pi;
-    STARTUPINFO si;
-
-    // Set up the start up info struct.
-    ZeroMemory(&si,sizeof(STARTUPINFO));
-    si.cb = sizeof(STARTUPINFO);
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = outWrite;
-    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
-    si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
-    si.wShowWindow = SW_HIDE;
-
-    char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
-    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_exe_directory);
-
-    char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "%syoutube-dl.exe -g %s", global_exe_directory, path);
-    // MsgBox(args);
-
-    if (!CreateProcess(
-        youtube_dl_path,
-        //"youtube-dl.exe",
-        args,  // todo: UNSAFE
-        0, 0, TRUE,
-        CREATE_NEW_CONSOLE,
-        0, 0,
-        &si, &pi))
-    {
-        //OutputDebugString("Error creating youtube-dl process.");
-        char errmsg[123];
-        sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
-        MsgBox(errmsg);
-        // MsgBox("Error creating youtube-dl process.");
-        return false;
-    }
-
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
-
-    // close write end before reading from read end
-    if (!CloseHandle(outWrite))
-    {
-        OutputDebugString("Error with CloseHandle()");
-        return false;
-    }
-
-
-    // get the string out of the pipe...
-    // char *result = path; // huh??
-    int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
-    char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
-
-    DWORD bytesRead;
-    if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
-    {
-        // too big?
-        MsgBox("Error reading pipe, not enough buffer space?");
-        return false;
-    }
-
-    if (bytesRead == 0)
-    {
-        // no output?
-        MsgBox("No data from reading pipe.");
-        return false;
-    }
-
-    // seem to get two urls, first video, second sound
-    *video = result;
-    *audio = result;
-    for (char *p = result; p++; *p)
-    {
-        if (*p == '\n')
-        {
-            *p = 0;
-            *audio = p+1;
-            break;
-        }
-    }
-    for (char *p = *audio; p++; *p)
-    {
-        if (*p == '\n')
-        {
-            *p = 0;
-            break;
-        }
-    }
-
-
-    OutputDebugString(*video); OutputDebugString("\n");
-    OutputDebugString(*audio); OutputDebugString("\n");
-
-    // path = video;
-
-
-
-
-    // // again to get title here
-    // sprintf(args, "%syoutube-dl.exe --get-title %s", global_exe_directory, path);
-    // if (!CreateProcess(
-    //     youtube_dl_path,
-    //     //"youtube-dl.exe",
-    //     args,  // todo: UNSAFE
-    //     0, 0, TRUE,
-    //     CREATE_NEW_CONSOLE,
-    //     0, 0,
-    //     &si, &pi))
-    // {
-    //     //OutputDebugString("Error creating youtube-dl process.");
-    //     char errmsg[123];
-    //     sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
-    //     MsgBox(errmsg);
-    //     // MsgBox("Error creating youtube-dl process.");
-    //     return false;
-    // }
-    // WaitForSingleObject(pi.hProcess, INFINITE);
-    // TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
-    // // close write end before reading from read end
-    // if (!CloseHandle(outWrite))
-    // {
-    //     OutputDebugString("Error with CloseHandle()");
-    //     return false;
-    // }
-    // // char *fileNameOnly = path;
-    // // while (*fileNameOnly)
-    // //     fileNameOnly++; // find end
-    // // while (*fileNameOnly != '\\' && *fileNameOnly != '/')
-    // //     fileNameOnly--; // backup till we hit a directory
-    // // strcpy_s(outTitle, 64, "url"); //todo: length
-
-    // // // get the string out of the pipe...
-    // // // char *result = path; // huh??
-    // // int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
-    // // char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
-
-    // if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
-    // {
-    //     // too big?
-    //     MsgBox("Error reading pipe, not enough buffer space?");
-    //     return false;
-    // }
-
-    // if (bytesRead == 0)
-    // {
-    //     // no output?
-    //     MsgBox("No data from reading pipe.");
-    //     return false;
-    // }
-    // strcpy_s(outTitle, 64, result); //todo: length
-
-
-
-
-
-
-
-    CloseHandle(outRead);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    return true;
-}
 
 
 static char global_file_to_load[1024];
@@ -1293,15 +1054,25 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 
     if (StringBeginsWith(path, "http"))
     {
-        char *video_url;
-        char *audio_url;
-        if(FindAudioAndVideoUrls(path, &video_url, &audio_url, outTitle))
+        char *video_url = (char*)malloc(1024*10);  // big enough for some big url from youtube-dl
+        char *audio_url = (char*)malloc(1024*10);
+        if(FindAudioAndVideoUrls(path, video_url, audio_url, outTitle))
         {
             if (!OpenMovieAV(video_url, audio_url, newMovie))
+            {
+                free(video_url);
+                free(audio_url);
+
                 return false;
+            }
+            free(video_url);
+            free(audio_url); // all these frees are a bit messy, better way?
         }
         else
         {
+            free(video_url);
+            free(audio_url);
+
             MsgBox("Error loading file.");
             return false;
         }
