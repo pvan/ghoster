@@ -1178,9 +1178,7 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
-    // OPENGL (note context is thread specific)
     InitOpenGL(global_ghoster.state.window);
-    // InitOpenGL_FF(global_ghoster.state.window);
 
 
     // LOAD FILE

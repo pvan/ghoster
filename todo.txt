@@ -1,5 +1,8 @@
 
-[ ] window controls are laggy on second ghoster window
+[/] window controls are laggy on second ghoster window
+    this is starting to feel like an nvidia driver bug
+    [x] .bat file workaround
+    [ ] "launcher" exe workaround?
 
 
 [ ] test no internet

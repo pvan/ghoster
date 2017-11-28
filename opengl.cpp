@@ -219,13 +219,20 @@ void InitOpenGL(HWND window)
     );
 
 
-    // some odd lag when launching a second exe
-    // unless these are in a pretty particular order
 
-    // seems like generating everything first works best
+    // for a while it seems like generating everything first worked best,
+    // but we can only generate loc_position after compiling the shader
+    // and it wouldn't matter as soon as we swapbuffer every frame anyway
+    // so it's kind of a moot point now
+    // my new theory on the laggy second window is it's some kind of nvidia bug
+    // it doesn't happen on an intel card
+    // and is similar to the "slow start" of other opengl apps
+    // see https://stackoverflow.com/questions/43378891/multiple-instances-of-opengl-exe-take-longer-and-longer-to-initialize
+
     GLuint vshader = glCreateShader(GL_VERTEX_SHADER);
     GLuint fshader = glCreateShader(GL_FRAGMENT_SHADER);
     shader_program = glCreateProgram();
+
     glGenVertexArrays(1, &vao);
             check_gl_error("glGenVertexArrays");
     glGenBuffers(1, &vbo);
@@ -233,11 +240,10 @@ void InitOpenGL(HWND window)
     glGenTextures(1, &tex);
 
 
-    // then this first
+    // previously it seems like this first helped us, but too many things have changed since then
     glBindVertexArray(vao);
 
 
-    // the rest i'm not so sure how particular the order is
     glShaderSource(vshader, 1, &vertex_shader, 0);
     glShaderSource(fshader, 1, &fragment_shader, 0);
     glCompileShader(vshader);
@@ -251,7 +257,9 @@ void InitOpenGL(HWND window)
     glLinkProgram(shader_program);
     // shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
-    // we need this after the shader is compiled, but having it down here re-introduces our laggy window bug
+    // we need this after the shader is compiled,
+    // but having it down here re-introduces our laggy window bug
+    // (which is back once we swapbuffer every frame anyway)
     GLuint loc_position = glGetAttribLocation(shader_program, "position");
 
     // vbo stuff
@@ -290,7 +298,6 @@ void InitOpenGL(HWND window)
 
 // TODO: pull out progress bar rendering from this function
 // need to render to fbo to do so?
-//dfdf
 void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, bool letterbox, double aspect_ratio,
                       float proportion, bool drawProgressBar, bool drawBuffering)
 {
@@ -372,8 +379,11 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
         if (drawProgressBar)
         {
-            // todo? mimic youtube size adjustment?? (looks funny full screen.. just go back to drawing onto source???)
+            // todo? mimic youtube size adjustment??
+            // (looks funny full screen.. just go back to drawing onto source???)
+
             // fakey way to draw rects
+            // (changing the viewport and using 1x1 textures)
             int pos = (int)(proportion * (double)dWID);
 
             glViewport(pos, PROGRESS_BAR_B, dWID, PROGRESS_BAR_H);
@@ -403,194 +413,3 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 }
 
 
-
-
-//
-
-
-
-GLuint tex_FF;
-
-void InitOpenGL_FF(HWND window)
-{
-    HDC hdc = GetDC(window);
-
-    PIXELFORMATDESCRIPTOR pixel_format = {};
-    pixel_format.nSize = sizeof(pixel_format);
-    pixel_format.nVersion = 1;
-    pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-    pixel_format.iPixelType = PFD_TYPE_RGBA;
-    pixel_format.cColorBits = 32;
-    pixel_format.cAlphaBits = 8;
-
-    int format_index = ChoosePixelFormat(hdc, &pixel_format);
-    SetPixelFormat(hdc, format_index, &pixel_format);
-
-    HGLRC gl_rendering_context = wglCreateContext(hdc);
-    wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
-
-
-    glGenTextures(1, &tex_FF); // not actually needed?
-
-
-    ReleaseDC(window, hdc);
-}
-
-void RenderToScreen_FF(void *memory, int width, int height, HWND window)
-{
-
-    HDC deviceContext = GetDC(window);
-
-
-    glViewport(0,0, width, height);
-
-
-    glBindTexture(GL_TEXTURE_2D, tex_FF);
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, width, height, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    glEnable(GL_TEXTURE_2D);
-
-
-    glClearColor(0.5f, 0.8f, 1.0f, 0.0f);
-    // glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-    glClear(GL_COLOR_BUFFER_BIT);  // some offscreen buffer
-
-
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-
-
-    glBegin(GL_TRIANGLES);
-
-
-    // note the texture coords are upside down
-    // to get our texture right side up
-    glTexCoord2f(0, 1); glVertex2f(-1, -1);
-    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-    glTexCoord2f(1, 1); glVertex2f(1, -1);
-
-    glTexCoord2f(0, 0); glVertex2f(-1, 1);
-    glTexCoord2f(1, 0); glVertex2f(1, 1);
-    glTexCoord2f(1, 1); glVertex2f(1, -1);
-    glEnd();
-
-
-    SwapBuffers(deviceContext);
-
-    ReleaseDC(window, deviceContext);
-
-}
-
-
-
-//
-
-
-
-
-void Render_GDI(void *memory, int width, int height, HWND window)
-{
-    HDC hdc = GetDC(window);
-
-    RECT clientRect;
-    GetClientRect(window, &clientRect);
-    int winWID = clientRect.right - clientRect.left;
-    int winHEI = clientRect.bottom - clientRect.top;
-
-    // // here we clear out the edges
-    // PatBlt(hdc, width, 0, winWID - width, winHEI, BLACKNESS);
-    // PatBlt(hdc, 0, height, width, winHEI - height, BLACKNESS);
-
-
-    BITMAPINFO bmi = {0};
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
-    bmi.bmiHeader.biWidth = width;
-    bmi.bmiHeader.biHeight = -height;  // negative to set origin in top left
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-
-
-    SetStretchBltMode(hdc, HALFTONE);
-
-    int result = StretchDIBits(
-                  hdc,
-                  0,
-                  0,
-                  winWID,
-                  winHEI,
-                  0,
-                  0,
-                  width,
-                  height,
-                  memory,
-                  &bmi,
-                  DIB_RGB_COLORS,
-                  SRCCOPY);
-
-    if (!result)
-    {
-        // todo: seems to error here once at vid start, no memory yet?
-        // MsgBox("error with StretchDIBits");
-        // GetLastError();
-    }
-}
-
-
-void RenderProgressBar_GDI(void *memory, int width, int height, HWND window)
-{
-
-    HDC hdc = GetDC(window);
-
-    RECT clientRect;
-    GetClientRect(window, &clientRect);
-    int winWID = clientRect.right - clientRect.left;
-    int winHEI = clientRect.bottom - clientRect.top;
-
-    // // here we clear out the edges
-    // PatBlt(hdc, width, 0, winWID - width, winHEI, BLACKNESS);
-    // PatBlt(hdc, 0, height, width, winHEI - height, BLACKNESS);
-
-
-    BITMAPINFO bmi = {0};
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
-    bmi.bmiHeader.biWidth = width;
-    bmi.bmiHeader.biHeight = -height;  // negative to set origin in top left
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
-
-
-    SetStretchBltMode(hdc, HALFTONE);
-
-    int result = StretchDIBits(
-                  hdc,
-                  0,
-                  0,
-                  winWID,
-                  winHEI,
-                  0,
-                  0,
-                  width,
-                  height,
-                  memory,
-                  &bmi,
-                  DIB_RGB_COLORS,
-                  SRCCOPY);
-
-    if (!result)
-    {
-        // todo: seems to error here once at vid start, no memory yet?
-        // MsgBox("error with StretchDIBits");
-        // GetLastError();
-    }
-}
