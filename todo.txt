@@ -71,6 +71,11 @@
 
 [ ] menu bar not hiding when mouse stays still (flickers off then on)
 
+[ ] video was paused when unfullscreening and could not be unpaused again 
+    (like it was ignoring single clicks)
+    happened when unfullscreening a very vertical video.. maybe second click was off window or something?
+    seems to happen when switching a lot between fullscreen via double 
+    [ ] debug display state [viewing mouse flags would probably fix this quickly]
 
 
 ---low priority----

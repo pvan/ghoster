@@ -1687,6 +1687,10 @@ void setFullscreen(bool enable)
                 );
             global_ghoster.state.fullscreen = true;
         }
+
+        // move to top so we're above taskbar
+        // todo: only works if we set as topmost.. setting it temporarily for now
+        SetWindowPos(global_ghoster.state.window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
     }
     else
     {
@@ -1708,6 +1712,12 @@ void setFullscreen(bool enable)
         }
         global_ghoster.state.fullscreen = false;
 
+
+        // unset our temp topmost from fullscreening if we aren't actually set that way
+        if (!global_ghoster.state.topMost)
+        {
+            SetWindowPos(global_ghoster.state.window, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+        }
 
         // make this an option... (we might want to keep it in the corner eg)
         // int mouseX = GET_X_LPARAM(lParam);
