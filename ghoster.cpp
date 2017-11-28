@@ -696,17 +696,17 @@ struct GhosterWindow
         {
             destWin = global_wallpaper_window;
         }
-        // RenderToScreenGL((void*)loaded_video.vid_buffer,
-        //                 960,
-        //                 720, //todo: extra bar bug qwer
-        //                 // loaded_video.vidWID,
-        //                 // loaded_video.vidHEI,
-        //                 state.winWID,
-        //                 state.winHEI,
-        //                 destWin,
-        //                 state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
-        //                 loaded_video.aspect_ratio,
-        //                 percent, drawProgressBar, state.bufferingOrLoading);
+        RenderToScreenGL((void*)loaded_video.vid_buffer,
+                        960,
+                        720, //todo: extra bar bug qwer
+                        // loaded_video.vidWID,
+                        // loaded_video.vidHEI,
+                        state.winWID,
+                        state.winHEI,
+                        destWin,
+                        state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
+                        loaded_video.aspect_ratio,
+                        percent, drawProgressBar, state.bufferingOrLoading);
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 

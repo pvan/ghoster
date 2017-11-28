@@ -136,6 +136,8 @@ static GLuint tex;
 HGLRC gl_rendering_context;
 
 
+// static HDC g_hdc;
+
 void InitOpenGL(HWND window)
 {
     HDC hdc = GetDC(window);
@@ -229,7 +231,6 @@ void InitOpenGL(HWND window)
     glGenBuffers(1, &vbo);
             check_gl_error("glGenBuffers");
     glGenTextures(1, &tex);
-    GLuint loc_position = glGetAttribLocation(shader_program, "position");
 
 
     // then this first
@@ -250,20 +251,19 @@ void InitOpenGL(HWND window)
     glLinkProgram(shader_program);
     // shader_error_check(shader_program, "program", glGetProgramInfoLog, glGetProgramiv, GL_LINK_STATUS);
 
+    // we need this after the shader is compiled, but having it down here re-introduces our laggy window bug
+    GLuint loc_position = glGetAttribLocation(shader_program, "position");
 
     // vbo stuff
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     float points[2*4] = {-1,1, -1,-1, 1,-1, 1,1};
-    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_STATIC_DRAW); //GL_DYNAMIC_DRAW
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), points, GL_DYNAMIC_DRAW); //GL_DYNAMIC_DRAW
 
     // vao stuff
     glVertexAttribPointer(loc_position, 2, GL_FLOAT, GL_FALSE, 0, 0);
     glEnableVertexAttribArray(loc_position);
 
 
-    // pretty sure these could just cause more context switching
-    // glBindVertexArray(0);
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
 
     glBindTexture(GL_TEXTURE_2D, tex);
@@ -272,6 +272,16 @@ void InitOpenGL(HWND window)
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+
+
+    // g_hdc = GetDC(window);
+
+    // // pretty sure these could just cause more context switching
+    // glBindVertexArray(0);
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // wglMakeCurrent(NULL, NULL);
 
 }
 
@@ -294,6 +304,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
     // or get  dWID dHEI from destination window?
     glViewport(0, 0, dWID, dHEI);
 
+    glUseProgram(shader_program);
 
     if (drawBuffering)
     {
@@ -354,7 +365,6 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
 
         glClear(GL_COLOR_BUFFER_BIT);
         glClearColor(0, 0, 0, 0);  // r g b a  looks like
-        glUseProgram(shader_program);
 
         glBindVertexArray(vao);
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
@@ -379,13 +389,15 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
 
-        // unbind and cleanup
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-        glBindVertexArray(0);
+        // i think this will only cause unnecessary context switching
+        // glBindBuffer(GL_ARRAY_BUFFER, 0);
+        // glBindVertexArray(0);
 
     }
 
     SwapBuffers(hdc);
+
+    // wglMakeCurrent(NULL, NULL);
 
     ReleaseDC(window, hdc);
 }
