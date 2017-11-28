@@ -1,15 +1,19 @@
 
 
+
+[ ] load random url vid if internet, otherwise none
+
+
 [ ] make loading anim frame rate independent
 
 
 [ ] add icon to pause/play menu item
 
 
-[ ] test no internet
+[ ] test loading urls with no internet
 
 
-[ ] set notification popup and window title to video name
+[x] set notification popup and window title to video name
 
 
 
@@ -76,6 +80,7 @@
     happened when unfullscreening a very vertical video.. maybe second click was off window or something?
     seems to happen when switching a lot between fullscreen via double 
     [ ] debug display state [viewing mouse flags would probably fix this quickly]
+
 
 
 ---low priority----

@@ -89,6 +89,37 @@ static HBITMAP global_bitmap_y3;
 static HBITMAP global_bitmap_y4;
 
 
+
+#define ID_SYSTRAY 999
+#define ID_SYSTRAY_MSG WM_USER + 1
+
+static HICON global_icon;
+static HICON global_icon_w;
+static HICON global_icon_b;
+
+static HICON global_icon_c1;
+static HICON global_icon_c2;
+static HICON global_icon_c3;
+static HICON global_icon_c4;
+
+static HICON global_icon_p1;
+static HICON global_icon_p2;
+static HICON global_icon_p3;
+static HICON global_icon_p4;
+
+static HICON global_icon_r1;
+static HICON global_icon_r2;
+static HICON global_icon_r3;
+static HICON global_icon_r4;
+
+static HICON global_icon_y1;
+static HICON global_icon_y2;
+static HICON global_icon_y3;
+static HICON global_icon_y4;
+
+
+
+
 char *TEST_FILES[] = {
     "D:/~phil/projects/ghoster/test-vids/tall.mp4",
     "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
@@ -780,9 +811,208 @@ static GhosterWindow global_ghoster;
 
 
 
+bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
+{
+    // setup our custom pipes...
+
+    SECURITY_ATTRIBUTES sa;
+    // Set up the security attributes struct.
+    sa.nLength= sizeof(SECURITY_ATTRIBUTES);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
 
 
-bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
+    HANDLE outRead, outWrite;
+    if (!CreatePipe(&outRead, &outWrite, &sa, 0))
+    {
+        OutputDebugString("Error with CreatePipe()");
+        return false;
+    }
+
+
+    // actually run the cmd...
+
+    PROCESS_INFORMATION pi;
+    STARTUPINFO si;
+
+    // Set up the start up info struct.
+    ZeroMemory(&si,sizeof(STARTUPINFO));
+    si.cb = sizeof(STARTUPINFO);
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = outWrite;
+    si.hStdInput  = GetStdHandle(STD_INPUT_HANDLE);
+    si.hStdError  = GetStdHandle(STD_ERROR_HANDLE);
+    si.wShowWindow = SW_HIDE;
+
+    char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
+    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_exe_directory);
+
+    char args[MAX_PATH]; //todo: tempy
+    sprintf(args, "%syoutube-dl.exe %s %s", global_exe_directory, options, url);
+    // MsgBox(args);
+
+    if (!CreateProcess(
+        youtube_dl_path,
+        //"youtube-dl.exe",
+        args,  // todo: UNSAFE
+        0, 0, TRUE,
+        CREATE_NEW_CONSOLE,
+        0, 0,
+        &si, &pi))
+    {
+        //OutputDebugString("Error creating youtube-dl process.");
+        char errmsg[123];
+        sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
+        MsgBox(errmsg);
+        // MsgBox("Error creating youtube-dl process.");
+        return false;
+    }
+
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+
+    // close write end before reading from read end
+    if (!CloseHandle(outWrite))
+    {
+        OutputDebugString("Error with CloseHandle()");
+        return false;
+    }
+
+
+    // // get the string out of the pipe...
+    // // char *result = path; // huh??
+    // int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
+    // char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
+
+    DWORD bytesRead;
+    if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
+    {
+        // too big?
+        MsgBox("Error reading pipe, not enough buffer space?");
+        return false;
+    }
+
+    if (bytesRead == 0)
+    {
+        // no output?
+        MsgBox("No data from reading pipe.");
+        return false;
+    }
+
+    return true;
+}
+
+
+bool FindAudioAndVideoUrls(char *path, char **video, char **audio, char *outTitle)
+{
+
+    char *tempString = (char*)malloc(1024*30); // big enough for messy urls
+
+    // -g gets urls (seems like two: video then audio)
+    if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString))
+    {
+        return false;
+    }
+
+    char *segments[3];
+
+    int count = 0;
+    segments[count++] = tempString;
+    for (char *c = tempString; *c; c++)
+    {
+        if (*c == '\n')
+        {
+            *c = '\0';
+
+            if (count < 3)
+            {
+                segments[count++] = c+1;
+            }
+            else
+            {
+                break;
+            }
+        }
+    }
+
+
+    // copy out title
+    strcpy_s(outTitle, 64, segments[0]);
+
+
+    *video = segments[1];
+    *audio = segments[2];
+
+
+
+    OutputDebugString("\n");
+    OutputDebugString(outTitle); OutputDebugString("\n");
+    OutputDebugString(*video); OutputDebugString("\n");
+    OutputDebugString(*audio); OutputDebugString("\n");
+    OutputDebugString("\n");
+
+
+
+    return true;
+
+}
+
+bool FindAudioAndVideoUrls_OLD(char *path, char **video, char **audio, char *outTitle)
+{
+
+    char *tempString = (char*)malloc(1024*30); // big enough for messy urls
+
+    // -g gets urls (seems like two: video then audio)
+    if (!GetStringFromYoutubeDL(path, "-g", tempString))
+    {
+        return false;
+    }
+
+    // seem to get two urls, first video, second sound
+    *video = tempString;
+    *audio = tempString;
+    for (char *p = tempString; p++; *p)
+    {
+        if (*p == '\n')
+        {
+            *p = 0;
+            *audio = p+1;
+            break;
+        }
+    }
+    for (char *p = *audio; p++; *p)
+    {
+        if (*p == '\n')
+        {
+            *p = 0;
+            break;
+        }
+    }
+
+
+    OutputDebugString(*video); OutputDebugString("\n");
+    OutputDebugString(*audio); OutputDebugString("\n");
+
+
+    char *tempString2 = (char*)malloc(1024*30); // big enough for messy urls
+
+    if (!GetStringFromYoutubeDL(path, "--get-title", tempString2))
+    {
+        return false;
+    }
+
+    OutputDebugString("\n\n TITLE: \n");
+    OutputDebugString(tempString2); OutputDebugString("\n");
+
+
+    // free(tempString);
+
+    return true;
+
+}
+
+
+bool FindAudioAndVideoUrls_VERYOLD(char *path, char **video, char **audio, char *outTitle)
 {
     // to get the output from running youtube-dl.exe,
     // we need to make a pipe to capture the stdout
@@ -856,7 +1086,7 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     // get the string out of the pipe...
     // char *result = path; // huh??
     int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
-    char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL);
+    char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
 
     DWORD bytesRead;
     if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
@@ -899,6 +1129,67 @@ bool FindAudioAndVideoUrls(char *path, char **video, char **audio)
     OutputDebugString(*audio); OutputDebugString("\n");
 
     // path = video;
+
+
+
+
+    // // again to get title here
+    // sprintf(args, "%syoutube-dl.exe --get-title %s", global_exe_directory, path);
+    // if (!CreateProcess(
+    //     youtube_dl_path,
+    //     //"youtube-dl.exe",
+    //     args,  // todo: UNSAFE
+    //     0, 0, TRUE,
+    //     CREATE_NEW_CONSOLE,
+    //     0, 0,
+    //     &si, &pi))
+    // {
+    //     //OutputDebugString("Error creating youtube-dl process.");
+    //     char errmsg[123];
+    //     sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
+    //     MsgBox(errmsg);
+    //     // MsgBox("Error creating youtube-dl process.");
+    //     return false;
+    // }
+    // WaitForSingleObject(pi.hProcess, INFINITE);
+    // TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+    // // close write end before reading from read end
+    // if (!CloseHandle(outWrite))
+    // {
+    //     OutputDebugString("Error with CloseHandle()");
+    //     return false;
+    // }
+    // // char *fileNameOnly = path;
+    // // while (*fileNameOnly)
+    // //     fileNameOnly++; // find end
+    // // while (*fileNameOnly != '\\' && *fileNameOnly != '/')
+    // //     fileNameOnly--; // backup till we hit a directory
+    // // strcpy_s(outTitle, 64, "url"); //todo: length
+
+    // // // get the string out of the pipe...
+    // // // char *result = path; // huh??
+    // // int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
+    // // char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
+
+    // if (!ReadFile(outRead, result, 1024*8, &bytesRead, NULL))
+    // {
+    //     // too big?
+    //     MsgBox("Error reading pipe, not enough buffer space?");
+    //     return false;
+    // }
+
+    // if (bytesRead == 0)
+    // {
+    //     // no output?
+    //     MsgBox("No data from reading pipe.");
+    //     return false;
+    // }
+    // strcpy_s(outTitle, 64, result); //todo: length
+
+
+
+
+
 
 
     CloseHandle(outRead);
@@ -954,19 +1245,57 @@ void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
 }
 
 
+// todo: global variable instead?
+NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
+{
+    NOTIFYICONDATA info =
+    {
+        sizeof(NOTIFYICONDATA),
+        hwnd,
+        ID_SYSTRAY,               //UINT  uID
+        NIF_ICON | NIF_MESSAGE | NIF_TIP,
+        ID_SYSTRAY_MSG,           //UINT  uCallbackMessage
+        global_icon,              //HICON hIcon
+        "replace with movie title",               //TCHAR szTip[64]
+        0,                    //DWORD dwState
+        0,                    //DWORD dwStateMask
+        0,                    //TCHAR szInfo[256]
+        0,                    //UINT uVersion
+        0,                    //TCHAR szInfoTitle[64]
+        0,                    //DWORD dwInfoFlags
+        0,                    //GUID  guidItem
+        0                     //HICON hBalloonIcon
+    };
+    return info;
+}
+
+void SetTitle(HWND hwnd, char *title)
+{
+    // system tray hover
+    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
+    strcpy_s(info.szTip, 64, title); // todo: check length
+    Shell_NotifyIcon(NIM_MODIFY, &info);
+
+    // window titlebar (taskbar)
+    SetWindowText(hwnd, title);
+}
+
+
 // fill movieAV with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
+bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
     OutputDebugString(loadingMsg);
 
+    // strcpy_s(outTitle, 64, "[no title]"); //todo: length
+
     if (StringBeginsWith(path, "http"))
     {
         char *video_url;
         char *audio_url;
-        if(FindAudioAndVideoUrls(path, &video_url, &audio_url))
+        if(FindAudioAndVideoUrls(path, &video_url, &audio_url, outTitle))
         {
             if (!OpenMovieAV(video_url, audio_url, newMovie))
                 return false;
@@ -982,12 +1311,21 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie)
         // *newMovie = OpenMovieAV(path, path);
         if (!OpenMovieAV(path, path, newMovie))
             return false;
+
+        char *fileNameOnly = path;
+        while (*fileNameOnly)
+            fileNameOnly++; // find end
+        while (*fileNameOnly != '\\' && *fileNameOnly != '/')
+            fileNameOnly--; // backup till we hit a directory
+        fileNameOnly++; // drop the / tho
+        strcpy_s(outTitle, 64, fileNameOnly); //todo: length
     }
     else
     {
         MsgBox("not full filepath or url\n");
         return false;
     }
+
     return true;
 }
 
@@ -1185,13 +1523,19 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     char *path = (char*)lpParam;
 
     MovieAV newMovie;
-    if (!SetupMovieAVFromPath(path, &newMovie))
+    char *title = (char*)malloc(256); // todo: leak
+    strcpy_s(title, 256, "[no title]");
+    if (!SetupMovieAVFromPath(path, &newMovie, title))  // todo: move title into movieAV.. rename to movieFile or something?
     {
         char errbuf[123];
         sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
         MsgBox(errbuf);
         return false;
     }
+
+    // todo: better place for this? i guess it might be fine
+    SetTitle(global_ghoster.state.window, title);
+
     global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
     global_ghoster.state.messageLoadNewMovie = true;
 
@@ -1472,33 +1816,6 @@ bool PasteClipboard()
 // split into "ghoster" and "system"? and put ghoster ones in ghoster class? prep for splitting into two files?
 
 
-#define ID_SYSTRAY 999
-#define ID_SYSTRAY_MSG WM_USER + 1
-
-static HICON global_icon;
-static HICON global_icon_w;
-static HICON global_icon_b;
-
-static HICON global_icon_c1;
-static HICON global_icon_c2;
-static HICON global_icon_c3;
-static HICON global_icon_c4;
-
-static HICON global_icon_p1;
-static HICON global_icon_p2;
-static HICON global_icon_p3;
-static HICON global_icon_p4;
-
-static HICON global_icon_r1;
-static HICON global_icon_r2;
-static HICON global_icon_r3;
-static HICON global_icon_r4;
-
-static HICON global_icon_y1;
-static HICON global_icon_y2;
-static HICON global_icon_y3;
-static HICON global_icon_y4;
-
 
 
 // HICON MakeIconFromBitmapID(HINSTANCE hInstance, int id)
@@ -1610,28 +1927,6 @@ HICON RandomIcon()
 
 
 
-NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
-{
-    NOTIFYICONDATA info =
-    {
-        sizeof(NOTIFYICONDATA),
-        hwnd,
-        ID_SYSTRAY,               //UINT  uID
-        NIF_ICON | NIF_MESSAGE | NIF_TIP,
-        ID_SYSTRAY_MSG,           //UINT  uCallbackMessage
-        global_icon,              //HICON hIcon
-        "replace with movie title",               //TCHAR szTip[64]
-        0,                    //DWORD dwState
-        0,                    //DWORD dwStateMask
-        0,                    //TCHAR szInfo[256]
-        0,                    //UINT uVersion
-        0,                    //TCHAR szInfoTitle[64]
-        0,                    //DWORD dwInfoFlags
-        0,                    //GUID  guidItem
-        0                     //HICON hBalloonIcon
-    };
-    return info;
-}
 
 void AddSysTrayIcon(HWND hwnd)
 {
@@ -1660,6 +1955,7 @@ void SetIcon(HWND hwnd, HICON icon)
     // set wallpaper window same for now
     if (hwnd != global_wallpaper_window) SetIcon(global_wallpaper_window, icon);
 }
+
 
 
 void setFullscreen(bool enable)
