@@ -1,5 +1,8 @@
 
 
+[ ] make loading anim frame rate independent
+
+
 [ ] add icon to pause/play menu item
 
 
@@ -31,7 +34,6 @@
     [ ] which?
 
 
-[ ] a sort of message system for update loop communication? load video, seek, etc
 
 
 [ ] seems like mem leak on loading files
@@ -42,6 +44,7 @@
     [ ] wallpaper window?
     [ ] app/plat interface?
     [ ] app/plat inter thread communication
+    [ ] a sort of message system for update loop communication? load video, seek, etc
 
 
 [ ] decouple display from frames decoded so we can decode from network easier? 
@@ -58,6 +61,14 @@
 [ ] more than one audio stream
     [ ] give us a message if we ever see this
 
+
+
+---intermittent bugs---
+
+
+[ ] menu hiding but submenu not if submenu off main window
+
+[ ] menu bar not hiding when mouse stays still (flickers off then on)
 
 
 
@@ -169,4 +180,5 @@ random video [maybe 'i'm feeling lucky' style]
 
 green screen masking type functionality?
 
+if no video, visualize audio
 
