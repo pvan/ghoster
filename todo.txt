@@ -5,7 +5,7 @@
 [ ] load random url vid if internet, otherwise none
 
 
-[ ] make loading anim frame rate independent
+[x] make loading anim frame rate independent
 
 
 

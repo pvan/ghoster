@@ -462,6 +462,8 @@ struct GhosterWindow
     RunningMovie loaded_video;
     HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
 
+    double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
+
 
     void LoadNewMovie()
     {
@@ -769,6 +771,9 @@ struct GhosterWindow
             }
         }
 
+        // replace this with the-one-dt-to-rule-them-all, maybe from app_timer
+        double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
+        msLastFrame = state.app_timer.MsSinceStart();
 
         HWND destWin = state.window;
         if (state.wallpaperMode)
@@ -783,6 +788,7 @@ struct GhosterWindow
                         state.winWID,
                         state.winHEI,
                         destWin,
+                        temp_dt,
                         state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
                         loaded_video.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading);
