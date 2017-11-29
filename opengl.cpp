@@ -214,7 +214,9 @@ void InitOpenGL(HWND window)
         void main()
         {
             color = texture2D(tex, texCoord);
-            color.a = alpha;
+            // color.a = alpha;  \n
+            color.a = alpha * color.a;  \n
+            // color.a = alpha * color.a - alpha * color.a;  \n
         }
     );
 

@@ -861,7 +861,7 @@ struct GhosterWindow
 
 
         HDC hdc = GetDC(state.window);
-            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(0, 240, 240));
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(255, 255, 255));
 
                 char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
                 // char *displayText = "very long text hi how are you we're fine here how are you";
@@ -891,6 +891,34 @@ struct GhosterWindow
 
             DeleteObject(hBitmap);
         ReleaseDC(state.window, hdc);
+
+
+
+        // one idea
+        // but we need to solve the stretching issue as well,
+        // maybe a different solution will catch both
+        for (int x = 1; x < 960; x++)
+        {
+            for (int y = 1; y < 720; y++)
+            {
+                u8 *b = textMem + ((960*y)+x)*4 + 0;
+                u8 *g = textMem + ((960*y)+x)*4 + 1;
+                u8 *r = textMem + ((960*y)+x)*4 + 2;
+                u8 *a = textMem + ((960*y)+x)*4 + 3;
+
+                // if we start with all white,
+                // the amount off black we are should be our alpha right?
+                // edit: unfortunately it doesn't work since we
+                // get uneven color for subpixel accuracy or some other text rendering reason
+                // *a = 255-*r;
+
+                // ok so try alpha from most white value
+                // edit: better but still have up some red edges
+                *a = min(min(255-*r, 255-*g), 255-*b);
+
+            }
+        }
+
 
 
 
