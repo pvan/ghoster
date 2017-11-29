@@ -444,6 +444,27 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 }
 
 
+
+HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
+{
+    HDC memDC  = CreateCompatibleDC(hdc);
+    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
+
+    HBRUSH hbrushFill = CreateSolidBrush(cref);
+    HGDIOBJ hOldBitmap = SelectObject(memDC, hBitmap);
+    HBRUSH  hOldBrush = (HBRUSH)SelectObject(memDC, hbrushFill);
+
+    Rectangle(memDC, 0, 0, width, height);
+
+    SelectObject(memDC, hOldBrush);
+    SelectObject(memDC, hOldBitmap);
+    DeleteObject(hbrushFill);
+    DeleteDC(memDC);
+
+    return hBitmap;
+}
+
+
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 
 void appPlay();
@@ -504,6 +525,11 @@ struct GhosterWindow
         // {
         //     state.contextMenuOpen = false;
         // }
+
+
+        // replace this with the-one-dt-to-rule-them-all, maybe from app_timer
+        double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
+        msLastFrame = state.app_timer.MsSinceStart();
 
 
 
@@ -771,9 +797,44 @@ struct GhosterWindow
             }
         }
 
-        // replace this with the-one-dt-to-rule-them-all, maybe from app_timer
-        double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
-        msLastFrame = state.app_timer.MsSinceStart();
+
+
+
+
+        HDC hdc = GetDC(state.window);
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(0, 240, 240));
+
+                BITMAPINFO MyBMInfo = {0};
+                MyBMInfo.bmiHeader.biSize = sizeof(MyBMInfo.bmiHeader);
+
+                // Get the BITMAPINFO structure from the bitmap
+                if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &MyBMInfo, DIB_RGB_COLORS)) {
+                    OutputDebugString("GetDIBits error1");
+                }
+
+                // create the bitmap buffer
+                BYTE* textMem = new BYTE[MyBMInfo.bmiHeader.biSizeImage];
+
+                // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
+                // necessary to read the color table - you might not want this.
+                MyBMInfo.bmiHeader.biCompression = BI_RGB;
+
+                // get the actual bitmap buffer
+                if(0 == GetDIBits(hdc, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, (LPVOID)textMem, &MyBMInfo, DIB_RGB_COLORS)) {
+                    OutputDebugString("GetDIBits error2");
+                }
+
+            DeleteObject(hBitmap);
+        ReleaseDC(state.window, hdc);
+
+
+
+        static double t = 0;
+        t += temp_dt;
+        double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
+        // double textAlpha = 0.5;
+
+
 
         HWND destWin = state.window;
         if (state.wallpaperMode)
@@ -791,9 +852,13 @@ struct GhosterWindow
                         temp_dt,
                         state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
                         loaded_video.aspect_ratio,
-                        percent, drawProgressBar, state.bufferingOrLoading);
+                        percent, drawProgressBar, state.bufferingOrLoading,
+                        textMem, textAlpha);
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
+
+        delete[] textMem;
+
 
 
         // REPEAT
