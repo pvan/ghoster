@@ -1,4 +1,5 @@
 
+[ ] improve video resize quality (compare to vlc eg)
 
 
 [ ] load random url vid if internet, otherwise none

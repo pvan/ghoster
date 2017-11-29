@@ -64,8 +64,11 @@ static char *global_exe_directory;
 static HANDLE global_asyn_load_thread;
 
 
+// todo: move into a system obj
 static char *global_title_buffer;
 const int TITLE_BUFFER_SIZE = 256;
+
+const int URL_BUFFER_SIZE = 1024;  // todo: what to use for this?
 
 
 
@@ -226,6 +229,8 @@ struct RunningMovie
     bool was_paused = false;
 
     double targetMsPerFrame;
+
+    char *cached_url;
 
     u8 *vid_buffer;
     int vidWID;
@@ -1334,6 +1339,9 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     SetTitle(global_ghoster.state.window, title);
 
+    // save url for later (is loaded_video the best place for cached_url?)
+    strcpy_s(global_ghoster.loaded_video.cached_url, URL_BUFFER_SIZE, path);
+
     global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
     global_ghoster.state.messageLoadNewMovie = true;
 
@@ -1483,6 +1491,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 #define ID_VOLUME 1014
 #define ID_SEP 1015
 #define ID_ICONMENU 1016
+#define ID_COPYURL 1017
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -1521,8 +1530,8 @@ menuItem menuItems[] =
     {ID_REPEAT       , L"Repeat"                         , &global_ghoster.state.repeat         , 0, 0 },
     {ID_VOLUME       , L"Volume"                         , 0, &global_ghoster.state.volume         , 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_PASTE        , L"Paste Clipboard URL"            , 0                                    , 0, 0 },
-    {ID_PASTE        , L"Copy URL To Clipboard"          , 0                                    , 0, 0 },
+    {ID_PASTE        , L"Paste Clipboard URL Or File"            , 0                                    , 0, 0 },
+    {ID_COPYURL      , L"Copy URL Or File To Clipboard"          , 0                                    , 0, 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0 },
     {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                                    , 0, 0 },
     {ID_ASPECT       , L"Lock Aspect Ratio"              , &global_ghoster.state.lock_aspect    , 0, 0 },
@@ -1672,6 +1681,23 @@ bool PasteClipboard()
     GlobalLoadMovie(clipboardContents);
     free(clipboardContents);
     return true; // todo: do we need a result from loadmovie?
+}
+
+
+bool CopyUrlToClipboard()
+{
+    char *output = global_ghoster.loaded_video.cached_url;
+
+    const size_t len = strlen(output) + 1;
+    HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
+    memcpy(GlobalLock(hMem), output, len);
+    GlobalUnlock(hMem);
+    OpenClipboard(0);
+    EmptyClipboard();
+    SetClipboardData(CF_TEXT, hMem);
+    CloseClipboard();
+
+    return true;
 }
 
 
@@ -2879,6 +2905,9 @@ void onMenuItemClick(HWND hwnd, menuItem item)
         case ID_PASTE:
             PasteClipboard();
             break;
+        case ID_COPYURL:
+            CopyUrlToClipboard();
+            break;
         case ID_RESET_RES:
             SetWindowToNativeRes(global_ghoster.state.window, global_ghoster.loaded_video);
             break;
@@ -3567,6 +3596,9 @@ int CALLBACK WinMain(
 
     // space we can re-use for title strings
     global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
+
+    // maybe alloc ghoster app all at once? is this really the only mem we need for it?
+    global_ghoster.loaded_video.cached_url = (char*)malloc(URL_BUFFER_SIZE);
 
 
     // COMMAND LINE ARGS
