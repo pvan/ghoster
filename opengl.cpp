@@ -409,7 +409,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
             glViewport(0, 0, dWID, dHEI);
             glUniform1f(alpha_loc, textAlpha);
             // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dWID, dHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
             glUniform1i(tex_loc, 0);   // texture id of 0
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }

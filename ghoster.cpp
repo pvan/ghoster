@@ -464,7 +464,7 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
     return bitmap;
 }
 
-void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
+void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int fontSize, COLORREF cref)
 {
     // // copy to a buffer we can manipulate (split by new lines.. ie \n into \0)
     // char *tempTextBuffer = (char*)malloc(1024); // todo: some big number
@@ -476,10 +476,10 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
         // select the skin bitmap
         HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
 
-            SetTextColor(memDC, RGB(0, 0, 0));
+            SetTextColor(memDC, cref);
             SetBkMode(memDC, TRANSPARENT);
 
-            int nHeight = -MulDiv(48, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
 
             // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
             HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
@@ -858,15 +858,20 @@ struct GhosterWindow
 
 
 
-
+        int wid = state.winWID;
+        int hei = state.winHEI;
+        // winRect;
+        // GetWindowRect(state.window, &winRect);
+        // int wid = winRect.right - winRect.left;
+        // int hei = winRect.bottom - winRect.top;
 
         HDC hdc = GetDC(state.window);
-            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(255, 255, 255));
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(0, 0, 0));
 
                 char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
-                // char *displayText = "very long text hi how are you we're fine here how are you";
-                // todo: transmogrify message
-                PutTextOnBitmap(hdc, hBitmap, displayText, 960/2.0, 720/2.0);
+                // // char *displayText = "very long text hi how are you we're fine here how are you";
+                // // todo: transmogrify message
+                PutTextOnBitmap(hdc, hBitmap, displayText, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
@@ -897,14 +902,14 @@ struct GhosterWindow
         // one idea
         // but we need to solve the stretching issue as well,
         // maybe a different solution will catch both
-        for (int x = 1; x < 960; x++)
+        for (int x = 0; x < wid; x++)
         {
-            for (int y = 1; y < 720; y++)
+            for (int y = 0; y < hei; y++)
             {
-                u8 *b = textMem + ((960*y)+x)*4 + 0;
-                u8 *g = textMem + ((960*y)+x)*4 + 1;
-                u8 *r = textMem + ((960*y)+x)*4 + 2;
-                u8 *a = textMem + ((960*y)+x)*4 + 3;
+                u8 *b = textMem + ((wid*y)+x)*4 + 0;
+                u8 *g = textMem + ((wid*y)+x)*4 + 1;
+                u8 *r = textMem + ((wid*y)+x)*4 + 2;
+                u8 *a = textMem + ((wid*y)+x)*4 + 3;
 
                 // if we start with all white,
                 // the amount off black we are should be our alpha right?
@@ -913,8 +918,22 @@ struct GhosterWindow
                 // *a = 255-*r;
 
                 // ok so try alpha from most white value
-                // edit: better but still have up some red edges
-                *a = min(min(255-*r, 255-*g), 255-*b);
+                // edit: better but still have up some weird edges
+                // *a = min(min(255-*r, 255-*g), 255-*b);
+
+                // *a = 255;
+
+                // now trying alpha from black
+                // these are pretty much all terrible but min is the least bad
+                *a = min(min(*r, *g), *b);
+                // *a = max(max(*r, *g), *b);
+                // *a = (*r + *g + *b)/3.0;
+
+                // u8 average = (*r + *g + *b)/3.0;
+                // *r = average;
+                // *g = average;
+                // *b = average;
+                // *a = average;
 
             }
         }
@@ -946,7 +965,8 @@ struct GhosterWindow
                         state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
                         loaded_video.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        textMem, textAlpha);
+                        textMem, textAlpha
+                        );
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 
