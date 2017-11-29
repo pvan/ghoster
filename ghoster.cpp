@@ -453,10 +453,11 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
     HBRUSH brushFill = CreateSolidBrush(cref);
     HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
     HBRUSH  oldBrush = (HBRUSH)SelectObject(memDC, brushFill);
+    SelectObject(memDC, GetStockObject(NULL_PEN));
 
-    Rectangle(memDC, 0, 0, width, height);
+    Rectangle(memDC, 0, 0, width+1, height+1);  // apparently +1s needed
 
-    SelectObject(memDC, oldBrush);
+    SelectObject(memDC, oldBrush); // do we really need this if we're destroying the memDC?
     SelectObject(memDC, oldBitmap);
     DeleteObject(brushFill);
     DeleteDC(memDC);
@@ -918,12 +919,12 @@ struct GhosterWindow
         // int hei = winRect.bottom - winRect.top;
 
         HDC hdc = GetDC(state.window);
-            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(0, 0, 0));
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(0, 255, 0));
 
-                char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
-                // // char *displayText = "very long text hi how are you we're fine here how are you";
-                // // todo: transmogrify message
-                PutTextOnBitmap(hdc, hBitmap, displayText, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
+                // char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
+                // // // char *displayText = "very long text hi how are you we're fine here how are you";
+                // // // todo: transmogrify message
+                // PutTextOnBitmap(hdc, hBitmap, displayText, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
@@ -974,11 +975,11 @@ struct GhosterWindow
                 // edit: better but still have up some weird edges
                 // *a = min(min(255-*r, 255-*g), 255-*b);
 
-                // *a = 255;
+                *a = 255;
 
                 // now trying alpha from black
                 // these are pretty much all terrible but min is the least bad
-                *a = min(min(*r, *g), *b);
+                // *a = min(min(*r, *g), *b);
                 // *a = max(max(*r, *g), *b);
                 // *a = (*r + *g + *b)/3.0;
 
@@ -989,8 +990,6 @@ struct GhosterWindow
                 // *a = average;
             }
         }
-
-        // memset(textMem, 0, wid*hei*sizeof(u32));
 
 
 
