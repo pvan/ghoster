@@ -30,7 +30,7 @@
 
 
 [x] load urls with timestamps
-[ ] copy url to clipboard with timestamp
+[x] copy url to clipboard with timestamp
 
 
 [ ] percent bar incorrect when seeking some urls?

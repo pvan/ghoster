@@ -191,6 +191,15 @@ bool StringBeginsWith(const char *str, const char *front)
     return true;
 }
 
+// our best guess at least
+bool StringIsUrl(const char *path)
+{
+    // feels pretty rudimentary / incomplete
+    if (StringBeginsWith(path, "http")) return true;
+    if (StringBeginsWith(path, "www")) return true;
+    return false;
+}
+
 int nearestInt(double in)
 {
     return floor(in + 0.5);
@@ -1085,7 +1094,7 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 
     // strcpy_s(outTitle, 64, "[no title]"); //todo: length
 
-    if (StringBeginsWith(path, "http"))
+    if (StringIsUrl(path))
     {
         char *video_url = (char*)malloc(1024*10);  // big enough for some big url from youtube-dl
         char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
@@ -1695,7 +1704,17 @@ bool PasteClipboard()
 
 bool CopyUrlToClipboard()
 {
-    char *output = global_ghoster.loaded_video.cached_url;
+    char *url = global_ghoster.loaded_video.cached_url;
+
+    char output[URL_BUFFER_SIZE]; // todo: stack alloc ok here?
+    if (StringIsUrl(url)) {
+        int secondsElapsed = global_ghoster.loaded_video.elapsed;
+        sprintf(output, "%s&t=%i", url, secondsElapsed);
+    }
+    else
+    {
+        sprintf(output, "%s", url);
+    }
 
     const size_t len = strlen(output) + 1;
     HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
