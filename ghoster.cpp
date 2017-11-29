@@ -1331,6 +1331,62 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
 }
 
 
+// for timestamps in the form &t=X / &t=Xs / &t=XmYs / &t=XhYmZs
+int SecondsFromStringTimestamp(char *timestamp)
+{
+    int secondsSoFar = 0;
+
+    if (StringBeginsWith(timestamp, "&t="))
+    {
+        timestamp+=4;
+    }
+
+    char *p = timestamp;
+
+    char *nextDigits = timestamp;
+    int digitCount = 0;
+
+    char *nextUnits;
+
+    while (*p)
+    {
+
+        nextDigits = p;
+        while (isdigit((int)*p))
+        {
+            p++;
+        }
+
+        int nextNum = atoi(nextDigits);
+
+        // nextUnit = *p;
+        // if (nextUnit == '\0') nextUnit = 's';
+
+        int secondsPerUnit = 1;
+        if (*p == 'm') secondsPerUnit = 60;
+        if (*p == 'h') secondsPerUnit = 60*60;
+
+        secondsSoFar += nextNum*secondsPerUnit;
+
+        p++;
+
+    }
+
+    return secondsSoFar;
+}
+
+bool Test_SecondsFromStringTimestamp()
+{
+    if (SecondsFromStringTimestamp("12") != 12) return false;
+    if (SecondsFromStringTimestamp("12s") != 12) return false;
+    if (SecondsFromStringTimestamp("854s") != 854) return false;
+    if (SecondsFromStringTimestamp("2m14s") != 2*60+14) return false;
+    if (SecondsFromStringTimestamp("3h65m0s") != 3*60*60+65*60+0) return false;
+    return true;
+
+}
+
+
 bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
     // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
@@ -3481,6 +3537,9 @@ int CALLBACK WinMain(
 )
 {
     global_hInstance = hInstance;
+
+
+    assert(Test_SecondsFromStringTimestamp());
 
 
     // load icons/bitmaps
