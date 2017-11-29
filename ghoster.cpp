@@ -1354,7 +1354,7 @@ int SecondsFromStringTimestamp(char *timestamp)
 {
     int secondsSoFar = 0;
 
-    if (StringBeginsWith(timestamp, "&t="))
+    if (StringBeginsWith(timestamp, "&t=") || StringBeginsWith(timestamp, "#t="))
     {
         timestamp+=3;
     }
@@ -1395,6 +1395,7 @@ int SecondsFromStringTimestamp(char *timestamp)
 
 bool Test_SecondsFromStringTimestamp()
 {
+    if (SecondsFromStringTimestamp("#t=21s1m") != 21+60) return false;
     if (SecondsFromStringTimestamp("&t=216") != 216) return false;
     if (SecondsFromStringTimestamp("12") != 12) return false;
     if (SecondsFromStringTimestamp("12s") != 12) return false;
@@ -1412,12 +1413,13 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     appPause(); // stop playing movie as well, we'll auto start the next one
 
     char *timestamp = strstr(path, "&t=");
+    if (timestamp == 0) timestamp = strstr(path, "#t=");
     if (timestamp != 0) {
         int startSeconds = SecondsFromStringTimestamp(timestamp);
         global_ghoster.state.messageStartAtSeconds = startSeconds;
-            char buf[123];
-            sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
-            OutputDebugString(buf);
+            // char buf[123];
+            // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
+            // OutputDebugString(buf);
     }
 
     // stop previous thread if already loading
