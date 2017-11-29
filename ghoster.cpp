@@ -532,6 +532,8 @@ struct AppColorBuffer
 
     void Allocate(int w, int h)
     {
+        width = w;
+        height = h;
         if (memory) free(memory);
         memory = (u8*)malloc(width * height * sizeof(u32));
         assert(memory); //todo for now
@@ -630,7 +632,10 @@ struct GhosterWindow
         msLastFrame = state.app_timer.MsSinceStart();
 
 
-        if (message.resizeWindowBuffers)
+        if (message.resizeWindowBuffers ||
+            state.winWID != memory.overlay.width ||
+            state.winHEI != memory.overlay.height
+            )
         {
             message.resizeWindowBuffers = false;
             memory.overlay.Allocate(state.winWID, state.winHEI);
@@ -903,10 +908,10 @@ struct GhosterWindow
 
 
 
-        // int wid = memory.overlay.width;
-        // int hei = memory.overlay.height;
-        int wid = state.winWID;
-        int hei = state.winHEI;
+        int wid = memory.overlay.width;
+        int hei = memory.overlay.height;
+        // int wid = state.winWID;
+        // int hei = state.winHEI;
         // winRect;
         // GetWindowRect(state.window, &winRect);
         // int wid = winRect.right - winRect.left;
@@ -929,8 +934,8 @@ struct GhosterWindow
                 }
 
                 // create the bitmap buffer
-                BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
-                // u8 *textMem = memory.overlay.memory;
+                // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
+                u8 *textMem = memory.overlay.memory;
 
                 // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
                 // necessary to read the color table - you might not want this.
@@ -1009,10 +1014,10 @@ struct GhosterWindow
                         // loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
-                        state.winWID,
-                        state.winHEI,
-                        // memory.overlay.width,
-                        // memory.overlay.height,
+                        // state.winWID,
+                        // state.winHEI,
+                        memory.overlay.width,
+                        memory.overlay.height,
                         destWin,
                         temp_dt,
                         state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
@@ -1023,7 +1028,7 @@ struct GhosterWindow
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 
-        delete[] textMem;
+        // delete[] textMem;
 
 
 
