@@ -524,6 +524,31 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 }
 
 
+struct AppColorBuffer
+{
+    u8 *memory = 0;
+    int width;
+    int height;
+
+    void Allocate(int w, int h)
+    {
+        if (memory) free(memory);
+        memory = (u8*)malloc(width * height * sizeof(u32));
+        assert(memory); //todo for now
+    }
+};
+
+struct AppMemory
+{
+    AppColorBuffer overlay;
+};
+
+struct AppMessages
+{
+    bool resizeWindowBuffers = false;
+};
+
+
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 
 void appPlay();
@@ -543,6 +568,12 @@ struct GhosterWindow
     HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
 
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
+
+    // buffers mostly, anything on the heap
+    AppMemory memory;
+
+    // mostly flags, basic way to communicate between threads etc
+    AppMessages message;
 
 
     void LoadNewMovie()
@@ -573,6 +604,14 @@ struct GhosterWindow
     }
 
 
+    void ResizeWindow(int wid, int hei)
+    {
+        state.winWID = wid;
+        state.winHEI = hei;
+        message.resizeWindowBuffers = true;
+    }
+
+
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
     void Update()
     {
@@ -590,6 +629,12 @@ struct GhosterWindow
         double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
         msLastFrame = state.app_timer.MsSinceStart();
 
+
+        if (message.resizeWindowBuffers)
+        {
+            message.resizeWindowBuffers = false;
+            memory.overlay.Allocate(state.winWID, state.winHEI);
+        }
 
 
         if (state.messageLoadNewMovie)
@@ -811,7 +856,7 @@ struct GhosterWindow
                     || !loaded_video.av_movie.IsAudioAvailable()
                 )
                 {
-                    int frames_skipped;
+                    int frames_skipped = 0;
                     GetNextVideoFrame(
                         loaded_video.av_movie.vfc,
                         loaded_video.av_movie.video.codecContext,
@@ -825,7 +870,7 @@ struct GhosterWindow
                         &frames_skipped);
 
                     if (frames_skipped > 0) {
-                        char skipbuf[256];
+                        char skipbuf[64];
                         sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
                         OutputDebugString(skipbuf);
                     }
@@ -858,8 +903,8 @@ struct GhosterWindow
 
 
 
-        int wid = state.winWID;
-        int hei = state.winHEI;
+        int wid = memory.overlay.width;
+        int hei = memory.overlay.height;
         // winRect;
         // GetWindowRect(state.window, &winRect);
         // int wid = winRect.right - winRect.left;
@@ -882,7 +927,8 @@ struct GhosterWindow
                 }
 
                 // create the bitmap buffer
-                BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
+                // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
+                u8 *textMem = memory.overlay.memory;
 
                 // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
                 // necessary to read the color table - you might not want this.
@@ -960,6 +1006,8 @@ struct GhosterWindow
                         // loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
+                        // memory.overlay.width,
+                        // memory.overlay.height,
                         destWin,
                         temp_dt,
                         state.lock_aspect && state.fullscreen,  // temp: aspect + fullscreen = letterbox
@@ -970,7 +1018,7 @@ struct GhosterWindow
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 
-        delete[] textMem;
+        // delete[] textMem;
 
 
 
@@ -1196,20 +1244,24 @@ static void GlobalLoadMovie(char *path)
 }
 
 
-void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
+void SetWindowSize(HWND hwnd, int wid, int hei)
 {
+    global_ghoster.ResizeWindow(wid, hei);
+
     RECT winRect;
     GetWindowRect(hwnd, &winRect);
+    MoveWindow(hwnd, winRect.left, winRect.top, wid, hei, true);
+}
 
-        char hwbuf[123];
-        sprintf(hwbuf, "wid: %i  hei: %i\n",
-            global_ghoster.loaded_video.av_movie.video.codecContext->width, global_ghoster.loaded_video.av_movie.video.codecContext->height);
-        OutputDebugString(hwbuf);
+void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
+{
 
-        global_ghoster.state.winWID = movie.vidWID;
-        global_ghoster.state.winHEI = movie.vidHEI;
+    char hwbuf[123];
+    sprintf(hwbuf, "wid: %i  hei: %i\n",
+        global_ghoster.loaded_video.av_movie.video.codecContext->width, global_ghoster.loaded_video.av_movie.video.codecContext->height);
+    OutputDebugString(hwbuf);
 
-    MoveWindow(hwnd, winRect.left, winRect.top, movie.vidWID, movie.vidHEI, true);
+    SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
 }
 
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
@@ -1226,8 +1278,10 @@ void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
     //     MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
     // else
     //     MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
+
     // now always adjusting width
-    MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+    // MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+    SetWindowSize(hwnd, nw, h);
 }
 
 
@@ -2781,8 +2835,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_SIZE: {
-            global_ghoster.state.winWID = GET_X_LPARAM(lParam);
-            global_ghoster.state.winHEI = GET_Y_LPARAM(lParam);
+            SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
             return 0;
         }
 
@@ -4002,11 +4055,9 @@ int CALLBACK WinMain(
     wc.lpszClassName = "ghoster window class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
-    global_ghoster.state.winWID = 960;
-    global_ghoster.state.winHEI = 720;
-    RECT neededRect = {};
-    neededRect.right = global_ghoster.state.winWID;
-    neededRect.bottom = global_ghoster.state.winHEI;
+    RECT neededRect = {0};
+    neededRect.right = 960;
+    neededRect.bottom = 720;
 
     // HWND
     global_ghoster.state.window = CreateWindowEx(
@@ -4019,6 +4070,9 @@ int CALLBACK WinMain(
         0, 0, hInstance, 0);
 
     if (!global_ghoster.state.window) { MsgBox("Couldn't open window."); }
+
+
+    global_ghoster.ResizeWindow(neededRect.right, neededRect.bottom);
 
 
     // /*

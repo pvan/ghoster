@@ -300,7 +300,9 @@ void InitOpenGL(HWND window)
 
 // TODO: pull out progress bar rendering from this function
 // need to render to fbo to do so?
-void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND window, double dt,
+void RenderToScreenGL(void *memory, int sWID, int sHEI,
+                      int dWID, int dHEI,
+                      HWND window, double dt,
                       bool letterbox, double aspect_ratio,
                       float proportion, bool drawProgressBar, bool drawBuffering,
                       void *textMemory, double textAlpha)
@@ -404,15 +406,15 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI, int dWID, int dHEI, HWND
         }
 
 
-        if (textAlpha > 0)
-        {
-            glViewport(0, 0, dWID, dHEI);
-            glUniform1f(alpha_loc, textAlpha);
-            // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dWID, dHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
-            glUniform1i(tex_loc, 0);   // texture id of 0
-            glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-        }
+        // if (textAlpha > 0)
+        // {
+        //     glViewport(0, 0, dWID, dHEI);
+        //     glUniform1f(alpha_loc, textAlpha);
+        //     // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+        //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dWID, dHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+        //     glUniform1i(tex_loc, 0);   // texture id of 0
+        //     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        // }
 
 
         // i think this will only cause unnecessary context switching
