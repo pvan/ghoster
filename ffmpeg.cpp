@@ -548,6 +548,9 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     {
         if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
         {
+            if (file.video.index != -1)
+                MsgBox("More than one video stream!");
+
             if (file.video.index == -1)
                 file.video.index = i;
         }
@@ -557,6 +560,9 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     {
         if (file.afc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
         {
+            if (file.audio.index != -1)
+                MsgBox("More than one audio stream!");
+
             if (file.audio.index == -1)
                 file.audio.index = i;
         }

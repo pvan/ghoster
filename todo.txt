@@ -61,9 +61,6 @@
 
 
 
-[ ] more than one audio stream
-    [ ] give us a message if we ever see this
-
 
 
 ---intermittent bugs---
@@ -95,7 +92,10 @@
 [/] lose transparency on full screen
     -temp workaround by keeping 1 pixel smaller than monitor size
 
+
+[ ] more than one audio stream
 [?] more than one video stream??
+    [x] give us a message if we ever see these
     [ ] just get a big collection of different videos to test at some point
 
 
