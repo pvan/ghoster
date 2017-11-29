@@ -472,16 +472,17 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
         // select the skin bitmap
         HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
 
-            SetTextColor(memDC, RGB(255, 0, 0));
+            SetTextColor(memDC, RGB(0, 0, 0));
             SetBkMode(memDC, TRANSPARENT);
 
             int nHeight = -MulDiv(48, GetDeviceCaps(hdc, LOGPIXELSY), 72);
 
             // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
-            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Times New Roman");
+            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
 
                 HFONT oldFont = (HFONT)SelectObject(memDC, font);
 
+                    SetTextAlign(memDC, TA_CENTER | TA_BASELINE);
                     TextOut(memDC, x, y, text, strlen(text));
 
                 SelectObject(memDC, oldFont);
@@ -832,7 +833,9 @@ struct GhosterWindow
         HDC hdc = GetDC(state.window);
             HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(0, 240, 240));
 
-                PutTextOnBitmap(hdc, hBitmap, "test!!!", 960/2.0, 720/2.0);
+                char *displayText = "very long text hi how are you we're fine here how are you";
+                // todo: transmogrify message
+                PutTextOnBitmap(hdc, hBitmap, displayText, 960/2.0, 720/2.0);
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
