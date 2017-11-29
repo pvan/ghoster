@@ -448,20 +448,48 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
 {
     HDC memDC  = CreateCompatibleDC(hdc);
-    HBITMAP hBitmap = CreateCompatibleBitmap(hdc, width, height);
+    HBITMAP bitmap = CreateCompatibleBitmap(hdc, width, height);
 
-    HBRUSH hbrushFill = CreateSolidBrush(cref);
-    HGDIOBJ hOldBitmap = SelectObject(memDC, hBitmap);
-    HBRUSH  hOldBrush = (HBRUSH)SelectObject(memDC, hbrushFill);
+    HBRUSH brushFill = CreateSolidBrush(cref);
+    HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+    HBRUSH  oldBrush = (HBRUSH)SelectObject(memDC, brushFill);
 
     Rectangle(memDC, 0, 0, width, height);
 
-    SelectObject(memDC, hOldBrush);
-    SelectObject(memDC, hOldBitmap);
-    DeleteObject(hbrushFill);
+    SelectObject(memDC, oldBrush);
+    SelectObject(memDC, oldBitmap);
+    DeleteObject(brushFill);
     DeleteDC(memDC);
 
-    return hBitmap;
+    return bitmap;
+}
+
+void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
+{
+    // create a device context for the skin
+    HDC memDC = CreateCompatibleDC(hdc);
+
+        // select the skin bitmap
+        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+
+            SetTextColor(memDC, RGB(255, 0, 0));
+            SetBkMode(memDC, TRANSPARENT);
+
+            int nHeight = -MulDiv(48, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
+            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Times New Roman");
+
+                HFONT oldFont = (HFONT)SelectObject(memDC, font);
+
+                    TextOut(memDC, x, y, text, strlen(text));
+
+                SelectObject(memDC, oldFont);
+            DeleteObject(font);
+
+        SelectObject(memDC, oldBitmap);
+
+    DeleteDC(memDC);
 }
 
 
@@ -804,23 +832,26 @@ struct GhosterWindow
         HDC hdc = GetDC(state.window);
             HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(0, 240, 240));
 
-                BITMAPINFO MyBMInfo = {0};
-                MyBMInfo.bmiHeader.biSize = sizeof(MyBMInfo.bmiHeader);
+                PutTextOnBitmap(hdc, hBitmap, "test!!!", 960/2.0, 720/2.0);
+
+                BITMAPINFO bmi = {0};
+                bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
 
                 // Get the BITMAPINFO structure from the bitmap
-                if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &MyBMInfo, DIB_RGB_COLORS)) {
+                if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &bmi, DIB_RGB_COLORS)) {
                     OutputDebugString("GetDIBits error1");
                 }
 
                 // create the bitmap buffer
-                BYTE* textMem = new BYTE[MyBMInfo.bmiHeader.biSizeImage];
+                BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
 
                 // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
                 // necessary to read the color table - you might not want this.
-                MyBMInfo.bmiHeader.biCompression = BI_RGB;
+                bmi.bmiHeader.biCompression = BI_RGB;
+                bmi.bmiHeader.biHeight *= -1;
 
                 // get the actual bitmap buffer
-                if(0 == GetDIBits(hdc, hBitmap, 0, MyBMInfo.bmiHeader.biHeight, (LPVOID)textMem, &MyBMInfo, DIB_RGB_COLORS)) {
+                if(0 == GetDIBits(hdc, hBitmap, 0, -bmi.bmiHeader.biHeight, (LPVOID)textMem, &bmi, DIB_RGB_COLORS)) {
                     OutputDebugString("GetDIBits error2");
                 }
 
