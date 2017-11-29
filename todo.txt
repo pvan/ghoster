@@ -7,8 +7,6 @@
 [ ] make loading anim frame rate independent
 
 
-[ ] add icon to pause/play menu item
-
 
 [ ] test loading urls with no internet
 
@@ -127,6 +125,9 @@ grown/shrink which side of window based on screen location when changing aspect 
 
 
 hide/show menu window instead of creating and destroying?
+
+
+add icon to pause/play menu item
 
 
 ---instructions-------

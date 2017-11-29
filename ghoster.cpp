@@ -61,6 +61,14 @@ static bool global_is_submenu_shown = false;
 static char *global_exe_directory;
 
 
+static HANDLE global_asyn_load_thread;
+
+
+static char *global_title_buffer;
+const int TITLE_BUFFER_SIZE = 256;
+
+
+
 UINT singleClickTimerID;
 
 // static HBITMAP gobal_bitmap_checkmark;
@@ -936,10 +944,19 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
     }
 
 
+    int titleLen = strlen(segments[0]);  // note this doesn't include the \0
+    if (titleLen+1 > TITLE_BUFFER_SIZE-1) // note -1 since [size-1] is \0  and +1 since titleLen doesn't count \0
+    {
+        segments[0][TITLE_BUFFER_SIZE-1] = '\0';
+        segments[0][TITLE_BUFFER_SIZE-2] = '.';
+        segments[0][TITLE_BUFFER_SIZE-3] = '.';
+        segments[0][TITLE_BUFFER_SIZE-4] = '.';
+    }
 
-    strcpy_s(outTitle, 64, segments[0]);
 
-    strcpy_s(video, 1024*10, segments[1]);  // todo: pass in these string limits
+    strcpy_s(outTitle, TITLE_BUFFER_SIZE, segments[0]);
+
+    strcpy_s(video, 1024*10, segments[1]);  // todo: pass in these string limits?
 
     strcpy_s(audio, 1024*10, segments[2]);
 
@@ -1034,6 +1051,7 @@ void SetTitle(HWND hwnd, char *title)
 {
     // system tray hover
     NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
+    assert(strlen(title) < 64);
     strcpy_s(info.szTip, 64, title); // todo: check length
     Shell_NotifyIcon(NIM_MODIFY, &info);
 
@@ -1055,7 +1073,7 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
     if (StringBeginsWith(path, "http"))
     {
         char *video_url = (char*)malloc(1024*10);  // big enough for some big url from youtube-dl
-        char *audio_url = (char*)malloc(1024*10);
+        char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
         if(FindAudioAndVideoUrls(path, video_url, audio_url, outTitle))
         {
             if (!OpenMovieAV(video_url, audio_url, newMovie))
@@ -1287,16 +1305,15 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 }
 
 
-static HANDLE global_asyn_load_thread;
 
 DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
 {
     char *path = (char*)lpParam;
 
     MovieAV newMovie;
-    char *title = (char*)malloc(256); // todo: leak
-    strcpy_s(title, 256, "[no title]");
-    if (!SetupMovieAVFromPath(path, &newMovie, title))  // todo: move title into movieAV.. rename to movieFile or something?
+    char *title = global_title_buffer;
+    strcpy_s(title, TITLE_BUFFER_SIZE, "[no title]");
+    if (!SetupMovieAVFromPath(path, &newMovie, title))  // todo: move title into movieAV? rename to movieFile or something?
     {
         char errbuf[123];
         sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
@@ -1578,6 +1595,7 @@ bool PasteClipboard()
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
     GlobalLoadMovie(clipboardContents);
+    free(clipboardContents);
     return true; // todo: do we need a result from loadmovie?
 }
 
@@ -3467,6 +3485,10 @@ int CALLBACK WinMain(
 
     // load icons/bitmaps
     MakeIcons(hInstance);
+
+
+    // space we can re-use for title strings
+    global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
 
 
     // COMMAND LINE ARGS
