@@ -466,6 +466,10 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
 
 void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
 {
+    // // copy to a buffer we can manipulate (split by new lines.. ie \n into \0)
+    // char *tempTextBuffer = (char*)malloc(1024); // todo: some big number
+    // sprintf(tempTextBuffer, "%s", text);
+
     // create a device context for the skin
     HDC memDC = CreateCompatibleDC(hdc);
 
@@ -482,8 +486,34 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y)
 
                 HFONT oldFont = (HFONT)SelectObject(memDC, font);
 
-                    SetTextAlign(memDC, TA_CENTER | TA_BASELINE);
-                    TextOut(memDC, x, y, text, strlen(text));
+                    // SetTextAlign(memDC, TA_CENTER | TA_BASELINE); // todo: add left/right options
+
+                    // old method: note lines are upside down
+                    // // maybe copy to a line buffer line by line would be clearer?
+                    // // (rather than copy entire buffer and go through it once)
+                    // char *thisLine = tempTextBuffer;
+                    // int lineCount = 0;
+                    // for (char *p = tempTextBuffer; *p; p++)
+                    // {
+                    //     if (*p == '\n')
+                    //     {
+                    //         *p = '\0';
+                    //         TextOut(memDC, x, y + (lineCount*nHeight), thisLine, strlen(thisLine));
+                    //         p++; // skip our loop to start of next line (so it doesn't stop)
+                    //         thisLine = p;
+                    //         lineCount++;
+                    //     }
+                    // }
+                    // TextOut(memDC, x, y + lineCount*nHeight, thisLine, strlen(thisLine));
+                    RECT rect = {x, y, x+1, y+1};
+                    DrawText(memDC, text, -1, &rect, DT_CALCRECT);
+                    int wid = rect.right-rect.left;
+                    int hei = rect.bottom-rect.top;
+                    rect = {rect.left-wid/2, rect.top-hei/2, rect.right-wid/2, rect.bottom-hei/2};
+                    DrawText(memDC, text, -1, &rect, DT_CENTER|DT_TOP);
+
+                    // view rect
+                    // Rectangle(memDC, rect.left, rect.top, rect.right, rect.bottom);
 
                 SelectObject(memDC, oldFont);
             DeleteObject(font);
@@ -833,7 +863,8 @@ struct GhosterWindow
         HDC hdc = GetDC(state.window);
             HBITMAP hBitmap = CreateSolidColorBitmap(hdc, 960, 720, RGB(0, 240, 240));
 
-                char *displayText = "very long text hi how are you we're fine here how are you";
+                char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
+                // char *displayText = "very long text hi how are you we're fine here how are you";
                 // todo: transmogrify message
                 PutTextOnBitmap(hdc, hBitmap, displayText, 960/2.0, 720/2.0);
 
