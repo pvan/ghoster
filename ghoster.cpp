@@ -903,8 +903,10 @@ struct GhosterWindow
 
 
 
-        int wid = memory.overlay.width;
-        int hei = memory.overlay.height;
+        // int wid = memory.overlay.width;
+        // int hei = memory.overlay.height;
+        int wid = state.winWID;
+        int hei = state.winHEI;
         // winRect;
         // GetWindowRect(state.window, &winRect);
         // int wid = winRect.right - winRect.left;
@@ -923,12 +925,12 @@ struct GhosterWindow
 
                 // Get the BITMAPINFO structure from the bitmap
                 if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &bmi, DIB_RGB_COLORS)) {
-                    OutputDebugString("GetDIBits error1");
+                    OutputDebugString("GetDIBits error1\n");
                 }
 
                 // create the bitmap buffer
-                // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
-                u8 *textMem = memory.overlay.memory;
+                BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
+                // u8 *textMem = memory.overlay.memory;
 
                 // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
                 // necessary to read the color table - you might not want this.
@@ -937,7 +939,7 @@ struct GhosterWindow
 
                 // get the actual bitmap buffer
                 if(0 == GetDIBits(hdc, hBitmap, 0, -bmi.bmiHeader.biHeight, (LPVOID)textMem, &bmi, DIB_RGB_COLORS)) {
-                    OutputDebugString("GetDIBits error2");
+                    OutputDebugString("GetDIBits error2\n");
                 }
 
             DeleteObject(hBitmap);
@@ -980,17 +982,18 @@ struct GhosterWindow
                 // *g = average;
                 // *b = average;
                 // *a = average;
-
             }
         }
 
+        // memset(textMem, 0, wid*hei*sizeof(u32));
 
 
 
-        static double t = 0;
-        t += temp_dt;
-        double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
-        // double textAlpha = 0.5;
+
+        // static double t = 0;
+        // t += temp_dt;
+        // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
+        double textAlpha = 1;
 
 
 
@@ -1006,6 +1009,8 @@ struct GhosterWindow
                         // loaded_video.vidHEI,
                         state.winWID,
                         state.winHEI,
+                        state.winWID,
+                        state.winHEI,
                         // memory.overlay.width,
                         // memory.overlay.height,
                         destWin,
@@ -1018,7 +1023,7 @@ struct GhosterWindow
         // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
 
-        // delete[] textMem;
+        delete[] textMem;
 
 
 
