@@ -1339,9 +1339,6 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     SetTitle(global_ghoster.state.window, title);
 
-    // save url for later (is loaded_video the best place for cached_url?)
-    strcpy_s(global_ghoster.loaded_video.cached_url, URL_BUFFER_SIZE, path);
-
     global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
     global_ghoster.state.messageLoadNewMovie = true;
 
@@ -1435,6 +1432,16 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     }
 
     global_asyn_load_thread = CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
+
+
+    // strip off timestamp before caching path
+    if (timestamp != 0)
+        timestamp[0] = '\0';
+
+    // save url for later (is loaded_video the best place for cached_url?)
+    // is this the best place to set cached_url?
+    strcpy_s(global_ghoster.loaded_video.cached_url, URL_BUFFER_SIZE, path);
+
 
     return true;
 }
