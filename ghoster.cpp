@@ -292,6 +292,8 @@ struct AppState {
 
     bool bufferingOrLoading = true;
 
+    int messageStartAtSeconds = 0;
+
 
 
 };
@@ -455,6 +457,14 @@ struct GhosterWindow
         {
             MsgBox("Error in setup for new movie.\n");
         }
+
+        if (state.messageStartAtSeconds != 0)
+        {
+            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+            timestamp ts = {state.messageStartAtSeconds, 1, videoFPS};
+            HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
+        }
+
         state.bufferingOrLoading = false;
         appPlay();
 
@@ -1338,7 +1348,7 @@ int SecondsFromStringTimestamp(char *timestamp)
 
     if (StringBeginsWith(timestamp, "&t="))
     {
-        timestamp+=4;
+        timestamp+=3;
     }
 
     char *p = timestamp;
@@ -1377,13 +1387,13 @@ int SecondsFromStringTimestamp(char *timestamp)
 
 bool Test_SecondsFromStringTimestamp()
 {
+    if (SecondsFromStringTimestamp("&t=216") != 216) return false;
     if (SecondsFromStringTimestamp("12") != 12) return false;
     if (SecondsFromStringTimestamp("12s") != 12) return false;
     if (SecondsFromStringTimestamp("854s") != 854) return false;
     if (SecondsFromStringTimestamp("2m14s") != 2*60+14) return false;
     if (SecondsFromStringTimestamp("3h65m0s") != 3*60*60+65*60+0) return false;
     return true;
-
 }
 
 
@@ -1392,6 +1402,15 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
     global_ghoster.state.bufferingOrLoading = true;
     appPause(); // stop playing movie as well, we'll auto start the next one
+
+    char *timestamp = strstr(path, "&t=");
+    if (timestamp != 0) {
+        int startSeconds = SecondsFromStringTimestamp(timestamp);
+        global_ghoster.state.messageStartAtSeconds = startSeconds;
+            char buf[123];
+            sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
+            OutputDebugString(buf);
+    }
 
     // stop previous thread if already loading
     // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?

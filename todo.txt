@@ -28,7 +28,7 @@
 [ ] overlay display: play/pause feedback, etc
 
 
-[ ] load urls with timestamps
+[x] load urls with timestamps
 [ ] copy url to clipboard with timestamp
 
 
