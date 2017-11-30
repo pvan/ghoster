@@ -18,7 +18,8 @@
 
 [ ] debug and release build folders?
 
-[ ] alt tab should close the menu probably [didn't work on menu from sys tray]
+[ ] alt tab should close the menu probably 
+    (doesn't work if highlighting submenu)
 
 
 
@@ -130,6 +131,9 @@ add icon to pause/play menu item
 
 
 if ghost mode forced always on top, should it also be automatically disabled when leaving ghost mode?
+
+
+if we pre-process the file in parallel to display, we could seek much faster on files with spaced out I-frames
 
 
 ---instructions-------

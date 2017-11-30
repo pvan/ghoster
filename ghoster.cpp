@@ -158,6 +158,9 @@ const double PROGRESS_BAR_TIMEOUT = 1000;
 // disallow opacity greater than this when in ghost mode
 const double GHOST_MODE_MAX_OPACITY = 0.95;
 
+// feels like i want this less often
+const bool GHOST_MODE_SETS_TOPMOST = false;
+
 // how long to wait before toggling pause when single click (which could be start of double click)
 // higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
 // lower makes single click feel better (less delay when clicking to pause/unpause)
@@ -2070,7 +2073,7 @@ void setGhostMode(HWND hwnd, bool enable)
     if (enable)
     {
         SetIcon(hwnd, global_icon_w);
-        setTopMost(hwnd, true); // typically this is what you want, switch on by default
+        if (GHOST_MODE_SETS_TOPMOST) setTopMost(hwnd, true);
         if (global_ghoster.state.opacity > GHOST_MODE_MAX_OPACITY)
         {
             global_ghoster.state.last_opacity = global_ghoster.state.opacity;
