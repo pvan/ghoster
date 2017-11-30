@@ -46,17 +46,17 @@ HWND global_workerw;
 HWND global_wallpaper_window;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 const char *WALLPAPER_CLASS_NAME = "ghoster wallpaper window class";
-const char *POPUP_CLASS_NAME = "ghoster popup window class";
-const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
-HINSTANCE global_hInstance;
-
-bool global_awkward_next_mup_was_closing_menu = false;
 
 HWND global_popup_window;
 HWND global_icon_menu_window;
 static int selectedItem = -1;
 static int subMenuSelectedItem = -1;
 static bool global_is_submenu_shown = false;
+
+HINSTANCE global_hInstance;
+
+bool global_awkward_next_mup_was_closing_menu = false;
+
 
 static char *global_exe_directory;
 
@@ -3041,7 +3041,7 @@ int CALLBACK WinMain(
         // OutputDebugString(global_exe_directory);
         // OutputDebugString("\n\n\n\n");
 
-    bool startInGhostMode;
+    bool startInGhostMode = false;
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
         char filePathOrUrl[256]; // todo what max to use
@@ -3163,55 +3163,15 @@ int CALLBACK WinMain(
     WNDCLASS wc2 = {};
     wc2.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
     wc2.lpfnWndProc =  DefWindowProc;//WndProc;
-    wc2.hInstance = global_hInstance;
+    wc2.hInstance = hInstance;
     wc2.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc2.lpszClassName = WALLPAPER_CLASS_NAME;
     if (!RegisterClass(&wc2)) { MsgBox("RegisterClass for wallpaper window failed."); return 1; }
 
 
 
-    // register class for menu popup window if we ever use one
-    WNDCLASS wc3 = {};
-    wc3.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc3.lpfnWndProc =  PopupWndProc;
-    wc3.hInstance = global_hInstance;
-    wc3.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc3.lpszClassName = POPUP_CLASS_NAME;
-    if (!RegisterClass(&wc3)) { MsgBox("RegisterClass for popup window failed."); return 1; }
-
-    global_popup_window = CreateWindowEx(
-        WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
-        POPUP_CLASS_NAME,
-        "ghoster popup menu",
-        WS_POPUP,// | WS_VISIBLE,
-        0, 0,
-        200, 200,
-        0,0,
-        global_hInstance,
-        0);
-
-    if (!global_popup_window) { MsgBox("Failed to create popup window."); }
-
-
-    // sub popup menu... can we reuse popup menu wndproc? gotta be a better way to make windows?
-    WNDCLASS wc4 = {};
-    wc4.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
-    wc4.lpfnWndProc =  IconMenuWndProc;
-    wc4.hInstance = global_hInstance;
-    wc4.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc4.lpszClassName = ICONMENU_CLASS_NAME;
-    if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 1; }
-
-    global_icon_menu_window = CreateWindowEx(
-        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
-        wc4.lpszClassName, "ghoster video player",
-        WS_POPUP,
-        20, 20,
-        400, 400,
-        // CW_USEDEFAULT, CW_USEDEFAULT,
-        // CW_USEDEFAULT, CW_USEDEFAULT,
-        0, 0, hInstance, 0);
-    if (!global_icon_menu_window) { MsgBox("Couldn't open global_icon_menu_window."); }
+    // create windows for popup menu
+    global_popup_window = InitPopupMenu(hInstance, menuItems, sizeof(menuItems)/sizeof(menuItem));
 
 
 

@@ -126,9 +126,6 @@ replace youtube-dl with homegrown/internal variant?
 grown/shrink which side of window based on screen location when changing aspect ratio??
 
 
-hide/show menu window instead of creating and destroying?
-
-
 add icon to pause/play menu item
 
 

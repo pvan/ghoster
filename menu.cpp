@@ -1,7 +1,14 @@
 
 
 
-// todo: manke these more reusable
+// todo: make these more reusable
+// menu class?
+// submenu class?
+
+
+
+const char *POPUP_CLASS_NAME = "ghoster popup window class";
+const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
 
 
 
@@ -126,84 +133,10 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 
     // try show/hide now
-
     ShowPopupWindow(posX, posY, width, height);
-
-    // global_popup_window = CreateWindowEx(
-    //     WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
-    //     POPUP_CLASS_NAME,
-    //     "ghoster popup menu",
-    //     WS_POPUP | WS_VISIBLE,
-    //     posX, posY,
-    //     width, height,
-    //     0,0,
-    //     global_hInstance,
-    //     0);
-
-    // if (!global_popup_window) { MsgBox("Failed to create popup window."); }
-
-
-    // // try this
-    // SetCapture(global_popup_window);
 
 
     return;
-
-    // // TODO: create this once at start then just show it here?
-
-    // HMENU hSubMenu = CreatePopupMenu();
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_Y, L"Clyde");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_C, L"Inky");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_P, L"Pinky");
-    // InsertMenuW(hSubMenu, 0, MF_BYPOSITION | MF_STRING, ID_SET_R, L"Blinky");
-    // MENUITEMINFO info = {0};
-    // info.cbSize = sizeof(MENUITEMINFO);
-    // info.fMask = MIIM_BITMAP;
-    // info.hbmpItem = global_bitmap_y1; SetMenuItemInfo(hSubMenu, ID_SET_Y, 0, &info);
-    // info.hbmpItem = global_bitmap_c1; SetMenuItemInfo(hSubMenu, ID_SET_C, 0, &info);
-    // info.hbmpItem = global_bitmap_p1; SetMenuItemInfo(hSubMenu, ID_SET_P, 0, &info);
-    // info.hbmpItem = global_bitmap_r1; SetMenuItemInfo(hSubMenu, ID_SET_R, 0, &info);
-
-    // UINT aspectChecked = global_ghoster.state.lock_aspect ? MF_CHECKED : MF_UNCHECKED;
-    // UINT repeatChecked = global_ghoster.state.repeat ? MF_CHECKED : MF_UNCHECKED;
-    // UINT transparentChecked = global_ghoster.state.transparent ? MF_CHECKED : MF_UNCHECKED;
-    // UINT clickThroughChecked = global_ghoster.state.clickThrough ? MF_CHECKED : MF_UNCHECKED;
-    // UINT topMostChecked = global_ghoster.state.topMost ? MF_CHECKED : MF_UNCHECKED;
-    // UINT fullscreenChecked = global_ghoster.system.fullscreen ? MF_CHECKED : MF_UNCHECKED;
-    // UINT snappingChecked = global_ghoster.state.enableSnapping ? MF_CHECKED : MF_UNCHECKED;
-    // UINT wallpaperChecked = global_ghoster.state.wallpaperMode ? MF_CHECKED : MF_UNCHECKED;
-
-    // wchar_t *playPauseText = global_ghoster.loaded_video.is_paused ? L"Play" : L"Pause";
-
-    // HMENU hPopupMenu = CreatePopupMenu();
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_EXIT, L"Exit");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | transparentChecked, ID_TRANSPARENCY, L"Toggle Transparency");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | wallpaperChecked, ID_WALLPAPER, L"Wallpaper Mode");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clickThroughChecked, ID_CLICKTHRU, L"Ghost Mode (Click-Through)");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | topMostChecked, ID_TOPMOST, L"Always On Top");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_POPUP, (UINT_PTR)hSubMenu, L"Choose Icon");
-    // // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RANDICON, L"New Random Icon");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snappingChecked, ID_SNAPPING, L"Snap To Edges");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | aspectChecked, ID_ASPECT, L"Lock Aspect Ratio");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_RESET_RES, L"Resize To Native Resolution");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | repeatChecked, ID_REPEAT, L"Repeat");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_SEPARATOR, 0, 0);
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | MF_OWNERDRAW , ID_VOLUME, L"Volume");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | fullscreenChecked, ID_FULLSCREEN, L"Fullscreen");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PASTE, L"Paste Clipboard URL");
-    // InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING, ID_PAUSE, playPauseText);
-
-    // // i think this is what was causing our hidden window to appear..
-    // // but also it's needed for the menu to close correctly, so...
-    // SetForegroundWindow(hwnd);
-
-    // global_ghoster.system.contextMenuOpen = true;
-    // global_ghoster.state.menuCloseTimer.Stop();
-    // TrackPopupMenu(hPopupMenu, 0, point.x, point.y, 0, hwnd, NULL);
-    // global_ghoster.state.menuCloseTimer.Start(); // we only get here (past TrackPopupMenu) once the menu is closed
 }
 
 
@@ -891,3 +824,57 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
+
+
+HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
+{
+
+     // register class for menu popup window if we ever use one
+    WNDCLASS wc3 = {};
+    wc3.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc3.lpfnWndProc =  PopupWndProc;
+    wc3.hInstance = hInstance;
+    wc3.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc3.lpszClassName = POPUP_CLASS_NAME;
+    if (!RegisterClass(&wc3)) { MsgBox("RegisterClass for popup window failed."); return 0; }
+
+    HWND popup = CreateWindowEx(
+        WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
+        POPUP_CLASS_NAME,
+        "ghoster popup menu",
+        WS_POPUP,// | WS_VISIBLE,
+        0, 0,
+        200, 200,
+        0,0,
+        hInstance,
+        0);
+
+    if (!popup) { MsgBox("Failed to create popup window."); }
+
+
+    // todo: iterate through menu items checking for submenu
+    // this means only the menu knows about submenus? yes that's even better
+
+    // sub popup menu... can we reuse popup menu wndproc? gotta be a better way to make windows?
+    WNDCLASS wc4 = {};
+    wc4.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc4.lpfnWndProc =  IconMenuWndProc;
+    wc4.hInstance = hInstance;
+    wc4.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc4.lpszClassName = ICONMENU_CLASS_NAME;
+    if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 0; }
+
+    global_icon_menu_window = CreateWindowEx(
+        WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
+        wc4.lpszClassName, "ghoster video player",
+        WS_POPUP,
+        20, 20,
+        400, 400,
+        // CW_USEDEFAULT, CW_USEDEFAULT,
+        // CW_USEDEFAULT, CW_USEDEFAULT,
+        0, 0, hInstance, 0);
+    if (!global_icon_menu_window) { MsgBox("Couldn't open global_icon_menu_window."); }
+
+
+    return popup;
+}
