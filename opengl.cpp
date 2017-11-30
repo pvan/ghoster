@@ -409,19 +409,30 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
 
         if (textAlpha > 0)
         {
-            char buf[123];
-            sprintf(buf, "%u %u %u %u\n",
-                    ((u8*)textMemory)[0],
-                    ((u8*)textMemory)[1],
-                    ((u8*)textMemory)[2],
-                    ((u8*)textMemory)[3]);
-            OutputDebugString(buf);
+        //     char buf[123];
+        //     sprintf(buf, "%u %u %u %u\n",
+        //             ((u8*)textMemory)[0],
+        //             ((u8*)textMemory)[1],
+        //             ((u8*)textMemory)[2],
+        //             ((u8*)textMemory)[3]);
+        //     OutputDebugString(buf);
 
             glViewport(0, 0, dWID, dHEI);
             glUniform1f(alpha_loc, textAlpha);
+
+
+            // // this also causes flicker, unless alpha is max
+            // u32 red = 0xaaff0000;
+            // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
+
+            // this definitely seems to be the cause of the flicker
+            // but it also goes away if textAlpha is max
+            // or if we take out our main glDrawArrays above
+            // hmmm...
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+
                 check_gl_error("glTexImage2D");
-            glUniform1i(tex_loc, 0);   // texture id of 0
+            // glUniform1i(tex_loc, 0);   // texture id of 0
             glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
         }
 

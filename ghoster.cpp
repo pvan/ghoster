@@ -975,7 +975,8 @@ struct GhosterWindow
                 // edit: better but still have up some weird edges
                 // *a = min(min(255-*r, 255-*g), 255-*b);
 
-                *a = 255;
+                // *a = 255;
+                // *a = 125;
 
                 // now trying alpha from black
                 // these are pretty much all terrible but min is the least bad
@@ -2769,6 +2770,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
+
+        // doesn't help with flicker
+        // case WM_ERASEBKGND: {
+        //     return 1; // don't erase
+        // } break;
 
         case WM_MEASUREITEM: {
             LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT) lParam;
