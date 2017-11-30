@@ -1325,6 +1325,7 @@ void SetTitle(HWND hwnd, char *title)
     NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
     assert(strlen(title) < 64);
     strcpy_s(info.szTip, 64, title); // todo: check length
+    info.hIcon = global_ghoster.icon;
     Shell_NotifyIcon(NIM_MODIFY, &info);
 
     // window titlebar (taskbar)
