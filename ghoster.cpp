@@ -272,10 +272,6 @@ struct AppState {
     bool fullscreen = false;
     WINDOWPLACEMENT last_win_pos;
 
-    bool savestate_is_saved = false;
-    bool toggledPauseOnLastSingleClick = false;
-    bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
-
 
     // mouse state
     POINT mDownPoint;
@@ -295,20 +291,51 @@ struct AppState {
     Timer app_timer;
 
 
-    // a bit awkward, we set these when we want to seek somewhere
-    // better way? a function method maybe?
-    // maybe a sort of command interface struct?
+    bool bufferingOrLoading = true;
+
+};
+
+
+struct AppColorBuffer
+{
+    u8 *memory = 0;
+    int width;
+    int height;
+
+    void Allocate(int w, int h)
+    {
+        width = w;
+        height = h;
+        if (memory) free(memory);
+        memory = (u8*)malloc(width * height * sizeof(u32));
+        assert(memory); //todo for now
+    }
+};
+
+struct AppMemory
+{
+    AppColorBuffer overlay;
+};
+
+struct AppMessages
+{
+    // not sure why we're splitting these off from state
+    // maybe just to keep things somewhat organized
+
+    bool resizeWindowBuffers = false;
+
+    bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
+
+    bool savestate_is_saved = false;
+    bool toggledPauseOnLastSingleClick = false;
+
     bool setSeek = false;
     double seekProportion = 0;
 
-    bool messageLoadNewMovie = false;
+    bool loadNewMovie = false;
     MovieAV newMovieToRun;
 
-    bool bufferingOrLoading = true;
-
-    int messageStartAtSeconds = 0;
-
-
+    int startAtSeconds = 0;
 
 };
 
@@ -361,6 +388,8 @@ struct timestamp
 // called "hard" because we flush the buffers and may have to grab a few frames to get the right one
 void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAudioLatencyEstimate)
 {
+    // todo: measure the time this function takes and debug output it
+
     // not entirely sure if this flush usage is right
     if (movie->av_movie.video.codecContext) avcodec_flush_buffers(movie->av_movie.video.codecContext);
     if (movie->av_movie.audio.codecContext) avcodec_flush_buffers(movie->av_movie.audio.codecContext);
@@ -467,10 +496,6 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
 
 void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int fontSize, COLORREF cref)
 {
-    // // copy to a buffer we can manipulate (split by new lines.. ie \n into \0)
-    // char *tempTextBuffer = (char*)malloc(1024); // todo: some big number
-    // sprintf(tempTextBuffer, "%s", text);
-
     // create a device context for the skin
     HDC memDC = CreateCompatibleDC(hdc);
 
@@ -487,25 +512,6 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 
                 HFONT oldFont = (HFONT)SelectObject(memDC, font);
 
-                    // SetTextAlign(memDC, TA_CENTER | TA_BASELINE); // todo: add left/right options
-
-                    // old method: note lines are upside down
-                    // // maybe copy to a line buffer line by line would be clearer?
-                    // // (rather than copy entire buffer and go through it once)
-                    // char *thisLine = tempTextBuffer;
-                    // int lineCount = 0;
-                    // for (char *p = tempTextBuffer; *p; p++)
-                    // {
-                    //     if (*p == '\n')
-                    //     {
-                    //         *p = '\0';
-                    //         TextOut(memDC, x, y + (lineCount*nHeight), thisLine, strlen(thisLine));
-                    //         p++; // skip our loop to start of next line (so it doesn't stop)
-                    //         thisLine = p;
-                    //         lineCount++;
-                    //     }
-                    // }
-                    // TextOut(memDC, x, y + lineCount*nHeight, thisLine, strlen(thisLine));
                     RECT rect = {x, y, x+1, y+1};
                     DrawText(memDC, text, -1, &rect, DT_CALCRECT);
                     int wid = rect.right-rect.left;
@@ -525,31 +531,6 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 }
 
 
-struct AppColorBuffer
-{
-    u8 *memory = 0;
-    int width;
-    int height;
-
-    void Allocate(int w, int h)
-    {
-        width = w;
-        height = h;
-        if (memory) free(memory);
-        memory = (u8*)malloc(width * height * sizeof(u32));
-        assert(memory); //todo for now
-    }
-};
-
-struct AppMemory
-{
-    AppColorBuffer overlay;
-};
-
-struct AppMessages
-{
-    bool resizeWindowBuffers = false;
-};
 
 
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
@@ -582,16 +563,16 @@ struct GhosterWindow
     void LoadNewMovie()
     {
         OutputDebugString("Ready to load new movie...\n");
-        state.messageLoadNewMovie = false;
-        if (!SetupForNewMovie(state.newMovieToRun, &loaded_video))
+        message.loadNewMovie = false;
+        if (!SetupForNewMovie(message.newMovieToRun, &loaded_video))
         {
             MsgBox("Error in setup for new movie.\n");
         }
 
-        if (state.messageStartAtSeconds != 0)
+        if (message.startAtSeconds != 0)
         {
             double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
-            timestamp ts = {state.messageStartAtSeconds, 1, videoFPS};
+            timestamp ts = {message.startAtSeconds, 1, videoFPS};
             HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
         }
 
@@ -643,7 +624,7 @@ struct GhosterWindow
         }
 
 
-        if (state.messageLoadNewMovie)
+        if (message.loadNewMovie)
         {
             LoadNewMovie();
         }
@@ -698,12 +679,12 @@ struct GhosterWindow
         else
         {
 
-            if (state.setSeek)
+            if (message.setSeek)
             {
                 SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
-                state.setSeek = false;
-                int seekPos = state.seekProportion * loaded_video.av_movie.vfc->duration;
+                message.setSeek = false;
+                int seekPos = message.seekProportion * loaded_video.av_movie.vfc->duration;
 
 
                 double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
@@ -711,7 +692,7 @@ struct GhosterWindow
                     // sprintf(fpsbuf, "fps: %f\n", videoFPS);
                     // OutputDebugString(fpsbuf);
 
-                timestamp ts = {nearestI64(state.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
+                timestamp ts = {nearestI64(message.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
 
                 HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
 
@@ -1597,8 +1578,8 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     SetTitle(global_ghoster.state.window, title);
 
-    global_ghoster.state.newMovieToRun = DeepCopyMovieAV(newMovie);
-    global_ghoster.state.messageLoadNewMovie = true;
+    global_ghoster.message.newMovieToRun = DeepCopyMovieAV(newMovie);
+    global_ghoster.message.loadNewMovie = true;
 
     return 0;
 }
@@ -1671,7 +1652,7 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
     if (timestamp == 0) timestamp = strstr(path, "#t=");
     if (timestamp != 0) {
         int startSeconds = SecondsFromStringTimestamp(timestamp);
-        global_ghoster.state.messageStartAtSeconds = startSeconds;
+        global_ghoster.message.startAtSeconds = startSeconds;
             // char buf[123];
             // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
             // OutputDebugString(buf);
@@ -2451,20 +2432,20 @@ void setWallpaperMode(HWND hwnd, bool enable)
 // so don't make this too crazy
 void saveVideoPositionForAfterDoubleClick()
 {
-    global_ghoster.state.savestate_is_saved = true;
+    global_ghoster.message.savestate_is_saved = true;
 
     global_ghoster.loaded_video.elapsed = global_ghoster.loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
     double percent = global_ghoster.loaded_video.elapsed / global_ghoster.loaded_video.duration;
-    global_ghoster.state.seekProportion = percent; // todo: make new variable rather than co-opt this one?
+    global_ghoster.message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
 }
 
 void restoreVideoPositionAfterDoubleClick()
 {
-    if (global_ghoster.state.savestate_is_saved)
+    if (global_ghoster.message.savestate_is_saved)
     {
-        global_ghoster.state.savestate_is_saved = false;
+        global_ghoster.message.savestate_is_saved = false;
 
-        global_ghoster.state.setSeek = true;
+        global_ghoster.message.setSeek = true;
     }
 }
 
@@ -2523,8 +2504,8 @@ void appSetProgressBar(int clientX, int clientY)
     {
         double prop = (double)clientX / (double)global_ghoster.state.winWID;
 
-        global_ghoster.state.setSeek = true;
-        global_ghoster.state.seekProportion = prop;
+        global_ghoster.message.setSeek = true;
+        global_ghoster.message.seekProportion = prop;
     }
 }
 
@@ -2648,7 +2629,7 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
         // we have to track whether get here or not
         // so we know if we've toggled pause between our double click or not
         // (it could be either case now that we have a little delay in our pause)
-        global_ghoster.state.toggledPauseOnLastSingleClick = true;
+        global_ghoster.message.toggledPauseOnLastSingleClick = true;
     }
 }
 
@@ -2675,16 +2656,16 @@ void onMouseUpL()
 
             // don't queue up another pause if this is the end of a double click
             // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
-            if (!global_ghoster.state.next_mup_was_double_click)
+            if (!global_ghoster.message.next_mup_was_double_click)
             {
-                global_ghoster.state.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
+                global_ghoster.message.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
                 singleClickTimerID = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
             }
             else
             {
                 // if we are ending the click and we already registered the first click as a pause,
                 // toggle pause again to undo that
-                if (global_ghoster.state.toggledPauseOnLastSingleClick)
+                if (global_ghoster.message.toggledPauseOnLastSingleClick)
                 {
                     // OutputDebugString("undo that click\n");
                     appTogglePause();
@@ -2696,15 +2677,15 @@ void onMouseUpL()
     global_ghoster.state.mouseHasMovedSinceDownL = false;
     global_ghoster.state.clickingOnProgressBar = false;
 
-    if (global_ghoster.state.next_mup_was_double_click)
+    if (global_ghoster.message.next_mup_was_double_click)
     {
-        global_ghoster.state.next_mup_was_double_click = false;
+        global_ghoster.message.next_mup_was_double_click = false;
 
         // cancel any pending single click effects lingering from the first mup of this dclick
         KillTimer(0, singleClickTimerID);
 
         // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
-        if (global_ghoster.state.toggledPauseOnLastSingleClick)
+        if (global_ghoster.message.toggledPauseOnLastSingleClick)
         {
             // OutputDebugString("restore our vid position\n");
             restoreVideoPositionAfterDoubleClick();
@@ -2733,7 +2714,7 @@ void onDoubleClickDownL()
     // restoreVideoPositionAfterDoubleClick();
 
     // instead make a note to restore in mouseUp
-    global_ghoster.state.next_mup_was_double_click = true;
+    global_ghoster.message.next_mup_was_double_click = true;
 
 }
 
