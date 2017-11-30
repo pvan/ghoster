@@ -323,9 +323,24 @@ struct AppColorBuffer
     }
 };
 
-struct AppMemory
+struct AppTextBuffer
+{
+    char *memory = 0;
+    int length;
+
+    void Allocate(int len)
+    {
+        length = len;
+        if (memory) free(memory);
+        memory = (char*)malloc(length * sizeof(char));
+        assert(memory); //todo for now
+    }
+};
+
+struct AppBuffers
 {
     AppColorBuffer overlay;
+    AppTextBuffer msg;
 };
 
 struct AppMessages
@@ -543,6 +558,17 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 
 
 
+void TransmogrifyText(char *src, char *dest)
+{
+    for (; *src; src++)
+    {
+        *dest = toupper(*src);
+        dest++;
+        *dest = ' ';
+        dest++;
+    }
+}
+
 
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 
@@ -568,7 +594,7 @@ struct GhosterWindow
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
 
     // buffers mostly, anything on the heap
-    AppMemory memory;
+    AppBuffers buffer;
 
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
@@ -610,6 +636,12 @@ struct GhosterWindow
     }
 
 
+    void Create()
+    {
+        buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
+    }
+
+
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
     void Update()
     {
@@ -629,12 +661,12 @@ struct GhosterWindow
 
 
         if (message.resizeWindowBuffers ||
-            system.winWID != memory.overlay.width ||
-            system.winHEI != memory.overlay.height
+            system.winWID != buffer.overlay.width ||
+            system.winHEI != buffer.overlay.height
             )
         {
             message.resizeWindowBuffers = false;
-            memory.overlay.Allocate(system.winWID, system.winHEI);
+            buffer.overlay.Allocate(system.winWID, system.winHEI);
         }
 
 
@@ -904,8 +936,8 @@ struct GhosterWindow
 
 
 
-        int wid = memory.overlay.width;
-        int hei = memory.overlay.height;
+        int wid = buffer.overlay.width;
+        int hei = buffer.overlay.height;
         // int wid = system.winWID;
         // int hei = system.winHEI;
         // winRect;
@@ -916,10 +948,9 @@ struct GhosterWindow
         HDC hdc = GetDC(system.window);
             HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(0, 255, 0));
 
-                // char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
-                // // // char *displayText = "very long text hi how are you we're fine here how are you";
-                // // // todo: transmogrify message
-                // PutTextOnBitmap(hdc, hBitmap, displayText, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
+                char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
+                TransmogrifyText(displayText, buffer.msg.memory);
+                PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
@@ -931,7 +962,7 @@ struct GhosterWindow
 
                 // create the bitmap buffer
                 // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
-                u8 *textMem = memory.overlay.memory;
+                u8 *textMem = buffer.overlay.memory;
 
                 // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
                 // necessary to read the color table - you might not want this.
@@ -975,7 +1006,7 @@ struct GhosterWindow
 
                 // now trying alpha from black
                 // these are pretty much all terrible but min is the least bad
-                // *a = min(min(*r, *g), *b);
+                *a = min(min(*r, *g), *b);
                 // *a = max(max(*r, *g), *b);
                 // *a = (*r + *g + *b)/3.0;
 
@@ -1011,8 +1042,8 @@ struct GhosterWindow
                         system.winHEI,
                         // system.winWID,
                         // system.winHEI,
-                        memory.overlay.width,
-                        memory.overlay.height,
+                        buffer.overlay.width,
+                        buffer.overlay.height,
                         destWin,
                         temp_dt,
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
@@ -3018,6 +3049,8 @@ int CALLBACK WinMain(
     // load icons/bitmaps
     MakeIcons(hInstance);
 
+
+    global_ghoster.Create();
 
     // space we can re-use for title strings
     global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
