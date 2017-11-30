@@ -79,6 +79,18 @@ menuItem menuItems[] =
 
 
 
+void ShowPopupWindow(int x, int y, int width, int height)
+{
+    SetWindowPos(global_popup_window, HWND_TOP, x, y, width, height, SWP_SHOWWINDOW);
+    // ShowWindow(global_popup_window, SW_SHOW);
+}
+
+void HidePopupWindow()
+{
+    ShowWindow(global_popup_window, SW_HIDE);
+}
+
+
 void OpenRClickMenuAt(HWND hwnd, POINT point)
 {
 
@@ -113,18 +125,22 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
     SetForegroundWindow(hwnd);
 
 
-    global_popup_window = CreateWindowEx(
-        WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
-        POPUP_CLASS_NAME,
-        "ghoster popup menu",
-        WS_POPUP | WS_VISIBLE,
-        posX, posY,
-        width, height,
-        0,0,
-        global_hInstance,
-        0);
+    // try show/hide now
 
-    if (!global_popup_window) { MsgBox("Failed to create popup window."); }
+    ShowPopupWindow(posX, posY, width, height);
+
+    // global_popup_window = CreateWindowEx(
+    //     WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
+    //     POPUP_CLASS_NAME,
+    //     "ghoster popup menu",
+    //     WS_POPUP | WS_VISIBLE,
+    //     posX, posY,
+    //     width, height,
+    //     0,0,
+    //     global_hInstance,
+    //     0);
+
+    // if (!global_popup_window) { MsgBox("Failed to create popup window."); }
 
 
     // // try this
@@ -207,9 +223,11 @@ void HideSubMenu()
     ShowWindow(global_icon_menu_window, SW_HIDE);
 }
 
+
 void ClosePopup(HWND hwnd)
 {
-    DestroyWindow(hwnd);
+    // DestroyWindow(hwnd);
+    HidePopupWindow();
 
     // probably want this right?
     HideSubMenu();

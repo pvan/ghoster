@@ -3179,6 +3179,18 @@ int CALLBACK WinMain(
     wc3.lpszClassName = POPUP_CLASS_NAME;
     if (!RegisterClass(&wc3)) { MsgBox("RegisterClass for popup window failed."); return 1; }
 
+    global_popup_window = CreateWindowEx(
+        WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
+        POPUP_CLASS_NAME,
+        "ghoster popup menu",
+        WS_POPUP,// | WS_VISIBLE,
+        0, 0,
+        200, 200,
+        0,0,
+        global_hInstance,
+        0);
+
+    if (!global_popup_window) { MsgBox("Failed to create popup window."); }
 
 
     // sub popup menu... can we reuse popup menu wndproc? gotta be a better way to make windows?
