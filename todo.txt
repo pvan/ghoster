@@ -132,6 +132,9 @@ hide/show menu window instead of creating and destroying?
 add icon to pause/play menu item
 
 
+if ghost mode forced always on top, should it also be automatically disabled when leaving ghost mode?
+
+
 ---instructions-------
 
 to load a file

@@ -171,9 +171,6 @@ const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 void MsgBox(char* s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
-void MsgBoxW(wchar_t* s) {
-    MessageBoxW(0, s, L"vid player", MB_OK);
-}
 // this is case sensitive
 bool StringBeginsWith(const char *str, const char *front)
 {
@@ -191,7 +188,7 @@ bool StringBeginsWith(const char *str, const char *front)
     return true;
 }
 
-// our best guess at least
+// a simple guess at least
 bool StringIsUrl(const char *path)
 {
     // feels pretty rudimentary / incomplete
@@ -255,6 +252,8 @@ struct AppState {
 
     bool lock_aspect = true;
     bool repeat = true;
+
+    // these could almost all be in app system state... hmm..
     bool clickThrough = false;
     bool topMost = false;
     bool enableSnapping = true;
@@ -288,7 +287,7 @@ struct AppSystemState
     bool contextMenuOpen;
 
 
-    bool fullscreen = false;
+    bool fullscreen = false;  // could be in app state maybe
     WINDOWPLACEMENT last_win_pos;
 
 
@@ -300,7 +299,7 @@ struct AppSystemState
     bool ctrlDown;
     bool clickingOnProgressBar = false;
 
-    bool mouseHasMovedSinceDownL = false;  // make into function comparing mdownpoint to current?
+    bool mouseHasMovedSinceDownL = false;
     double msOfLastMouseMove = -1000;
 };
 
@@ -1237,6 +1236,7 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 
 
+// todo: move these to gg.messages?
 static char global_file_to_load[1024];
 static bool global_load_new_file = false;
 
@@ -2222,7 +2222,7 @@ void setClickThrough(HWND hwnd, bool enable)
     }
     SetWindowLong(hwnd, GWL_EXSTYLE, style);
 }
-void setWindowOpacity(HWND hwnd, double opacity)
+void setOpacity(HWND hwnd, double opacity, bool userRequest = true)
 {
     if (opacity < 0) opacity = 0;
     if (opacity > 1) opacity = 1;
@@ -2233,6 +2233,14 @@ void setWindowOpacity(HWND hwnd, double opacity)
         if (opacity < 0.01) // if we become completely invisible, we'll lose clicks
             opacity = 0.01;
     }
+
+    // if we manually change opacity, don't restore it when leaving ghost mode
+    if (userRequest)
+    {
+        if (global_ghoster.state.had_to_cache_opacity && opacity != global_ghoster.state.last_opacity)
+            global_ghoster.state.had_to_cache_opacity = false;
+    }
+
     global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.system.window, 0, 255.0*opacity, LWA_ALPHA);
 }
@@ -2256,7 +2264,7 @@ void setGhostMode(HWND hwnd, bool enable)
             global_ghoster.state.last_opacity = global_ghoster.state.opacity;
             global_ghoster.state.had_to_cache_opacity = true;
             global_ghoster.state.opacity = GHOST_MODE_MAX_OPACITY;
-            setWindowOpacity(hwnd, global_ghoster.state.opacity);
+            setOpacity(hwnd, global_ghoster.state.opacity, false);
         }
         else
         {
@@ -2269,7 +2277,7 @@ void setGhostMode(HWND hwnd, bool enable)
         if (global_ghoster.state.had_to_cache_opacity)
         {
             global_ghoster.state.opacity = global_ghoster.state.last_opacity;
-            setWindowOpacity(hwnd, global_ghoster.state.opacity);
+            setOpacity(hwnd, global_ghoster.state.opacity, false);
         }
     }
 }
@@ -2432,7 +2440,7 @@ void setWallpaperMode(HWND hwnd, bool enable)
             DestroyWindow(global_wallpaper_window);
 
         ShowWindow(hwnd, SW_SHOW);
-        // setWindowOpacity(hwnd, global_ghoster.state.opacity);
+        // setOpacity(hwnd, global_ghoster.state.opacity);
         // setClickThrough(hwnd, global_ghoster.state.clickThrough);
     }
 }
@@ -3036,8 +3044,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         //             break;
         //         case ID_TRANSPARENCY:
         //             global_ghoster.state.transparent = !global_ghoster.state.transparent;
-        //             if (global_ghoster.state.transparent) setWindowOpacity(global_ghoster.system.window, 0.5);
-        //             if (!global_ghoster.state.transparent) setWindowOpacity(global_ghoster.system.window, 1.0);
+        //             if (global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 0.5);
+        //             if (!global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 1.0);
         //             break;
         //         case ID_CLICKTHRU:
         //             setGhostMode(global_ghoster.system.window, !global_ghoster.state.clickThrough);
@@ -3192,8 +3200,8 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         // case ID_TRANSPARENCY:  // now a slider
         //     global_ghoster.state.transparent = !global_ghoster.state.transparent;
-        //     if (global_ghoster.state.transparent) setWindowOpacity(global_ghoster.system.window, 0.5);
-        //     if (!global_ghoster.state.transparent) setWindowOpacity(global_ghoster.system.window, 1.0);
+        //     if (global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 0.5);
+        //     if (!global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 1.0);
         //     break;
         case ID_CLICKTHRU:
             setGhostMode(global_ghoster.system.window, !global_ghoster.state.clickThrough);
@@ -3350,7 +3358,7 @@ double *updateSliders(HWND hwnd, POINT mouse)
 
             // actually we need to call the official handlers... for now just check each one
             if (destination_value == &global_ghoster.state.opacity)
-                setWindowOpacity(global_ghoster.system.window, result);
+                setOpacity(global_ghoster.system.window, result);
             if (destination_value == &global_ghoster.state.volume)
                 setVolume(result);
 
@@ -4096,7 +4104,7 @@ int CALLBACK WinMain(
     SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
 
 
-    setWindowOpacity(global_ghoster.system.window, global_ghoster.state.opacity);
+    setOpacity(global_ghoster.system.window, global_ghoster.state.opacity);
     setTopMost(global_ghoster.system.window, global_ghoster.state.topMost);
 
     // do not call here, wait until movie as been loaded and window is correct size
