@@ -339,19 +339,19 @@ struct AppTextBuffer
         assert(memory); //todo for now
     }
 
-    void Set(char *msg)
-    {
-        int newLen = strlen(msg);
-        assert(newLen < space);
-        memcpy(memory, msg, newLen);
-    }
+    // void Set(char *msg)
+    // {
+    //     int newLen = strlen(msg);
+    //     assert(newLen < space);
+    //     memcpy(memory, msg, newLen);
+    // }
 };
 
 struct AppBuffers
 {
     AppColorBuffer overlay;
     AppTextBuffer msg;
-    AppTextBuffer rawMsg;
+    //AppTextBuffer rawMsg;
 };
 
 struct Color
@@ -590,14 +590,17 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 
 void TransmogrifyText(char *src, char *dest)
 {
-    for (; *src; src++)
+    while (*src)
     {
         *dest = toupper(*src);
         dest++;
         *dest = ' ';
         dest++;
+
+        src++;
     }
-    dest = '\0';
+    dest--; // override that last space
+    *dest = '\0';
 }
 
 
@@ -711,7 +714,10 @@ struct GhosterWindow
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
         // todo: transmopgrify here, skip the second buffer
-        buffer.rawMsg.Set(msg);
+        // buffer.rawMsg.Set(msg);
+
+        TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
+
         // message.displayNewMsg = true;
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
@@ -720,7 +726,7 @@ struct GhosterWindow
     void Init()
     {
         buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
-        buffer.rawMsg.Allocate(1024); // todo: some big length // todo: add length checks during usage
+        // buffer.rawMsg.Allocate(1024); // todo: some big length // todo: add length checks during usage
 
 
         // todo: move this to ghoster app
@@ -1042,7 +1048,6 @@ struct GhosterWindow
                 if (message.msLeftOfMsg > 0)
                 {
                     message.msLeftOfMsg -= temp_dt;
-                    TransmogrifyText(buffer.rawMsg.memory, buffer.msg.memory);
                     PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
                 }
 
