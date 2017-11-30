@@ -43,6 +43,7 @@ struct menuItem
     bool *checked;
     double *value;
     HBITMAP *hbitmap;
+    menuItem *subMenu;
 };
 
 const int MI_WID = 250;
@@ -62,26 +63,26 @@ menuItem iconMenuItems[] =
 // todo: how to clean this up (this is a little better)
 menuItem menuItems[] =
 {
-    {ID_PAUSE        , L"Play"                           , 0                                    , 0, 0 },
-    {ID_FULLSCREEN   , L"Fullscreen"                     , &global_ghoster.system.fullscreen    , 0, 0 },
-    {ID_REPEAT       , L"Repeat"                         , &global_ghoster.state.repeat         , 0, 0 },
-    {ID_VOLUME       , L"Volume"                         , 0, &global_ghoster.state.volume         , 0 },
-    {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_PASTE        , L"Paste Clipboard URL Or File"    , 0                                    , 0, 0 },
-    {ID_COPYURL      , L"Copy URL Or File To Clipboard"  , 0                                    , 0, 0 },
-    {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                                    , 0, 0 },
-    {ID_ASPECT       , L"Lock Aspect Ratio"              , &global_ghoster.state.lock_aspect    , 0, 0 },
-    {ID_SNAPPING     , L"Snap To Edges"                  , &global_ghoster.state.enableSnapping , 0, 0 },
-    {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_ICONMENU     , L"Choose Icon"                    , 0                                    , 0, 0 },
-    {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_TOPMOST      , L"Always On Top"                  , &global_ghoster.state.topMost        , 0, 0 },
-    {ID_CLICKTHRU    , L"Ghost Mode (Cannot Be Clicked)" , &global_ghoster.state.clickThrough   , 0, 0 },
-    {ID_WALLPAPER    , L"Stick To Wallpaper"             , &global_ghoster.state.wallpaperMode  , 0, 0 },
-    {ID_TRANSPARENCY , L"Opacity"                        , 0, &global_ghoster.state.opacity        , 0 },
-    {ID_SEP          , L""                               , 0                                    , 0, 0 },
-    {ID_EXIT         , L"Exit"                           , 0                                    , 0, 0 },
+    {ID_PAUSE        , L"Play"                           , 0                                    , 0, 0, 0 },
+    {ID_FULLSCREEN   , L"Fullscreen"                     , &global_ghoster.system.fullscreen    , 0, 0, 0 },
+    {ID_REPEAT       , L"Repeat"                         , &global_ghoster.state.repeat         , 0, 0, 0 },
+    {ID_VOLUME       , L"Volume"                         , 0, &global_ghoster.state.volume         , 0, 0 },
+    {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_PASTE        , L"Paste Clipboard URL Or File"    , 0                                    , 0, 0, 0 },
+    {ID_COPYURL      , L"Copy URL Or File To Clipboard"  , 0                                    , 0, 0, 0 },
+    {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                                    , 0, 0, 0 },
+    {ID_ASPECT       , L"Lock Aspect Ratio"              , &global_ghoster.state.lock_aspect    , 0, 0, 0 },
+    {ID_SNAPPING     , L"Snap To Edges"                  , &global_ghoster.state.enableSnapping , 0, 0, 0 },
+    {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_ICONMENU     , L"Choose Icon"                    , 0                                    , 0, 0, iconMenuItems },
+    {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_TOPMOST      , L"Always On Top"                  , &global_ghoster.state.topMost        , 0, 0, 0 },
+    {ID_CLICKTHRU    , L"Ghost Mode (Cannot Be Clicked)" , &global_ghoster.state.clickThrough   , 0, 0, 0 },
+    {ID_WALLPAPER    , L"Stick To Wallpaper"             , &global_ghoster.state.wallpaperMode  , 0, 0, 0 },
+    {ID_TRANSPARENCY , L"Opacity"                        , 0, &global_ghoster.state.opacity        , 0, 0 },
+    {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_EXIT         , L"Exit"                           , 0                                    , 0, 0, 0 },
 };
 
 
