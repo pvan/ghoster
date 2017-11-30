@@ -169,6 +169,9 @@ const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 5
 // snap to screen edge if this close
 const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 
+// how long to leave messages on screen (including any fade time ATM)
+double MS_TO_DISPLAY_MSG = 3000;
+
 
 
 void MsgBox(char* s) {
@@ -326,14 +329,21 @@ struct AppColorBuffer
 struct AppTextBuffer
 {
     char *memory = 0;
-    int length;
+    int space;
 
     void Allocate(int len)
     {
-        length = len;
+        space = len;
         if (memory) free(memory);
-        memory = (char*)malloc(length * sizeof(char));
+        memory = (char*)malloc(space * sizeof(char));
         assert(memory); //todo for now
+    }
+
+    void Set(char *msg)
+    {
+        int newLen = strlen(msg);
+        assert(newLen < space);
+        memcpy(memory, msg, newLen);
     }
 };
 
@@ -341,6 +351,22 @@ struct AppBuffers
 {
     AppColorBuffer overlay;
     AppTextBuffer msg;
+    AppTextBuffer rawMsg;
+};
+
+struct Color
+{
+    union
+    {
+        u32 hex;
+        struct
+        {
+            u8 a;
+            u8 r;
+            u8 g;
+            u8 b;
+        };
+    };
 };
 
 struct AppMessages
@@ -362,6 +388,10 @@ struct AppMessages
     MovieAV newMovieToRun;
 
     int startAtSeconds = 0;
+
+    bool displayNewMsg = false;
+    double msLeftOfMsg = 0;
+    Color msgBackgroundCol;
 
 };
 
@@ -567,13 +597,12 @@ void TransmogrifyText(char *src, char *dest)
         *dest = ' ';
         dest++;
     }
+    dest = '\0';
 }
 
 
 bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
 
-void appPlay();
-void appPause();
 
 void setWallpaperMode(HWND, bool);
 void setFullscreen(bool);
@@ -600,6 +629,50 @@ struct GhosterWindow
     AppMessages message;
 
 
+    void appPlay(bool userRequest = true)
+    {
+        if (userRequest)
+        {
+            QueueNewMsg("Play", 0x5aec5aff);
+        }
+        loaded_video.audio_stopwatch.Start();
+        if (loaded_video.av_movie.IsAudioAvailable())
+            SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
+        loaded_video.is_paused = false;
+    }
+
+    void appPause(bool userRequest = true)
+    {
+        if (userRequest)
+        {
+            QueueNewMsg("Pause", 0x7676eeff);
+        }
+        loaded_video.audio_stopwatch.Pause();
+        SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
+        loaded_video.is_paused = true;
+    }
+
+    void appTogglePause(bool userRequest = true)
+    {
+        loaded_video.is_paused = !loaded_video.is_paused;
+
+        if (loaded_video.is_paused && !loaded_video.was_paused)
+        {
+            appPause(userRequest);
+        }
+        if (!loaded_video.is_paused)
+        {
+            if (loaded_video.was_paused || !loaded_video.audio_stopwatch.timer.started)
+            {
+                appPlay(userRequest);
+            }
+        }
+
+        loaded_video.was_paused = loaded_video.is_paused;
+    }
+
+
+
     void LoadNewMovie()
     {
         OutputDebugString("Ready to load new movie...\n");
@@ -617,7 +690,7 @@ struct GhosterWindow
         }
 
         state.bufferingOrLoading = false;
-        appPlay();
+        appPlay(false);
 
         // need to recreate wallpaper window basically
         if (state.wallpaperMode)
@@ -635,10 +708,27 @@ struct GhosterWindow
         message.resizeWindowBuffers = true;
     }
 
+    void QueueNewMsg(char *msg, u32 col = 0xff888888)
+    {
+        // todo: transmopgrify here, skip the second buffer
+        buffer.rawMsg.Set(msg);
+        // message.displayNewMsg = true;
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+    }
 
-    void Create()
+    void Init()
     {
         buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
+        buffer.rawMsg.Allocate(1024); // todo: some big length // todo: add length checks during usage
+
+
+        // todo: move this to ghoster app
+        // space we can re-use for title strings
+        global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
+
+        // maybe alloc ghoster app all at once? is this really the only mem we need for it?
+        loaded_video.cached_url = (char*)malloc(URL_BUFFER_SIZE);
     }
 
 
@@ -720,7 +810,7 @@ struct GhosterWindow
 
         if (state.bufferingOrLoading)
         {
-            appPause();
+            appPause(false);
         }
         else
         {
@@ -946,11 +1036,15 @@ struct GhosterWindow
         // int hei = winRect.bottom - winRect.top;
 
         HDC hdc = GetDC(system.window);
-            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(0, 255, 0));
+            Color col = message.msgBackgroundCol;
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(col.r, col.g, col.b));
 
-                char *displayText = "very long text\nhi how are you\nwe're fine here how are you";
-                TransmogrifyText(displayText, buffer.msg.memory);
-                PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
+                if (message.msLeftOfMsg > 0)
+                {
+                    message.msLeftOfMsg -= temp_dt;
+                    TransmogrifyText(buffer.rawMsg.memory, buffer.msg.memory);
+                    PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
+                }
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
@@ -1001,12 +1095,12 @@ struct GhosterWindow
                 // edit: better but still have up some weird edges
                 // *a = min(min(255-*r, 255-*g), 255-*b);
 
-                // *a = 255;
+                *a = 255;
                 // *a = 125;
 
                 // now trying alpha from black
                 // these are pretty much all terrible but min is the least bad
-                *a = min(min(*r, *g), *b);
+                // *a = min(min(*r, *g), *b);
                 // *a = max(max(*r, *g), *b);
                 // *a = (*r + *g + *b)/3.0;
 
@@ -1024,7 +1118,13 @@ struct GhosterWindow
         // static double t = 0;
         // t += temp_dt;
         // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
-        double textAlpha = 1;
+        double textAlpha = 0;
+        double maxA = 0.65; // implicit min of 0
+        // textAlpha = lerp(maxA, minA, message.msLeftOfMsg / MS_TO_DISPLAY_MSG);
+        if (message.msLeftOfMsg > 0)
+        {
+            textAlpha = ((-cos(message.msLeftOfMsg*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+        }
 
 
 
@@ -1692,7 +1792,7 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
     // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
     global_ghoster.state.bufferingOrLoading = true;
-    appPause(); // stop playing movie as well, we'll auto start the next one
+    global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
 
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
@@ -2330,40 +2430,6 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 }
 
 
-void appPlay()
-{
-    global_ghoster.loaded_video.audio_stopwatch.Start();
-    if (global_ghoster.loaded_video.av_movie.IsAudioAvailable())
-        SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)false);
-    global_ghoster.loaded_video.is_paused = false;
-}
-
-void appPause()
-{
-    global_ghoster.loaded_video.audio_stopwatch.Pause();
-    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
-    global_ghoster.loaded_video.is_paused = true;
-}
-
-void appTogglePause()
-{
-    global_ghoster.loaded_video.is_paused = !global_ghoster.loaded_video.is_paused;
-
-    if (global_ghoster.loaded_video.is_paused && !global_ghoster.loaded_video.was_paused)
-    {
-        appPause();
-    }
-    if (!global_ghoster.loaded_video.is_paused)
-    {
-        if (global_ghoster.loaded_video.was_paused || !global_ghoster.loaded_video.audio_stopwatch.timer.started)
-        {
-            appPlay();
-        }
-    }
-
-    global_ghoster.loaded_video.was_paused = global_ghoster.loaded_video.is_paused;
-}
-
 void appSetProgressBar(int clientX, int clientY)
 {
     if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
@@ -2491,7 +2557,7 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
 
     KillTimer(0, singleClickTimerID);
     {
-        appTogglePause();
+        global_ghoster.appTogglePause();
 
         // we have to track whether get here or not
         // so we know if we've toggled pause between our double click or not
@@ -2536,7 +2602,7 @@ void onMouseUpL()
                 if (global_ghoster.message.toggledPauseOnLastSingleClick)
                 {
                     // OutputDebugString("undo that click\n");
-                    appTogglePause();
+                    global_ghoster.appTogglePause();
                 }
             }
         }
@@ -3050,13 +3116,8 @@ int CALLBACK WinMain(
     MakeIcons(hInstance);
 
 
-    global_ghoster.Create();
+    global_ghoster.Init();
 
-    // space we can re-use for title strings
-    global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
-
-    // maybe alloc ghoster app all at once? is this really the only mem we need for it?
-    global_ghoster.loaded_video.cached_url = (char*)malloc(URL_BUFFER_SIZE);
 
 
     // COMMAND LINE ARGS

@@ -184,7 +184,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             global_ghoster.state.appRunning = false;
             break;
         case ID_PAUSE:
-            appTogglePause();
+            global_ghoster.appTogglePause();
             break;
         case ID_ASPECT:
             SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.loaded_video.aspect_ratio);
