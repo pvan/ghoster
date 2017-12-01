@@ -1,5 +1,7 @@
 
 
+[ ] narrow down what dlls we actually need?
+
 
 [ ] playlist support
     [ ] drop in folder
@@ -20,14 +22,15 @@
 
 
 
-[ ] test loading urls with no internet
+[x] test loading urls with no internet
+    -"no video" error response
 
 
 [x] set notification popup and window title to video name
 
 
 
-[ ] debug and release build folders?
+[x] debug and release build folders?
 
 [ ] alt tab should close the menu probably 
     (doesn't work if highlighting submenu)
@@ -106,10 +109,12 @@
     since workerW is originally for fading between wallpapers
 
 [/] extra bar on right of some vids
-    -fixed but only by using a constant-size buffer
+    [x] temp fix by using a constant-size buffer
+    [ ] use same size as overlay buffer?
 
 [/] lose transparency on full screen
-    -temp workaround by keeping 1 pixel smaller than monitor size
+    [x] temp workaround by keeping 1 pixel smaller than monitor size
+    [ ] problem is we now have to be set topmost when fullscreen to get over the taskbar
 
 
 [ ] more than one audio stream
@@ -132,6 +137,7 @@ step forward and backwards by a single frame?
 
 manual crop by resize borders but keeping window same? 
 maybe with middle mouse button
+and track with middle mouse, like a pdf or something
 
 
 when playing url...

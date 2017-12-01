@@ -10,6 +10,6 @@ if not defined DevEnvDir (
 
 start "" "D:\Program Files\Sublime Text 3\sublime_text.exe" %filesToOpen%
 
-start "" "devenv" "build\ghoster.exe" %filesToOpen%
+start "" "devenv" "debug\ghoster.exe" %filesToOpen%
 
 start cmd.exe
