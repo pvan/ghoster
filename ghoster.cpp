@@ -767,6 +767,10 @@ struct GhosterWindow
 
     void Init()
     {
+
+        state.app_timer.Start();  // now started in ghoster.init
+
+
         buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
 
 
@@ -1910,7 +1914,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 
 
-    global_ghoster.state.app_timer.Start();
+    // global_ghoster.state.app_timer.Start();  // now started in ghoster.init
     global_ghoster.state.app_timer.EndFrame();  // seed our first frame dt
 
     while (global_ghoster.state.appRunning)
