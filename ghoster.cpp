@@ -423,6 +423,17 @@ struct AppMessages
     double msLeftOfMsg = 0;
     Color msgBackgroundCol;
 
+
+
+    char file_to_load[1024]; // todo what max
+    bool load_new_file = false;
+    void QueueLoadMovie(char *path)
+    {
+        strcpy_s(file_to_load, 1024, path);
+        load_new_file = true;
+    }
+
+
 };
 
 
@@ -1470,15 +1481,6 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 
 
-// todo: move these to gg.messages?
-static char global_file_to_load[1024];
-static bool global_load_new_file = false;
-
-static void GlobalLoadMovie(char *path)
-{
-    strcpy_s(global_file_to_load, 1024, path);
-    global_load_new_file = true;
-}
 
 
 void SetWindowSize(HWND hwnd, int wid, int hei)
@@ -1959,6 +1961,7 @@ bool CreateNewMovieFromPath(char *path)
 
 
 
+// todo: pass in ghoster app to run here?
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
@@ -1966,8 +1969,8 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 
     // LOAD FILE
-    if (!global_load_new_file)
-        GlobalLoadMovie(TEST_FILES[0]);
+    if (!global_ghoster.message.load_new_file)
+        global_ghoster.message.QueueLoadMovie(TEST_FILES[0]);
 
 
 
@@ -1976,11 +1979,11 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
     while (global_ghoster.state.appRunning)
     {
-        if (global_load_new_file)
+        if (global_ghoster.message.load_new_file)
         {
             // global_ghoster.state.buffering = true;
-            CreateNewMovieFromPath(global_file_to_load);
-            global_load_new_file = false;
+            CreateNewMovieFromPath(global_ghoster.message.file_to_load);
+            global_ghoster.message.load_new_file = false;
         }
 
         global_ghoster.Update();
@@ -2010,7 +2013,7 @@ bool PasteClipboard()
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    GlobalLoadMovie(clipboardContents);
+    global_ghoster.message.QueueLoadMovie(clipboardContents);
     free(clipboardContents);
     return true; // todo: do we need a result from loadmovie?
 }
@@ -3052,7 +3055,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
-                GlobalLoadMovie(TEST_FILES[wParam - 0x30]);
+                global_ghoster.message.QueueLoadMovie(TEST_FILES[wParam - 0x30]);
             }
         } break;
 
@@ -3156,7 +3159,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
             {
                 // OutputDebugString(filePath);
-                GlobalLoadMovie(filePath);
+                global_ghoster.message.QueueLoadMovie(filePath);
             }
             else
             {
@@ -3279,7 +3282,7 @@ int CALLBACK WinMain(
         wcstombs(filePathOrUrl, argList[i], 256);
         if (filePathOrUrl[0] != '-')
         {
-            GlobalLoadMovie(filePathOrUrl);
+            global_ghoster.message.QueueLoadMovie(filePathOrUrl);
         }
 
         if (strcmp(filePathOrUrl, "-top") == 0)
