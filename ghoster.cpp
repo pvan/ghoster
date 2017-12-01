@@ -636,6 +636,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
+            // QueueNewMsg("", 0x5aec5aff);
             QueueNewMsg("Play", 0x5aec5aff);
         }
         loaded_video.audio_stopwatch.Start();
@@ -648,7 +649,9 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewMsg("Pause", 0x7676eeff);
+            // QueueNewMsg("||", 0xee7676ff);
+            // QueueNewMsg("", 0xee7676ff);
+            QueueNewMsg("Pause", 0xee7676ff);  // red 0x7676eeff
         }
         loaded_video.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
@@ -682,7 +685,9 @@ struct GhosterWindow
         message.loadNewMovie = false;
         if (!SetupForNewMovie(message.newMovieToRun, &loaded_video))
         {
-            MsgBox("Error in setup for new movie.\n");
+            // assert(false);
+            // MsgBox("Error in setup for new movie.\n");
+            QueueNewMsg("invalid file", 0x7676eeff);
         }
 
         if (message.startAtSeconds != 0)
@@ -726,7 +731,6 @@ struct GhosterWindow
     void Init()
     {
         buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
-        // buffer.rawMsg.Allocate(1024); // todo: some big length // todo: add length checks during usage
 
 
         // todo: move this to ghoster app
@@ -1268,8 +1272,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
         //OutputDebugString("Error creating youtube-dl process.");
         char errmsg[123];
         sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
-        MsgBox(errmsg);
-        // MsgBox("Error creating youtube-dl process.");
+        // MsgBox(errmsg);
+        global_ghoster.QueueNewMsg(errmsg, 0x7676eeff);
         return false;
     }
 
@@ -1293,14 +1297,16 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
     {
         // too big?
-        MsgBox("Error reading pipe, not enough buffer space?");
+        // MsgBox("Error reading pipe, not enough buffer space?");
+        global_ghoster.QueueNewMsg("Error reading pipe, not enough buffer space?", 0x7676eeff);
         return false;
     }
 
     if (bytesRead == 0)
     {
         // no output?
-        MsgBox("No data from reading pipe.");
+        // MsgBox("No data from reading pipe.");
+        global_ghoster.QueueNewMsg("No data from reading pipe.", 0x7676eeff);
         return false;
     }
 
@@ -1496,7 +1502,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
             free(video_url);
             free(audio_url);
 
-            MsgBox("Error loading file.");
+            // MsgBox("Error loading file.");
+            global_ghoster.QueueNewMsg("Error loading file.", 0x7676eeff);
             return false;
         }
     }
@@ -1516,7 +1523,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
     }
     else
     {
-        MsgBox("not full filepath or url\n");
+        // MsgBox("not full filepath or url\n");
+        global_ghoster.QueueNewMsg("invalid path/url", 0x7676eeff);
         return false;
     }
 
@@ -1631,7 +1639,11 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     outMovie->frame_output = av_frame_alloc();  // just metadata
 
     if (!outMovie->frame_output)
-        { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
+    {
+        // MsgBox("ffmpeg: Couldn't alloc frame.");
+        global_ghoster.QueueNewMsg("ffmpeg: Couldn't alloc frame", 0x7676eeff);
+        return false;
+    }
 
 
     // actual mem for frame
@@ -1722,7 +1734,8 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     {
         char errbuf[123];
         sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
-        MsgBox(errbuf);
+        // MsgBox(errbuf);
+        global_ghoster.QueueNewMsg(errbuf, 0x7676eeff);
         return false;
     }
 
@@ -2286,7 +2299,8 @@ void setWallpaperMode(HWND hwnd, bool enable)
 
         if (!global_workerw)
         {
-            MsgBox("Unable to find WorkerW!");
+            // MsgBox("Unable to find WorkerW!");
+            global_ghoster.QueueNewMsg("wallpaper failed!", 0x7676eeff);
         }
 
         // which of these work seems a bit intermittent
@@ -2350,7 +2364,11 @@ void setWallpaperMode(HWND hwnd, bool enable)
         pixel_format.cAlphaBits = 8;
         int format_index = ChoosePixelFormat(hdc, &pixel_format);
         SetPixelFormat(hdc, format_index, &pixel_format);
-        if (!global_ghoster.system.window) { MsgBox("Couldn't open wallpaper window."); }
+        if (!global_ghoster.system.window) {
+            // todo: log the specific and check if wallpaper mode failed from a level above
+            // MsgBox("Couldn't open wallpaper window.");
+            global_ghoster.QueueNewMsg("wallpaper failed!", 0x7676eeff);
+        }
 
         // only need this if we're using the new wallpaper window icon in the taskbar
         if (global_ghoster.state.clickThrough)
@@ -3034,7 +3052,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
             else
             {
-                MsgBox("Unable to determine file path of dropped file.");
+                // MsgBox("Unable to determine file path of dropped file.");
+                global_ghoster.QueueNewMsg("not a file?", 0x7676eeff);
             }
         } break;
 
@@ -3132,7 +3151,8 @@ int CALLBACK WinMain(
     argList = CommandLineToArgvW(GetCommandLineW(), &argCount);
     if (argList == 0)
     {
-        MsgBox("CommandLineToArgvW failed.");
+        // MsgBox("CommandLineToArgvW failed.");
+        global_ghoster.QueueNewMsg("CommandLineToArgvW fail!", 0x7676eeff);  // here even? or not
     }
 
     // make note of exe directory
