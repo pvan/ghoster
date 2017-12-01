@@ -84,28 +84,23 @@ struct MovieReel
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
     }
 
-    void SwapReels(MovieReel *bReel)
+    // destroys the reel passed in (we basically take the source
+    void TransferFromReel(MovieReel *other)
     {
-        // MovieReel temp = bReel;
+        FreeEverything();
 
-        MovieReel temp;
-        temp.vfc = bReel->vfc;
-        temp.afc = bReel->vfc;
-        temp.video = bReel->video;
-        temp.audio = bReel->audio;
-        strcpy(temp.title, bReel->title);
+        vfc = other->vfc;
+        afc = other->afc;
+        video = other->video;
+        audio = other->audio;
+        strcpy(title, other->title);
 
-        bReel->vfc = vfc;
-        bReel->afc = vfc;
-        bReel->video = video;
-        bReel->audio = audio;
-        strcpy(bReel->title, title);
-
-        vfc = temp.vfc;
-        afc = temp.vfc;
-        video = temp.video;
-        audio = temp.audio;
-        strcpy(title, temp.title);
+        // destroy other so we don't have two reels all pointing to the same source
+        other->vfc = 0;
+        other->afc = 0;
+        other->video = {0,0};
+        other->audio = {0,0};
+        strcpy(title, "[empty]");
     }
 
     bool SetFromPaths(char *videopath, char *audiopath)

@@ -1635,23 +1635,13 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 bool SwapInNewReel(MovieReel *newMovie, RunningMovie *outMovie)
 {
 
-    OutputDebugString("\n\nold:\n");
-    OutputDebugString(outMovie->reel.title);
-    OutputDebugString("\n\nnew:\n");
-    OutputDebugString(newMovie->title);
-
     // swap reels
-    outMovie->reel.SwapReels(newMovie);
-
-    OutputDebugString("\n\nafter swap:\n");
-    OutputDebugString("\n\nloaded:\n");
-    OutputDebugString(outMovie->reel.title);
-    OutputDebugString("\n\nunused:\n");
-    OutputDebugString(newMovie->title);
+    outMovie->reel.TransferFromReel(newMovie);
 
 
+    // // should not be necessary
     // newMovie->FreeEverything();
-    // outMovie->reel = DeepCopyMovieReel(inMovie);
+
 
     // temp pointer for the rest of this function
     MovieReel *movie = &outMovie->reel;
