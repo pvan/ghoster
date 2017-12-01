@@ -550,8 +550,14 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
     return bitmap;
 }
 
-void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int fontSize, COLORREF cref)
+void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
 {
+
+    int destW = destRect.right - destRect.left;
+    int destH = destRect.bottom - destRect.top;
+    int x = destW / 2.0;
+    int y = destH / 2.0;
+
     // create a device context for the skin
     HDC memDC = CreateCompatibleDC(hdc);
 
@@ -568,15 +574,45 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, int x, int y, int font
 
                 HFONT oldFont = (HFONT)SelectObject(memDC, font);
 
-                    RECT rect = {x, y, x+1, y+1};
-                    DrawText(memDC, text, -1, &rect, DT_CALCRECT);
-                    int wid = rect.right-rect.left;
-                    int hei = rect.bottom-rect.top;
-                    rect = {rect.left-wid/2, rect.top-hei/2, rect.right-wid/2, rect.bottom-hei/2};
-                    DrawText(memDC, text, -1, &rect, DT_CENTER|DT_TOP);
+                    UINT format = DT_CENTER|DT_TOP|DT_WORDBREAK;
+                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = 0;
+
+                    RECT testRect = destRect;
+                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                    int testW = testRect.right-testRect.left;
+                    while (testW > destW && fontSize >= 6)
+                    {
+                        char buf[321];
+                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
+                        OutputDebugString(buf);
+
+                        fontSize -= 2;
+
+                        // reset our font so we can re-create it smaller
+                        SelectObject(memDC, oldFont);
+                        DeleteObject(font);
+
+                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+                        // new smaller font
+                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+                        oldFont = (HFONT)SelectObject(memDC, font);
+
+                        testRect = destRect;
+                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                        testW = testRect.right-testRect.left;
+                    }
+
+                    OutputDebugString("\n");
+
+                    destRect.top = y - textH/2.0;  // center vertically
+                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
+                    DrawText(memDC, text, -1, &destRect, format);
 
                     // view rect
-                    // Rectangle(memDC, rect.left, rect.top, rect.right, rect.bottom);
+                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
+                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
 
                 SelectObject(memDC, oldFont);
             DeleteObject(font);
@@ -594,7 +630,8 @@ void TransmogrifyText(char *src, char *dest)
     {
         *dest = toupper(*src);
         dest++;
-        *dest = ' ';
+        // *dest = ' ';
+        *dest = '\u00A0';  // nbsp
         dest++;
 
         src++;
@@ -636,7 +673,6 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            // QueueNewMsg("", 0x5aec5aff);
             QueueNewMsg("Play", 0x5aec5aff);
         }
         loaded_video.audio_stopwatch.Start();
@@ -649,9 +685,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            // QueueNewMsg("||", 0xee7676ff);
-            // QueueNewMsg("", 0xee7676ff);
-            QueueNewMsg("Pause", 0xee7676ff);  // red 0x7676eeff
+            QueueNewMsg("Pause", 0xee7676ff);
         }
         loaded_video.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
@@ -1052,7 +1086,7 @@ struct GhosterWindow
                 if (message.msLeftOfMsg > 0)
                 {
                     message.msLeftOfMsg -= temp_dt;
-                    PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, wid/2.0, hei/2.0, 36, RGB(255, 255, 255));
+                    PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
                 }
 
                 BITMAPINFO bmi = {0};
@@ -1269,11 +1303,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
         0, 0,
         &si, &pi))
     {
-        //OutputDebugString("Error creating youtube-dl process.");
-        char errmsg[123];
-        sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
+        // char errmsg[123];
+        // sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
         // MsgBox(errmsg);
-        global_ghoster.QueueNewMsg(errmsg, 0x7676eeff);
+        global_ghoster.QueueNewMsg("youtube-dl CreateProcess() error", 0x7676eeff);
         return false;
     }
 
@@ -1283,7 +1316,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
     {
-        OutputDebugString("Error with CloseHandle()");
+        // OutputDebugString("Error with CloseHandle()");
+        global_ghoster.QueueNewMsg("CloseHandle() error", 0x7676eeff);
         return false;
     }
 
@@ -1298,7 +1332,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     {
         // too big?
         // MsgBox("Error reading pipe, not enough buffer space?");
-        global_ghoster.QueueNewMsg("Error reading pipe, not enough buffer space?", 0x7676eeff);
+        global_ghoster.QueueNewMsg("Read pipe error!", 0x7676eeff);
         return false;
     }
 
@@ -1306,7 +1340,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     {
         // no output?
         // MsgBox("No data from reading pipe.");
-        global_ghoster.QueueNewMsg("No data from reading pipe.", 0x7676eeff);
+        global_ghoster.QueueNewMsg("Pipe empty", 0x7676eeff);
         return false;
     }
 
@@ -1732,10 +1766,10 @@ DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
     strcpy_s(title, TITLE_BUFFER_SIZE, "[no title]");
     if (!SetupMovieAVFromPath(path, &newMovie, title))  // todo: move title into movieAV? rename to movieFile or something?
     {
-        char errbuf[123];
-        sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
+        // char errbuf[123];
+        // sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
         // MsgBox(errbuf);
-        global_ghoster.QueueNewMsg(errbuf, 0x7676eeff);
+        global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
         return false;
     }
 
