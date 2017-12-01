@@ -61,8 +61,8 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 
 struct MovieAV
 {
-    AVFormatContext *vfc;
-    AVFormatContext *afc;  // now seperate sources are allowed so this seems sort of ok
+    AVFormatContext *vfc = 0;
+    AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
 
@@ -78,6 +78,21 @@ struct MovieAV
         if (afc) avformat_close_input(&afc);
         if (video.codecContext) avcodec_free_context(&video.codecContext);
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
+    }
+
+    void SwapReels(MovieAV newReel)
+    {
+        MovieAV temp = newReel;
+
+        newReel.vfc = vfc;
+        newReel.afc = vfc;
+        newReel.video = video;
+        newReel.audio = audio;
+
+        vfc = temp.vfc;
+        afc = temp.vfc;
+        video = temp.video;
+        audio = temp.audio;
     }
 
     bool SetFromPaths(char *videopath, char *audiopath)
@@ -186,17 +201,18 @@ struct MovieAV
 
 };
 
-MovieAV DeepCopyMovieAV(MovieAV source)
-{
-    MovieAV dest;
-    dest.vfc = source.vfc;
-    dest.afc = source.afc;
-    dest.video.index = source.video.index;
-    dest.video.codecContext = source.video.codecContext;
-    dest.audio.index = source.audio.index;
-    dest.audio.codecContext = source.audio.codecContext;
-    return dest;
-}
+// avoid this for now until we get the mem leaks cleaned up
+// MovieAV DeepCopyMovieAV(MovieAV source)
+// {
+//     MovieAV dest;
+//     dest.vfc = source.vfc;
+//     dest.afc = source.afc;
+//     dest.video.index = source.video.index;
+//     dest.video.codecContext = source.video.codecContext;
+//     dest.audio.index = source.audio.index;
+//     dest.audio.codecContext = source.audio.codecContext;
+//     return dest;
+// }
 
 
 

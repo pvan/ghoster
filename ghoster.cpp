@@ -251,7 +251,8 @@ void LogMessage(char *s);
 
 struct RunningMovie
 {
-    MovieAV av_movie;
+
+    MovieAV reel;
 
     // better place for these?
     struct SwsContext *sws_context;
@@ -461,11 +462,11 @@ struct timestamp
     }
     static timestamp FromVideoPTS(RunningMovie movie)
     {
-        return timestamp::FromPTS(movie.ptsOfLastVideo, movie.av_movie.vfc, movie.av_movie.video.index, movie);
+        return timestamp::FromPTS(movie.ptsOfLastVideo, movie.reel.vfc, movie.reel.video.index, movie);
     }
     static timestamp FromAudioPTS(RunningMovie movie)
     {
-        return timestamp::FromPTS(movie.ptsOfLastAudio, movie.av_movie.afc, movie.av_movie.audio.index, movie);
+        return timestamp::FromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index, movie);
     }
 };
 
@@ -476,14 +477,14 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
     // todo: measure the time this function takes and debug output it
 
     // not entirely sure if this flush usage is right
-    if (movie->av_movie.video.codecContext) avcodec_flush_buffers(movie->av_movie.video.codecContext);
-    if (movie->av_movie.audio.codecContext) avcodec_flush_buffers(movie->av_movie.audio.codecContext);
+    if (movie->reel.video.codecContext) avcodec_flush_buffers(movie->reel.video.codecContext);
+    if (movie->reel.audio.codecContext) avcodec_flush_buffers(movie->reel.audio.codecContext);
 
     i64 seekPos = ts.i64InUnits(AV_TIME_BASE);
 
     // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
-    if (movie->av_movie.video.codecContext) av_seek_frame(movie->av_movie.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-    if (movie->av_movie.audio.codecContext) av_seek_frame(movie->av_movie.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    if (movie->reel.video.codecContext) av_seek_frame(movie->reel.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    if (movie->reel.audio.codecContext) av_seek_frame(movie->reel.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
 
     // todo: special if at start of file?
@@ -505,10 +506,10 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
 
     int frames_skipped;
     GetNextVideoFrame(
-        movie->av_movie.vfc,
-        movie->av_movie.video.codecContext,
+        movie->reel.vfc,
+        movie->reel.video.codecContext,
         movie->sws_context,
-        movie->av_movie.video.index,
+        movie->reel.video.index,
         movie->frame_output,
         movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
         0,
@@ -522,9 +523,9 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
     dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
     dummyBufferJunkData.size_in_bytes = 1024 * 10;
     int bytes_queued_up = GetNextAudioFrame(
-        movie->av_movie.afc,
-        movie->av_movie.audio.codecContext,
-        movie->av_movie.audio.index,
+        movie->reel.afc,
+        movie->reel.audio.codecContext,
+        movie->reel.audio.index,
         dummyBufferJunkData,
         1024,
         realTimeMs,
@@ -532,20 +533,20 @@ void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAud
     free(dummyBufferJunkData.data);
 
 
-    i64 streamIndex = movie->av_movie.video.index;
-    i64 base_num = movie->av_movie.vfc->streams[streamIndex]->time_base.num;
-    i64 base_den = movie->av_movie.vfc->streams[streamIndex]->time_base.den;
+    i64 streamIndex = movie->reel.video.index;
+    i64 base_num = movie->reel.vfc->streams[streamIndex]->time_base.num;
+    i64 base_den = movie->reel.vfc->streams[streamIndex]->time_base.den;
     timestamp currentTS = {movie->ptsOfLastVideo * base_num, base_den, ts.framesPerSecond};
 
-    double totalFrameCount = (movie->av_movie.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
-    double durationSeconds = movie->av_movie.vfc->duration / (double)AV_TIME_BASE;
+    double totalFrameCount = (movie->reel.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
+    double durationSeconds = movie->reel.vfc->duration / (double)AV_TIME_BASE;
 
         // char morebuf[123];
         // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
         // OutputDebugString(morebuf);
 
         // char morebuf2[123];
-        // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->av_movie.vfc->duration, AV_TIME_BASE);
+        // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->reel.vfc->duration, AV_TIME_BASE);
         // OutputDebugString(morebuf2);
 
         // char ptsbuf[123];
@@ -688,7 +689,7 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
 
     RunningMovie loaded_video;
-    MovieAV next_movie;
+    MovieAV next_reel;
 
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
 
@@ -706,7 +707,7 @@ struct GhosterWindow
             QueueNewMsg("Play", 0x5aec5aff);
         }
         loaded_video.audio_stopwatch.Start();
-        if (loaded_video.av_movie.IsAudioAvailable())
+        if (loaded_video.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
         loaded_video.is_paused = false;
     }
@@ -768,7 +769,7 @@ struct GhosterWindow
 
         ClearCurrentMsg();
 
-        if (!SetupForNewMovie(next_movie, &loaded_video))
+        if (!SetupForNewMovie(next_reel, &loaded_video))
         {
             // assert(false);
             // MsgBox("Error in setup for new movie.\n");
@@ -908,7 +909,7 @@ struct GhosterWindow
                 SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
                 message.setSeek = false;
-                int seekPos = message.seekProportion * loaded_video.av_movie.vfc->duration;
+                int seekPos = message.seekProportion * loaded_video.reel.vfc->duration;
 
 
                 double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
@@ -916,7 +917,7 @@ struct GhosterWindow
                     // sprintf(fpsbuf, "fps: %f\n", videoFPS);
                     // OutputDebugString(fpsbuf);
 
-                timestamp ts = {nearestI64(message.seekProportion*loaded_video.av_movie.vfc->duration), AV_TIME_BASE, videoFPS};
+                timestamp ts = {nearestI64(message.seekProportion*loaded_video.reel.vfc->duration), AV_TIME_BASE, videoFPS};
 
                 HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
 
@@ -960,9 +961,9 @@ struct GhosterWindow
                     // ideally a little bite of sound, every frame
                     // todo: better way to track all the pts, both a/v and seeking etc?
                     int bytes_queued_up = GetNextAudioFrame(
-                        loaded_video.av_movie.afc,
-                        loaded_video.av_movie.audio.codecContext,
-                        loaded_video.av_movie.audio.index,
+                        loaded_video.reel.afc,
+                        loaded_video.reel.audio.codecContext,
+                        loaded_video.reel.audio.index,
                         ffmpeg_to_sdl_buffer,
                         wanted_bytes,
                         -1,
@@ -1016,7 +1017,7 @@ struct GhosterWindow
                 timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
 
                 // if no audio, use video pts (we should basically never skip or repeat in this case)
-                if (!loaded_video.av_movie.IsAudioAvailable())
+                if (!loaded_video.reel.IsAudioAvailable())
                 {
                     ts_audio = timestamp::FromVideoPTS(loaded_video);
                 }
@@ -1064,19 +1065,19 @@ struct GhosterWindow
 
                 // time for a new frame if audio is this far behind
                 if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0
-                    || !loaded_video.av_movie.IsAudioAvailable()
+                    || !loaded_video.reel.IsAudioAvailable()
                 )
                 {
                     int frames_skipped = 0;
                     GetNextVideoFrame(
-                        loaded_video.av_movie.vfc,
-                        loaded_video.av_movie.video.codecContext,
+                        loaded_video.reel.vfc,
+                        loaded_video.reel.video.codecContext,
                         loaded_video.sws_context,
-                        loaded_video.av_movie.video.index,
+                        loaded_video.reel.video.index,
                         loaded_video.frame_output,
                         aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
-                        loaded_video.av_movie.IsAudioAvailable(),
+                        loaded_video.reel.IsAudioAvailable(),
                         &loaded_video.ptsOfLastVideo,
                         &frames_skipped);
 
@@ -1494,7 +1495,7 @@ void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
 
     char hwbuf[123];
     sprintf(hwbuf, "wid: %i  hei: %i\n",
-        global_ghoster.loaded_video.av_movie.video.codecContext->width, global_ghoster.loaded_video.av_movie.video.codecContext->height);
+        global_ghoster.loaded_video.reel.video.codecContext->width, global_ghoster.loaded_video.reel.video.codecContext->height);
     OutputDebugString(hwbuf);
 
     SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
@@ -1632,9 +1633,11 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 {
 
-    outMovie->av_movie = DeepCopyMovieAV(inMovie);
-    MovieAV *movie = &outMovie->av_movie;
-    // MovieAV *loaded_video = &newMovie->av_movie;
+    // swap reels
+    outMovie->reel.SwapReels(inMovie);
+
+    // outMovie->av_movie = DeepCopyMovieAV(inMovie);
+    MovieAV *movie = &outMovie->reel;
 
     // set window size on video source resolution
     if (movie->video.codecContext)
@@ -1827,7 +1830,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     char *title = global_title_buffer;
 
     // MovieAV newMovie;
-    if (!LoadMovieAVFromPath(path, &global_ghoster.next_movie, title))
+    if (!LoadMovieAVFromPath(path, &global_ghoster.next_reel, title))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
