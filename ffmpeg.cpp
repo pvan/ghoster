@@ -42,6 +42,23 @@ struct StreamAV
     // AVCodec *codec;
 };
 
+
+
+AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
+{
+    AVCodecContext *orig = fc->streams[streamIndex]->codec;
+    AVCodec *codec = avcodec_find_decoder(orig->codec_id);
+    AVCodecContext *result = avcodec_alloc_context3(codec);  // todo: check if this is null?
+    if (!codec)
+        { LogError("ffmpeg: Unsupported codec. Yipes."); return false; }
+    if (avcodec_copy_context(result, orig) != 0)
+        { LogError("ffmpeg: Codec context copy failed."); return false; }
+    if (avcodec_open2(result, codec, 0) < 0)
+        { LogError("ffmpeg: Couldn't open codec."); return false; }
+    return result;
+}
+
+
 struct MovieAV
 {
     AVFormatContext *vfc;
@@ -54,6 +71,119 @@ struct MovieAV
         if (afc && audio.codecContext) return true;
         else return false;
     }
+
+    void FreeEverything()
+    {
+        if (vfc) avformat_close_input(&vfc);
+        if (afc) avformat_close_input(&afc);
+        if (video.codecContext) avcodec_free_context(&video.codecContext);
+        if (audio.codecContext) avcodec_free_context(&audio.codecContext);
+    }
+
+    bool SetFromPaths(char *videopath, char *audiopath)
+    {
+
+        // special case to skip text files for now,
+        // ffmpeg likes to eat these up and then our code doesn't know what to do with them
+        if (StringEndsWith(videopath, ".txt") || StringEndsWith(audiopath, ".txt"))
+        {
+            LogError("Any txt file not supported yet.");
+            return false;
+        }
+
+        // MovieAV file;
+
+        // free current video if exists
+        FreeEverything();
+
+        // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
+        // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
+
+        int open_result1 = avformat_open_input(&vfc, videopath, 0, 0);
+        int open_result2 = avformat_open_input(&afc, audiopath, 0, 0);
+        if (open_result1 != 0 || open_result2 != 0)
+        {
+            char averr[1024];
+            av_strerror(open_result1, averr, 1024);
+            char msg[2048];
+            sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
+            LogError(msg);
+            return false;
+        }
+
+
+        // todo: need to call avformat_close_input() at some point after avformat_open_input
+        // (when no longer using the file maybe?)
+
+        // populate fc->streams
+        if (avformat_find_stream_info(vfc, 0) < 0 ||
+            avformat_find_stream_info(afc, 0) < 0)
+        {
+            LogError("ffmpeg: Can't find stream info in file.");
+            return false;
+        }
+
+        // this must be sending to stdout or something? (not showing up anywhere)
+        // av_dump_format(vfc, 0, videopath, 0);
+
+
+        // find first video and audio stream
+        // todo: use av_find_best_stream?
+        video.index = -1;
+        for (int i = 0; i < vfc->nb_streams; i++)
+        {
+            if (vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
+            {
+                if (video.index != -1)
+                    LogError("ffmpeg: More than one video stream!");
+
+                if (video.index == -1)
+                    video.index = i;
+            }
+        }
+        audio.index = -1;
+        for (int i = 0; i < afc->nb_streams; i++)
+        {
+            if (afc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
+            {
+                if (audio.index != -1)
+                    LogError("ffmpeg: More than one audio stream!");
+
+                if (audio.index == -1)
+                    audio.index = i;
+            }
+        }
+        if (video.index != -1)
+        {
+            video.codecContext = OpenAndFindCodec(vfc, video.index);
+        }
+        if (audio.index != -1)
+        {
+            audio.codecContext = OpenAndFindCodec(afc, audio.index);
+        }
+        //todo: handle less than one or more than one of each properly
+
+
+        // edit: this doesn't seem to trigger even on a text file?
+        // if neither, this probably isn't a video file
+        if (video.index == -1 && audio.index == -1)
+        {
+            LogError("ffmpeg: No audio or video streams in file.");
+            return false;
+        }
+
+        // try this to catch bad files..
+        // edit: also doesn't work
+        if (!video.codecContext && !audio.codecContext)
+        {
+            LogError("ffmpeg: No audio or video streams in file.");
+            return false;
+        }
+
+        return true;
+    }
+
+
 };
 
 MovieAV DeepCopyMovieAV(MovieAV source)
@@ -495,119 +625,6 @@ void InitAV()
     av_register_all();  // all formats and codecs
 }
 
-AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
-{
-    AVCodecContext *orig = fc->streams[streamIndex]->codec;
-    AVCodec *codec = avcodec_find_decoder(orig->codec_id);
-    AVCodecContext *result = avcodec_alloc_context3(codec);  // todo: check if this is null?
-    if (!codec)
-        { LogError("ffmpeg: Unsupported codec. Yipes."); return false; }
-    if (avcodec_copy_context(result, orig) != 0)
-        { LogError("ffmpeg: Codec context copy failed."); return false; }
-    if (avcodec_open2(result, codec, 0) < 0)
-        { LogError("ffmpeg: Couldn't open codec."); return false; }
-    return result;
-}
-
-bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
-{
-
-    // special case to skip text files for now,
-    // ffmpeg likes to eat these up and then our code doesn't know what to do with them
-    if (StringEndsWith(videopath, ".txt") || StringEndsWith(audiopath, ".txt"))
-    {
-        LogError("Any txt file not supported yet.");
-        return false;
-    }
-
-    MovieAV file;
-
-    file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
-    file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
-
-    int open_result1 = avformat_open_input(&file.vfc, videopath, 0, 0);
-    int open_result2 = avformat_open_input(&file.afc, audiopath, 0, 0);
-    if (open_result1 != 0 || open_result2 != 0)
-    {
-        char averr[1024];
-        av_strerror(open_result1, averr, 1024);
-        char msg[2048];
-        sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
-        LogError(msg);
-        return false;
-    }
-
-    // todo: need to call avformat_close_input() at some point after avformat_open_input
-    // (when no longer using the file maybe?)
-
-    // populate fc->streams
-    if (avformat_find_stream_info(file.vfc, 0) < 0 ||
-        avformat_find_stream_info(file.afc, 0) < 0)
-    {
-        LogError("ffmpeg: Can't find stream info in file.");
-        return false;
-    }
-
-    // this must be sending to stdout or something? (not showing up anywhere)
-    av_dump_format(file.vfc, 0, videopath, 0);
-
-
-    // find first video and audio stream
-    // todo: use av_find_best_stream?
-    file.video.index = -1;
-    for (int i = 0; i < file.vfc->nb_streams; i++)
-    {
-        if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
-        {
-            if (file.video.index != -1)
-                LogError("ffmpeg: More than one video stream!");
-
-            if (file.video.index == -1)
-                file.video.index = i;
-        }
-    }
-    file.audio.index = -1;
-    for (int i = 0; i < file.afc->nb_streams; i++)
-    {
-        if (file.afc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
-        {
-            if (file.audio.index != -1)
-                LogError("ffmpeg: More than one audio stream!");
-
-            if (file.audio.index == -1)
-                file.audio.index = i;
-        }
-    }
-    if (file.video.index != -1)
-    {
-        file.video.codecContext = OpenAndFindCodec(file.vfc, file.video.index);
-    }
-    if (file.audio.index != -1)
-    {
-        file.audio.codecContext = OpenAndFindCodec(file.afc, file.audio.index);
-    }
-    // todo: handle less than one or more than one of each properly
-
-
-    // edit: this doesn't seem to trigger even on a text file?
-    // if neither, this probably isn't a video file
-    if (file.video.index == -1 && file.audio.index == -1)
-    {
-        LogError("ffmpeg: No audio or video streams in file.");
-        return false;
-    }
-
-    // try this to catch bad files..
-    // edit: also doesn't work
-    if (!file.video.codecContext && !file.audio.codecContext)
-    {
-        LogError("ffmpeg: No audio or video streams in file.");
-        return false;
-    }
-
-    *outMovie = file;
-    return true;
-}
 
 
 

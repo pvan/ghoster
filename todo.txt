@@ -1,4 +1,15 @@
 
+
+
+[ ] playlist support
+    [ ] drop in folder
+    [ ] drop in text file list / string list
+    [ ] yt playlist
+    [ ] autoplay (yt+others?)
+    [ ] view to-play list somehow
+    [ ] re-arrange / shuffle / random
+
+
 [ ] improve video resize quality (compare to vlc eg)
 
 

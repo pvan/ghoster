@@ -414,7 +414,7 @@ struct AppMessages
     double seekProportion = 0;
 
     bool loadNewMovie = false;
-    MovieAV newMovieToRun;
+    // MovieAV newMovieToRun;
 
     int startAtSeconds = 0;
 
@@ -688,6 +688,7 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
 
     RunningMovie loaded_video;
+    MovieAV next_movie;
 
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
 
@@ -767,7 +768,7 @@ struct GhosterWindow
 
         ClearCurrentMsg();
 
-        if (!SetupForNewMovie(message.newMovieToRun, &loaded_video))
+        if (!SetupForNewMovie(next_movie, &loaded_video))
         {
             // assert(false);
             // MsgBox("Error in setup for new movie.\n");
@@ -894,7 +895,7 @@ struct GhosterWindow
 
         double percent;
 
-
+        state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
             appPause(false);
@@ -1575,7 +1576,7 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
         char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
         if(FindAudioAndVideoUrls(path, video_url, audio_url, outTitle))
         {
-            if (!OpenMovieAV(video_url, audio_url, newMovie))
+            if (!newMovie->SetFromPaths(video_url, audio_url))
             {
                 free(video_url);
                 free(audio_url);
@@ -1600,7 +1601,7 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
     else if (path[1] == ':')
     {
         // *newMovie = OpenMovieAV(path, path);
-        if (!OpenMovieAV(path, path, newMovie))
+        if (!newMovie->SetFromPaths(path, path))
         {
             global_ghoster.QueueNewMsg("invalid file", 0x7676eeff);
             return false;
@@ -1627,6 +1628,7 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 
 // todo: peruse this for memory leaks. also: better name!
 
+// make into a moveifile / staticmovie method?
 bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 {
 
@@ -1824,8 +1826,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // todo: move title into movieAV? rename to movieFile or something?
     char *title = global_title_buffer;
 
-    MovieAV newMovie;
-    if (!LoadMovieAVFromPath(path, &newMovie, title))
+    // MovieAV newMovie;
+    if (!LoadMovieAVFromPath(path, &global_ghoster.next_movie, title))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -1838,7 +1840,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     SetTitle(global_ghoster.system.window, title);
 
-    global_ghoster.message.newMovieToRun = DeepCopyMovieAV(newMovie);
+    // global_ghoster.message.newMovieToRun = DeepCopyMovieAV(newMovie);
     global_ghoster.message.loadNewMovie = true;
 
     return 0;
