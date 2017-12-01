@@ -187,7 +187,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             global_ghoster.appTogglePause();
             break;
         case ID_ASPECT:
-            SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.loaded_video.aspect_ratio);
+            SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.rolling_movie.aspect_ratio);
             global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
             break;
         case ID_PASTE:
@@ -197,7 +197,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             CopyUrlToClipboard();
             break;
         case ID_RESET_RES:
-            SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.loaded_video);
+            SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.rolling_movie);
             break;
         case ID_REPEAT:
             global_ghoster.state.repeat = !global_ghoster.state.repeat;
@@ -607,7 +607,7 @@ void PaintMenu(HWND hwnd, menuItem *menu, int menuCount, int selectedIndex)
             {
                 // little override for play/pause
                 WCHAR *display = menu[i].string;
-                if (i == 0 && !global_ghoster.loaded_video.is_paused
+                if (i == 0 && !global_ghoster.rolling_movie.is_paused
                     && menu == menuItems) // so hokey
                     display = L"Pause";
 

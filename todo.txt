@@ -55,7 +55,9 @@
 
 
 
-[ ] seems like mem leak on loading files
+[/] seems like mem leak on loading files
+    [ ] looks like small one still there
+    [x] big one fixed
 
 
 [ ] needs a few abstraction cleanup passes

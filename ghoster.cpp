@@ -249,7 +249,7 @@ void LogMessage(char *s);
 #include "timer.cpp"
 
 
-struct RunningMovie
+struct RollingMovie
 {
 
     MovieReel reel;
@@ -280,7 +280,7 @@ struct RunningMovie
 };
 
 
-// todo: split into appstate and moviestate? rename runningmovie to moviestate? rename state to app_state? or win_state?
+// todo: split into appstate and moviestate? rename RollingMovie to moviestate? rename state to app_state? or win_state?
 
 struct AppState {
     bool appRunning = true;
@@ -454,17 +454,17 @@ struct timestamp
         return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
     }
 
-    static timestamp FromPTS(i64 pts, AVFormatContext *fc, int streamIndex, RunningMovie movie)
+    static timestamp FromPTS(i64 pts, AVFormatContext *fc, int streamIndex, RollingMovie movie)
     {
         i64 base_num = fc->streams[streamIndex]->time_base.num;
         i64 base_den = fc->streams[streamIndex]->time_base.den;
         return {pts * base_num, base_den, movie.targetMsPerFrame};
     }
-    static timestamp FromVideoPTS(RunningMovie movie)
+    static timestamp FromVideoPTS(RollingMovie movie)
     {
         return timestamp::FromPTS(movie.ptsOfLastVideo, movie.reel.vfc, movie.reel.video.index, movie);
     }
-    static timestamp FromAudioPTS(RunningMovie movie)
+    static timestamp FromAudioPTS(RollingMovie movie)
     {
         return timestamp::FromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index, movie);
     }
@@ -472,7 +472,7 @@ struct timestamp
 
 
 // called "hard" because we flush the buffers and may have to grab a few frames to get the right one
-void HardSeekToFrameForTimestamp(RunningMovie *movie, timestamp ts, double msAudioLatencyEstimate)
+void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAudioLatencyEstimate)
 {
     // todo: measure the time this function takes and debug output it
 
@@ -671,7 +671,7 @@ void TransmogrifyText(char *src, char *dest)
 }
 
 
-bool SwapInNewReel(MovieReel *movie, RunningMovie *outMovie);
+bool SwapInNewReel(MovieReel *movie, RollingMovie *outMovie);
 
 
 void setWallpaperMode(HWND, bool);
@@ -688,7 +688,7 @@ struct GhosterWindow
 
     SDLStuff sdl_stuff;
 
-    RunningMovie loaded_video;
+    RollingMovie rolling_movie;
     MovieReel next_reel;
 
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
@@ -706,10 +706,10 @@ struct GhosterWindow
         {
             QueueNewMsg("Play", 0x5aec5aff);
         }
-        loaded_video.audio_stopwatch.Start();
-        if (loaded_video.reel.IsAudioAvailable())
+        rolling_movie.audio_stopwatch.Start();
+        if (rolling_movie.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
-        loaded_video.is_paused = false;
+        rolling_movie.is_paused = false;
     }
 
     void appPause(bool userRequest = true)
@@ -718,28 +718,28 @@ struct GhosterWindow
         {
             QueueNewMsg("Pause", 0xee7676ff);
         }
-        loaded_video.audio_stopwatch.Pause();
+        rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
-        loaded_video.is_paused = true;
+        rolling_movie.is_paused = true;
     }
 
     void appTogglePause(bool userRequest = true)
     {
-        loaded_video.is_paused = !loaded_video.is_paused;
+        rolling_movie.is_paused = !rolling_movie.is_paused;
 
-        if (loaded_video.is_paused && !loaded_video.was_paused)
+        if (rolling_movie.is_paused && !rolling_movie.was_paused)
         {
             appPause(userRequest);
         }
-        if (!loaded_video.is_paused)
+        if (!rolling_movie.is_paused)
         {
-            if (loaded_video.was_paused || !loaded_video.audio_stopwatch.timer.started)
+            if (rolling_movie.was_paused || !rolling_movie.audio_stopwatch.timer.started)
             {
                 appPlay(userRequest);
             }
         }
 
-        loaded_video.was_paused = loaded_video.is_paused;
+        rolling_movie.was_paused = rolling_movie.is_paused;
     }
 
 
@@ -769,7 +769,7 @@ struct GhosterWindow
 
         ClearCurrentMsg();
 
-        if (!SwapInNewReel(&next_reel, &loaded_video))
+        if (!SwapInNewReel(&next_reel, &rolling_movie))
         {
             // assert(false);
             // MsgBox("Error in setup for new movie.\n");
@@ -778,9 +778,9 @@ struct GhosterWindow
 
         if (message.startAtSeconds != 0)
         {
-            double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+            double videoFPS = 1000.0 / rolling_movie.targetMsPerFrame;
             timestamp ts = {message.startAtSeconds, 1, videoFPS};
-            HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
+            HardSeekToFrameForTimestamp(&rolling_movie, ts, sdl_stuff.estimated_audio_latency_ms);
         }
 
         state.bufferingOrLoading = false;
@@ -816,7 +816,7 @@ struct GhosterWindow
         // global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
 
         // maybe alloc ghoster app all at once? is this really the only mem we need for it?
-        loaded_video.cached_url = (char*)malloc(URL_BUFFER_SIZE);
+        rolling_movie.cached_url = (char*)malloc(URL_BUFFER_SIZE);
     }
 
 
@@ -909,29 +909,29 @@ struct GhosterWindow
                 SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
                 message.setSeek = false;
-                int seekPos = message.seekProportion * loaded_video.reel.vfc->duration;
+                int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
 
 
-                double videoFPS = 1000.0 / loaded_video.targetMsPerFrame;
+                double videoFPS = 1000.0 / rolling_movie.targetMsPerFrame;
                     // char fpsbuf[123];
                     // sprintf(fpsbuf, "fps: %f\n", videoFPS);
                     // OutputDebugString(fpsbuf);
 
-                timestamp ts = {nearestI64(message.seekProportion*loaded_video.reel.vfc->duration), AV_TIME_BASE, videoFPS};
+                timestamp ts = {nearestI64(message.seekProportion*rolling_movie.reel.vfc->duration), AV_TIME_BASE, videoFPS};
 
-                HardSeekToFrameForTimestamp(&loaded_video, ts, sdl_stuff.estimated_audio_latency_ms);
+                HardSeekToFrameForTimestamp(&rolling_movie, ts, sdl_stuff.estimated_audio_latency_ms);
 
             }
 
             // best place for this?
-            loaded_video.elapsed = loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-            percent = loaded_video.elapsed/loaded_video.duration;
+            rolling_movie.elapsed = rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
+            percent = rolling_movie.elapsed/rolling_movie.duration;
                 // char durbuf[123];
-                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", loaded_video.elapsed, loaded_video.duration, percent*100);
+                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", rolling_movie.elapsed, rolling_movie.duration, percent*100);
                 // OutputDebugString(durbuf);
 
 
-            if (!loaded_video.is_paused)
+            if (!rolling_movie.is_paused)
             {
 
                 // SOUND
@@ -961,13 +961,13 @@ struct GhosterWindow
                     // ideally a little bite of sound, every frame
                     // todo: better way to track all the pts, both a/v and seeking etc?
                     int bytes_queued_up = GetNextAudioFrame(
-                        loaded_video.reel.afc,
-                        loaded_video.reel.audio.codecContext,
-                        loaded_video.reel.audio.index,
+                        rolling_movie.reel.afc,
+                        rolling_movie.reel.audio.codecContext,
+                        rolling_movie.reel.audio.index,
                         ffmpeg_to_sdl_buffer,
                         wanted_bytes,
                         -1,
-                        &loaded_video.ptsOfLastAudio);
+                        &rolling_movie.ptsOfLastAudio);
 
 
                     if (bytes_queued_up > 0)
@@ -1014,12 +1014,12 @@ struct GhosterWindow
                     // sprintf(secquebuf, "seconds_left_in_queue: %.3f\n", seconds_left_in_queue);
                     // OutputDebugString(secquebuf);
 
-                timestamp ts_audio = timestamp::FromAudioPTS(loaded_video);
+                timestamp ts_audio = timestamp::FromAudioPTS(rolling_movie);
 
                 // if no audio, use video pts (we should basically never skip or repeat in this case)
-                if (!loaded_video.reel.IsAudioAvailable())
+                if (!rolling_movie.reel.IsAudioAvailable())
                 {
-                    ts_audio = timestamp::FromVideoPTS(loaded_video);
+                    ts_audio = timestamp::FromVideoPTS(rolling_movie);
                 }
 
                 // assuming we've filled the sdl buffer, we are 1 second ahead
@@ -1034,10 +1034,10 @@ struct GhosterWindow
                     // OutputDebugString(audbuf);
 
 
-                timestamp ts_video = timestamp::FromVideoPTS(loaded_video);
+                timestamp ts_video = timestamp::FromVideoPTS(rolling_movie);
                 double vid_seconds = ts_video.seconds();
 
-                double estimatedVidPTS = vid_seconds + loaded_video.targetMsPerFrame/1000.0;
+                double estimatedVidPTS = vid_seconds + rolling_movie.targetMsPerFrame/1000.0;
 
 
                 // better to have audio lag than lead, these based loosely on:
@@ -1065,20 +1065,20 @@ struct GhosterWindow
 
                 // time for a new frame if audio is this far behind
                 if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0
-                    || !loaded_video.reel.IsAudioAvailable()
+                    || !rolling_movie.reel.IsAudioAvailable()
                 )
                 {
                     int frames_skipped = 0;
                     GetNextVideoFrame(
-                        loaded_video.reel.vfc,
-                        loaded_video.reel.video.codecContext,
-                        loaded_video.sws_context,
-                        loaded_video.reel.video.index,
-                        loaded_video.frame_output,
-                        aud_seconds * 1000.0,  // loaded_video.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
+                        rolling_movie.reel.vfc,
+                        rolling_movie.reel.video.codecContext,
+                        rolling_movie.sws_context,
+                        rolling_movie.reel.video.index,
+                        rolling_movie.frame_output,
+                        aud_seconds * 1000.0,  // rolling_movie.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
-                        loaded_video.reel.IsAudioAvailable(),
-                        &loaded_video.ptsOfLastVideo,
+                        rolling_movie.reel.IsAudioAvailable(),
+                        &rolling_movie.ptsOfLastVideo,
                         &frames_skipped);
 
                     if (frames_skipped > 0) {
@@ -1094,7 +1094,7 @@ struct GhosterWindow
                 }
 
 
-                ts_video = timestamp::FromVideoPTS(loaded_video);
+                ts_video = timestamp::FromVideoPTS(rolling_movie);
                 vid_seconds = ts_video.seconds();
 
 
@@ -1221,11 +1221,11 @@ struct GhosterWindow
         {
             destWin = global_wallpaper_window;
         }
-        RenderToScreenGL((void*)loaded_video.vid_buffer,
+        RenderToScreenGL((void*)rolling_movie.vid_buffer,
                         960,
                         720, //todo: extra bar bug qwer
-                        // loaded_video.vidWID,
-                        // loaded_video.vidHEI,
+                        // rolling_movie.vidWID,
+                        // rolling_movie.vidHEI,
                         system.winWID,
                         system.winHEI,
                         // system.winWID,
@@ -1235,12 +1235,12 @@ struct GhosterWindow
                         destWin,
                         temp_dt,
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
-                        loaded_video.aspect_ratio,
+                        rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
                         textMem, textAlpha
                         );
-        // RenderToScreen_FF((void*)loaded_video.vid_buffer, 960, 720, destWin);
-        // Render_GDI((void*)loaded_video.vid_buffer, 960, 720, destWin);
+        // RenderToScreen_FF((void*)rolling_movie.vid_buffer, 960, 720, destWin);
+        // Render_GDI((void*)rolling_movie.vid_buffer, 960, 720, destWin);
 
         // delete[] textMem;
 
@@ -1250,8 +1250,8 @@ struct GhosterWindow
 
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
-            double targetFPS = 1000.0 / loaded_video.targetMsPerFrame;
-            HardSeekToFrameForTimestamp(&loaded_video, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
+            double targetFPS = 1000.0 / rolling_movie.targetMsPerFrame;
+            HardSeekToFrameForTimestamp(&rolling_movie, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
         }
 
 
@@ -1265,11 +1265,11 @@ struct GhosterWindow
         // but accurately track our continuous audio timer
         // (eg if we're late one frame, go early the next?)
 
-        if (dt < loaded_video.targetMsPerFrame)
+        if (dt < rolling_movie.targetMsPerFrame)
         {
-            double msToSleep = loaded_video.targetMsPerFrame - dt;
+            double msToSleep = rolling_movie.targetMsPerFrame - dt;
             Sleep(msToSleep);
-            while (dt < loaded_video.targetMsPerFrame)  // is this weird?
+            while (dt < rolling_movie.targetMsPerFrame)  // is this weird?
             {
                 dt = state.app_timer.MsSinceLastFrame();
             }
@@ -1282,7 +1282,7 @@ struct GhosterWindow
             // missed fps target
             char msg[256];
             sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-                    loaded_video.targetMsPerFrame, dt);
+                    rolling_movie.targetMsPerFrame, dt);
             OutputDebugString(msg);
         }
         state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
@@ -1490,13 +1490,13 @@ void SetWindowSize(HWND hwnd, int wid, int hei)
     MoveWindow(hwnd, winRect.left, winRect.top, wid, hei, true);
 }
 
-void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
+void SetWindowToNativeRes(HWND hwnd, RollingMovie movie)
 {
 
     char hwbuf[123];
     sprintf(hwbuf, "wid: %i  hei: %i\n",
-        global_ghoster.loaded_video.reel.video.codecContext->width,
-        global_ghoster.loaded_video.reel.video.codecContext->height);
+        global_ghoster.rolling_movie.reel.video.codecContext->width,
+        global_ghoster.rolling_movie.reel.video.codecContext->height);
     OutputDebugString(hwbuf);
 
     SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
@@ -1632,15 +1632,11 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 // todo: peruse this for memory leaks. also: better name!
 
 // make into a moveifile / staticmovie method?
-bool SwapInNewReel(MovieReel *newMovie, RunningMovie *outMovie)
+bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
 {
 
     // swap reels
     outMovie->reel.TransferFromReel(newMovie);
-
-
-    // // should not be necessary
-    // newMovie->FreeEverything();
 
 
     // temp pointer for the rest of this function
@@ -1953,9 +1949,9 @@ bool CreateNewMovieFromPath(char *path)
     if (timestamp != 0)
         timestamp[0] = '\0';
 
-    // save url for later (is loaded_video the best place for cached_url?)
+    // save url for later (is rolling_movie the best place for cached_url?)
     // is this the best place to set cached_url?
-    strcpy_s(global_ghoster.loaded_video.cached_url, URL_BUFFER_SIZE, path);
+    strcpy_s(global_ghoster.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
 
 
     return true;
@@ -2022,11 +2018,11 @@ bool PasteClipboard()
 
 bool CopyUrlToClipboard()
 {
-    char *url = global_ghoster.loaded_video.cached_url;
+    char *url = global_ghoster.rolling_movie.cached_url;
 
     char output[URL_BUFFER_SIZE]; // todo: stack alloc ok here?
     if (StringIsUrl(url)) {
-        int secondsElapsed = global_ghoster.loaded_video.elapsed;
+        int secondsElapsed = global_ghoster.rolling_movie.elapsed;
         sprintf(output, "%s&t=%i", url, secondsElapsed);
     }
     else
@@ -2535,8 +2531,8 @@ void saveVideoPositionForAfterDoubleClick()
 {
     global_ghoster.message.savestate_is_saved = true;
 
-    global_ghoster.loaded_video.elapsed = global_ghoster.loaded_video.audio_stopwatch.MsElapsed() / 1000.0;
-    double percent = global_ghoster.loaded_video.elapsed / global_ghoster.loaded_video.duration;
+    global_ghoster.rolling_movie.elapsed = global_ghoster.rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
+    double percent = global_ghoster.rolling_movie.elapsed / global_ghoster.rolling_movie.duration;
     global_ghoster.message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
 }
 
@@ -2918,7 +2914,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 int w = rc.right - rc.left;
                 int h = rc.bottom - rc.top;
 
-                double aspect_ratio = global_ghoster.loaded_video.aspect_ratio;
+                double aspect_ratio = global_ghoster.rolling_movie.aspect_ratio;
 
                 switch (wParam)
                 {
@@ -3083,14 +3079,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         //             appTogglePause();
         //             break;
         //         case ID_ASPECT:
-        //             SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.loaded_video.aspect_ratio);
+        //             SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.rolling_movie.aspect_ratio);
         //             global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
         //             break;
         //         case ID_PASTE:
         //             PasteClipboard();
         //             break;
         //         case ID_RESET_RES:
-        //             SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.loaded_video);
+        //             SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.rolling_movie);
         //             break;
         //         case ID_REPEAT:
         //             global_ghoster.state.repeat = !global_ghoster.state.repeat;
