@@ -59,7 +59,7 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 }
 
 
-// basically a ffmpeg static movie info
+// basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
 struct MovieReel
 {
@@ -67,6 +67,8 @@ struct MovieReel
     AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
     StreamAV audio;
+
+    char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
 
     bool IsAudioAvailable()
     {
@@ -82,19 +84,28 @@ struct MovieReel
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
     }
 
-    void SwapReels(MovieReel newReel)
+    void SwapReels(MovieReel bReel)
     {
-        MovieReel temp = newReel;
+        // MovieReel temp = bReel;
 
-        newReel.vfc = vfc;
-        newReel.afc = vfc;
-        newReel.video = video;
-        newReel.audio = audio;
+        MovieReel temp;
+        temp.vfc = bReel.vfc;
+        temp.afc = bReel.vfc;
+        temp.video = bReel.video;
+        temp.audio = bReel.audio;
+        strcpy(temp.title, bReel.title);
+
+        bReel.vfc = vfc;
+        bReel.afc = vfc;
+        bReel.video = video;
+        bReel.audio = audio;
+        strcpy(bReel.title, title);
 
         vfc = temp.vfc;
         afc = temp.vfc;
         video = temp.video;
         audio = temp.audio;
+        strcpy(title, temp.title);
     }
 
     bool SetFromPaths(char *videopath, char *audiopath)
@@ -203,18 +214,18 @@ struct MovieReel
 
 };
 
-// avoid this for now until we get the mem leaks cleaned up
-// MovieReel DeepCopyMovieReel(MovieReel source)
-// {
-//     MovieReel dest;
-//     dest.vfc = source.vfc;
-//     dest.afc = source.afc;
-//     dest.video.index = source.video.index;
-//     dest.video.codecContext = source.video.codecContext;
-//     dest.audio.index = source.audio.index;
-//     dest.audio.codecContext = source.audio.codecContext;
-//     return dest;
-// }
+//avoid this for now until we get the mem leaks cleaned up
+MovieReel DeepCopyMovieReel(MovieReel source)
+{
+    MovieReel dest;
+    dest.vfc = source.vfc;
+    dest.afc = source.afc;
+    dest.video.index = source.video.index;
+    dest.video.codecContext = source.video.codecContext;
+    dest.audio.index = source.audio.index;
+    dest.audio.codecContext = source.audio.codecContext;
+    return dest;
+}
 
 
 

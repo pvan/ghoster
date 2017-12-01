@@ -65,7 +65,7 @@ static HANDLE global_asyn_load_thread;
 
 
 // todo: move into a system obj
-static char *global_title_buffer;
+// static char *global_title_buffer;
 const int TITLE_BUFFER_SIZE = 256;
 
 const int URL_BUFFER_SIZE = 1024;  // todo: what to use for this?
@@ -813,7 +813,7 @@ struct GhosterWindow
 
         // todo: move this to ghoster app
         // space we can re-use for title strings
-        global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
+        // global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
 
         // maybe alloc ghoster app all at once? is this really the only mem we need for it?
         loaded_video.cached_url = (char*)malloc(URL_BUFFER_SIZE);
@@ -896,7 +896,7 @@ struct GhosterWindow
 
         double percent;
 
-        state.bufferingOrLoading = true;
+        // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
             appPause(false);
@@ -1495,7 +1495,8 @@ void SetWindowToNativeRes(HWND hwnd, RunningMovie movie)
 
     char hwbuf[123];
     sprintf(hwbuf, "wid: %i  hei: %i\n",
-        global_ghoster.loaded_video.reel.video.codecContext->width, global_ghoster.loaded_video.reel.video.codecContext->height);
+        global_ghoster.loaded_video.reel.video.codecContext->width,
+        global_ghoster.loaded_video.reel.video.codecContext->height);
     OutputDebugString(hwbuf);
 
     SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
@@ -1562,13 +1563,14 @@ void SetTitle(HWND hwnd, char *title)
 
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool LoadMovieReelFromPath(char *path, MovieReel *newMovie, char *outTitle)
+bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
     OutputDebugString(loadingMsg);
 
-    // default title
+    // todo: check limits on title before writing here and below
+    char *outTitle = newMovie->title;
     strcpy_s(outTitle, TITLE_BUFFER_SIZE, "[no title]");
 
     if (StringIsUrl(path))
@@ -1633,9 +1635,17 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie, char *outTitle)
 bool SetupForNewMovie(MovieReel inMovie, RunningMovie *outMovie)
 {
 
+    OutputDebugString("\n\nold:\n");
+    OutputDebugString(outMovie->reel.title);
+    OutputDebugString("\n\nnew:\n");
+    OutputDebugString(inMovie.title);
+
     // swap reels
     outMovie->reel.SwapReels(inMovie);
 
+
+    inMovie.FreeEverything();
+    // outMovie->reel = DeepCopyMovieReel(inMovie);
 
     // temp pointer for the rest of this function
     MovieReel *movie = &outMovie->reel;
@@ -1829,10 +1839,10 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     char *path = (char*)lpParam;
 
     // todo: move title into MovieReel? rename to movieFile or something?
-    char *title = global_title_buffer;
+    // char *title = global_title_buffer;
 
     // MovieReel newMovie;
-    if (!LoadMovieReelFromPath(path, &global_ghoster.next_reel, title))
+    if (!LoadMovieReelFromPath(path, &global_ghoster.next_reel))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -1843,7 +1853,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     }
 
     // todo: better place for this? i guess it might be fine
-    SetTitle(global_ghoster.system.window, title);
+    SetTitle(global_ghoster.system.window, global_ghoster.next_reel.title);
 
     // global_ghoster.message.newMovieToRun = DeepCopyMovieReel(newMovie);
     global_ghoster.message.loadNewMovie = true;
@@ -1909,7 +1919,7 @@ bool Test_SecondsFromStringTimestamp()
 }
 
 
-bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
+bool CreateNewMovieFromPath(char *path)
 {
     // try waiting on this until we confirm it's a good path/file
     // global_ghoster.state.bufferingOrLoading = true;
@@ -1977,7 +1987,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         if (global_load_new_file)
         {
             // global_ghoster.state.buffering = true;
-            CreateNewMovieFromPath(global_file_to_load, &global_ghoster.loaded_video);
+            CreateNewMovieFromPath(global_file_to_load);
             global_load_new_file = false;
         }
 
