@@ -109,14 +109,14 @@ int GetNextAudioFrame(
     //                 NULL);                     // log_ctx
     //     swr_init(swr);
     //     if (!swr_is_initialized(swr)) {
-    //         OutputDebugString("ffmpeg: Audio resampler has not been properly initialized\n");
+    //         LogError("ffmpeg: Audio resampler has not been properly initialized\n");
     //         return -1;
     //     }
     // }
 
     // char tempy[123];
     // sprintf(tempy, "%lli\n", cc->sample_fmt);
-    // OutputDebugString(tempy);
+    // LogMessage(tempy);
 
     AVPacket readingPacket;
     av_init_packet(&readingPacket);
@@ -126,7 +126,7 @@ int GetNextAudioFrame(
     AVFrame* frame = av_frame_alloc();
     if (!frame)
     {
-        OutputDebugString("Error allocating the frame\n");
+        LogError("ffmpeg: Error allocating the frame.\n");
         return 1;
     }
 
@@ -174,16 +174,16 @@ int GetNextAudioFrame(
 
                     if (msToPlayThisFrame < startAtThisMsTimestamp && startAtThisMsTimestamp>=0)
                     {
-                        // OutputDebugString("skipped a frame\n");
+                        // LogMessage("skipped a frame\n");
                         // frames_skipped++;
 
-                        // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
+                        // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
 
                         // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
                         // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
                         //     char frambuf[123];
                         //     sprintf(frambuf, "%lli ", frame_count+1);
-                        //     OutputDebugString(frambuf);
+                        //     LogMessage(frambuf);
 
                         // seems like we'd want this here right?
                         // av_packet_unref(&packet);
@@ -195,7 +195,7 @@ int GetNextAudioFrame(
                     // if (frames_skipped > 0) {
                     //     char skipbuf[256];
                     //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
-                    //     OutputDebugString(skipbuf);
+                    //     LogMessage(skipbuf);
                     // }
 
 
@@ -217,7 +217,7 @@ int GetNextAudioFrame(
                     //         msToPlayFrame,
                     //         msSinceStart
                     //         );
-                    // OutputDebugString(zxcv);
+                    // LogMessage(zxcv);
 
                     // // todo: stretch or shrink this buffer
                     // // to external clock? but tough w/ audio latency right?
@@ -226,7 +226,7 @@ int GetNextAudioFrame(
                     // // our sound library or driver is playing audio out of sync w/ the system clock???
                     // if (msToPlayFrame + msDelayAllowed < msSinceStart)
                     // {
-                    //     OutputDebugString("skipping some audio bytes.. tempy\n");
+                    //     LogMessage("skipping some audio bytes.. tempy\n");
                     //     //continue;
 
                     //     // todo: replace this with better
@@ -365,20 +365,20 @@ bool GetNextVideoFrame(
 
     AVFrame *frame = av_frame_alloc();  // just metadata
 
-    if (!frame) { MsgBox("ffmpeg: Couldn't alloc frame."); return false; }
+    if (!frame) { LogError("ffmpeg: Couldn't alloc frame."); return false; }
 
                 // char temp2[123];
                 // sprintf(temp2, "time_base %i / %i\n",
                 //         fc->streams[streamIndex]->time_base.num,
                 //         fc->streams[streamIndex]->time_base.den
                 //         );
-                // OutputDebugString(temp2);
+                // LogMessage(temp2);
 
 
     // i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
     //     char frambuf2[123];
     //     sprintf(frambuf2, "want: %lli \n", frame_want+1);
-    //     OutputDebugString(frambuf2);
+    //     LogMessage(frambuf2);
     // bool displayedSkipMsg = false;
 
     // int frames_skipped = 0;
@@ -398,7 +398,7 @@ bool GetNextVideoFrame(
 
                 // char temp[123];
                 // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
-                // OutputDebugString(temp);
+                // LogMessage(temp);
 
                 double msToPlayThisFrame = 1000.0 *
                     av_frame_get_best_effort_timestamp(frame) * //frame->pts *
@@ -412,22 +412,22 @@ bool GetNextVideoFrame(
                 //         msSinceStart,
                 //         msAudioLatencyEstimate + msDelayAllowed
                 //         );
-                // OutputDebugString(zxcv);
+                // LogMessage(zxcv);
 
 
                 if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
                     && skip_if_behind_audio)
                 {
-                    // OutputDebugString("skipped a frame\n");
+                    // LogMessage("skipped a frame\n");
                     *frames_skipped++;
 
-                    // if (!displayedSkipMsg) { displayedSkipMsg = true; OutputDebugString("skip: "); }
+                    // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
 
                     // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
                     // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
                     //     char frambuf[123];
                     //     sprintf(frambuf, "%lli ", frame_count+1);
-                    //     OutputDebugString(frambuf);
+                    //     LogMessage(frambuf);
 
                     // seems like we'd want this here right?
                     av_packet_unref(&packet);
@@ -438,7 +438,7 @@ bool GetNextVideoFrame(
                 // if (frames_skipped > 0) {
                 //     char skipbuf[256];
                 //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
-                //     OutputDebugString(skipbuf);
+                //     LogMessage(skipbuf);
                 // }
 
 
@@ -450,7 +450,7 @@ bool GetNextVideoFrame(
                 //         frame->linesize[0],
                 //         outFrame->linesize[0]
                 //         );
-                // OutputDebugString(linebuf);
+                // LogMessage(linebuf);
 
 
                 sws_scale(
@@ -501,11 +501,11 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
     AVCodec *codec = avcodec_find_decoder(orig->codec_id);
     AVCodecContext *result = avcodec_alloc_context3(codec);  // todo: check if this is null?
     if (!codec)
-        { MsgBox("ffmpeg: Unsupported codec. Yipes."); return false; }
+        { LogError("ffmpeg: Unsupported codec. Yipes."); return false; }
     if (avcodec_copy_context(result, orig) != 0)
-        { MsgBox("ffmpeg: Codec context copy failed."); return false; }
+        { LogError("ffmpeg: Codec context copy failed."); return false; }
     if (avcodec_open2(result, codec, 0) < 0)
-        { MsgBox("ffmpeg: Couldn't open codec."); return false; }
+        { LogError("ffmpeg: Couldn't open codec."); return false; }
     return result;
 }
 
@@ -525,7 +525,7 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
         av_strerror(open_result1, averr, 1024);
         char msg[2048];
         sprintf(msg, "ffmpeg: Can't open file: %s\n", averr);
-        MsgBox(msg);
+        LogError(msg);
         return false;
     }
 
@@ -533,7 +533,7 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     if (avformat_find_stream_info(file.vfc, 0) < 0 ||
         avformat_find_stream_info(file.afc, 0) < 0)
     {
-        MsgBox("ffmpeg: Can't find stream info in file.");
+        LogError("ffmpeg: Can't find stream info in file.");
         return false;
     }
 
@@ -549,7 +549,7 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
         if (file.vfc->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
         {
             if (file.video.index != -1)
-                MsgBox("More than one video stream!");
+                LogError("ffmpeg: More than one video stream!");
 
             if (file.video.index == -1)
                 file.video.index = i;
@@ -561,7 +561,7 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
         if (file.afc->streams[i]->codec->codec_type==AVMEDIA_TYPE_AUDIO)
         {
             if (file.audio.index != -1)
-                MsgBox("More than one audio stream!");
+                LogError("ffmpeg: More than one audio stream!");
 
             if (file.audio.index == -1)
                 file.audio.index = i;
@@ -604,7 +604,7 @@ void logFormatContextDuration(AVFormatContext *fc)
     } else {
         sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
     }
-    OutputDebugString(buf);
+    LogMessage(buf);
 }
 
 

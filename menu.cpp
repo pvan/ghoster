@@ -837,7 +837,7 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
     wc3.hInstance = hInstance;
     wc3.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc3.lpszClassName = POPUP_CLASS_NAME;
-    if (!RegisterClass(&wc3)) { MsgBox("RegisterClass for popup window failed."); return 0; }
+    if (!RegisterClass(&wc3)) { LogError("RegisterClass for popup window failed."); return 0; }
 
     HWND popup = CreateWindowEx(
         WS_EX_TOPMOST |  WS_EX_TOOLWINDOW,
@@ -850,7 +850,7 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
         hInstance,
         0);
 
-    if (!popup) { MsgBox("Failed to create popup window."); }
+    if (!popup) { LogError("Failed to create popup window."); }
 
 
     // todo: iterate through menu items checking for submenu
@@ -863,7 +863,7 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
     wc4.hInstance = hInstance;
     wc4.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc4.lpszClassName = ICONMENU_CLASS_NAME;
-    if (!RegisterClass(&wc4)) { MsgBox("RegisterClass for popup window failed."); return 0; }
+    if (!RegisterClass(&wc4)) { LogError("RegisterClass for popup window failed."); return 0; }
 
     global_icon_menu_window = CreateWindowEx(
         WS_EX_TOPMOST | WS_EX_TOOLWINDOW,
@@ -874,7 +874,7 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
         // CW_USEDEFAULT, CW_USEDEFAULT,
         // CW_USEDEFAULT, CW_USEDEFAULT,
         0, 0, hInstance, 0);
-    if (!global_icon_menu_window) { MsgBox("Couldn't open global_icon_menu_window."); }
+    if (!global_icon_menu_window) { LogError("Couldn't open global_icon_menu_window."); }
 
 
     return popup;

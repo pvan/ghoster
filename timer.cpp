@@ -6,7 +6,7 @@ static void GlobalSet1MsResolution()
     if (timeBeginPeriod(1) != TIMERR_NOERROR) {
         char err[256];
         sprintf(err, "Unable to set resolution of Sleep to 1ms");
-        OutputDebugString(err);
+        LogError(err);
     }
 }
 
@@ -56,7 +56,8 @@ struct Timer
     double MsSinceStart()
     {
         if (!started) {
-            OutputDebugString("Timer: Tried to get time without starting first.\n");
+            // todo: track these down and either handle better or prevent from happening
+            LogError("Timer: Tried to get time without starting first.\n");
             return 0;
         }
         return MsElapsedSince(starting_ticks);
@@ -100,19 +101,19 @@ struct Stopwatch
         {
             if (paused)
             {
-                // OutputDebugString("Stopwatch: Unpausing.");
+                // LogMessage("Stopwatch: Unpausing.");
                 // restart and subtract our already elapsed time
                 timer.Start();
                 timer.starting_ticks -= ticks_elapsed_at_pause;
             }
             else
             {
-                OutputDebugString("Stopwatch: Tried starting an already running stopwatch.");
+                LogError("Stopwatch: Tried starting an already running stopwatch.");
             }
         }
         else
         {
-            // OutputDebugString("Stopwatch: Starting for the first time.");
+            // LogMessage("Stopwatch: Starting for the first time.");
             timer.Start();
         }
         paused = false;

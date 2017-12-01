@@ -52,7 +52,7 @@ void logSpec(SDL_AudioSpec *as) {
         (int) as->samples,
         (int) as->size
     );
-    OutputDebugString(log);
+    LogMessage(log);
 }
 
 
@@ -77,8 +77,8 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
         case AV_SAMPLE_FMT_DBLP: // use float here and fix in decoder?
         default:
             char msg[1234];
-            sprintf(msg, "Audio format not supported yet.\n%i", acc->sample_fmt);
-            MsgBox(msg);
+            sprintf(msg, "SDL: Audio format not supported yet.\n%i", acc->sample_fmt);
+            LogError(msg);
     }
 
 
@@ -103,7 +103,7 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     {
         char audioerr[256];
         sprintf(audioerr, "SDL: Failed to open audio: %s\n", SDL_GetError());
-        OutputDebugString(audioerr);
+        LogError(audioerr);
         return false;
     }
 
@@ -112,7 +112,7 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
         // try another one instead of failing?
         char audioerr[256];
         sprintf(audioerr, "SDL: Couldn't find desired format: %s\n", SDL_GetError());
-        OutputDebugString(audioerr);
+        LogError(audioerr);
         return false;
     }
 
@@ -123,9 +123,9 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     // good for estimating how many bytes to send to sdl
     sdl_stuff->spec_size = spec.size;
 
-    OutputDebugString("SDL: audio spec wanted:\n");
+    LogMessage("SDL: audio spec wanted:\n");
     logSpec(&wanted_spec);
-    OutputDebugString("SDL: audio spec got:\n");
+    LogMessage("SDL: audio spec got:\n");
     logSpec(&spec);
 
     return true;
@@ -162,7 +162,7 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff, double video_fps
         {
             char err[256];
             sprintf(err, "SDL: Couldn't initialize: %s", SDL_GetError());
-            MsgBox(err);
+            LogError(err);
             //return false;
         }
         sdl_stuff->setup_at_least_once = true;
@@ -170,7 +170,7 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff, double video_fps
 
     if (!CreateSDLAudioDeviceFor(acc, sdl_stuff))
     {
-        MsgBox("SDL: Failed to create audio device.");
+        LogError("SDL: Failed to create audio device.");
         // return false; ?
     }
 
@@ -188,7 +188,7 @@ void SetupSDLSoundFor(AVCodecContext *acc, SDLStuff *sdl_stuff, double video_fps
 
     // char buf[123];
     // sprintf(buf, "fps: %f  bytes_per_frame: %.4f\n", video_fps, bytes_per_frame);
-    // OutputDebugString(buf);
+    // LogMessage(buf);
 
     // todo: test: we should be able to adjust amount in queue without messing up our sync
     int frames_ahead_to_queue = 2; // or should we do more? (more = slower volume response)

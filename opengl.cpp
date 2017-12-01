@@ -100,9 +100,9 @@ void shader_error_check(GLuint object, const char *kind, GetLogFunc getLog, GetP
         {
             sprintf(log, "No error log: forgot to compile?");
         }
-        char err[1024];
-        sprintf(err, "\n\n%s log:\n%s\n\n", kind, log);
-        OutputDebugString(err);
+        char buf[1024];
+        sprintf(buf, "\n\n%s log:\n%s\n\n", kind, log);
+        LogMessage(buf);
     }
 
 
@@ -120,7 +120,7 @@ void check_gl_error(char *lastCall)
     {
         char errbuf[123];
         sprintf(errbuf,"GL ERR: 0x%x (%s)\n", err, lastCall);
-        OutputDebugString(errbuf);
+        LogError(errbuf);
     }
 }
 

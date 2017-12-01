@@ -174,7 +174,7 @@ double MS_TO_DISPLAY_MSG = 3000;
 
 
 
-void MsgBox(char* s) {
+void MsgBox(char *s) {
     MessageBox(0, s, "vid player", MB_OK);
 }
 // this is case sensitive
@@ -211,6 +211,9 @@ i64 nearestI64(double in)
 {
     return floor(in + 0.5);
 }
+
+void LogError(char *s);
+void LogMessage(char *s);
 
 
 #include "ffmpeg.cpp"
@@ -1251,6 +1254,16 @@ struct GhosterWindow
 static GhosterWindow global_ghoster;
 
 
+
+// todo: consider a LogWarning as well?
+void LogError(char *s)
+{
+    global_ghoster.QueueNewMsg(s, 0x0000ffff);
+}
+void LogMessage(char *s)
+{
+    OutputDebugString(s);
+}
 
 
 
