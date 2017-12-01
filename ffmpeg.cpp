@@ -577,6 +577,25 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     }
     // todo: handle less than one or more than one of each properly
 
+
+    // edit: this doesn't seem to trigger even on a text file?
+    // if neither, this probably isn't a video file
+    if (file.video.index == -1 && file.audio.index == -1)
+    {
+        MsgBox("tesT");
+        LogError("ffmpeg: No audio or video streams in file.");
+        return false;
+    }
+
+    // try this to catch bad files..
+    // edit: also doesn't work
+    if (!file.video.codecContext && !file.audio.codecContext)
+    {
+        MsgBox("tesT2");
+        LogError("ffmpeg: No audio or video streams in file.");
+        return false;
+    }
+
     *outMovie = file;
     return true;
 }

@@ -741,7 +741,6 @@ struct GhosterWindow
 
         ClearCurrentMsg();
 
-        message.loadNewMovie = false;
         if (!SetupForNewMovie(message.newMovieToRun, &loaded_video))
         {
             // assert(false);
@@ -823,6 +822,7 @@ struct GhosterWindow
 
         if (message.loadNewMovie)
         {
+            message.loadNewMovie = false;
             LoadNewMovie();
         }
 
@@ -1534,13 +1534,14 @@ void SetTitle(HWND hwnd, char *title)
 
 // fill movieAV with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
+bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
     OutputDebugString(loadingMsg);
 
-    // strcpy_s(outTitle, 64, "[no title]"); //todo: length
+    // default title
+    strcpy_s(outTitle, TITLE_BUFFER_SIZE, "[no title]");
 
     if (StringIsUrl(path))
     {
@@ -1553,6 +1554,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
                 free(video_url);
                 free(audio_url);
 
+                // global_ghoster.QueueNewMsg("failed to use url video", 0x7676eeff);
+                global_ghoster.QueueNewMsg("video failed", 0x7676eeff);
                 return false;
             }
             free(video_url);
@@ -1563,8 +1566,8 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
             free(video_url);
             free(audio_url);
 
-            // MsgBox("Error loading file.");
-            global_ghoster.QueueNewMsg("Error loading file.", 0x7676eeff);
+            // global_ghoster.QueueNewMsg("url video inaccessible", 0x7676eeff);
+            global_ghoster.QueueNewMsg("no video", 0x7676eeff);
             return false;
         }
     }
@@ -1572,7 +1575,10 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
     {
         // *newMovie = OpenMovieAV(path, path);
         if (!OpenMovieAV(path, path, newMovie))
+        {
+            global_ghoster.QueueNewMsg("invalid file", 0x7676eeff);
             return false;
+        }
 
         char *fileNameOnly = path;
         while (*fileNameOnly)
@@ -1580,12 +1586,12 @@ bool SetupMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
         while (*fileNameOnly != '\\' && *fileNameOnly != '/')
             fileNameOnly--; // backup till we hit a directory
         fileNameOnly++; // drop the / tho
-        strcpy_s(outTitle, 64, fileNameOnly); //todo: length
+        strcpy_s(outTitle, TITLE_BUFFER_SIZE, fileNameOnly); // todo: what length to use?
     }
     else
     {
         // MsgBox("not full filepath or url\n");
-        global_ghoster.QueueNewMsg("invalid path/url", 0x7676eeff);
+        global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
         return false;
     }
 
@@ -1630,6 +1636,7 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
     // MAKE NOTE OF VIDEO LENGTH
 
     // todo: add handling for this
+    // edit: somehow we get this far even on a text file with no video or audio streams??
     assert(movie->vfc->start_time==0);
         // char rewq[123];
         // sprintf(rewq, "start: %lli\n", start_time);
@@ -1784,19 +1791,21 @@ bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
 
 
 
-DWORD WINAPI CreateMovieSourceFromPath( LPVOID lpParam )
+DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     char *path = (char*)lpParam;
 
-    MovieAV newMovie;
+    // todo: move title into movieAV? rename to movieFile or something?
     char *title = global_title_buffer;
-    strcpy_s(title, TITLE_BUFFER_SIZE, "[no title]");
-    if (!SetupMovieAVFromPath(path, &newMovie, title))  // todo: move title into movieAV? rename to movieFile or something?
+
+    MovieAV newMovie;
+    if (!LoadMovieAVFromPath(path, &newMovie, title))
     {
+        // now we get more specific error msg in function call,
+        // for now don't override them with a new (since our queue is only 1 deep)
         // char errbuf[123];
         // sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
-        // MsgBox(errbuf);
-        global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
+        // global_ghoster.QueueNewMsg("load failed", 0x7676eeff);
         return false;
     }
 
@@ -1896,7 +1905,9 @@ bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
         TerminateThread(global_asyn_load_thread, exitCode);
     }
 
-    global_asyn_load_thread = CreateThread(0, 0, CreateMovieSourceFromPath, (void*)path, 0, 0);
+    // TODO: any reason we don't just move this whole function into the async call?
+
+    global_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)path, 0, 0);
 
 
     // strip off timestamp before caching path
