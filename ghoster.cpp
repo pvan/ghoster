@@ -671,7 +671,7 @@ void TransmogrifyText(char *src, char *dest)
 }
 
 
-bool SetupForNewMovie(MovieReel movie, RunningMovie *outMovie);
+bool SwapInNewReel(MovieReel *movie, RunningMovie *outMovie);
 
 
 void setWallpaperMode(HWND, bool);
@@ -769,7 +769,7 @@ struct GhosterWindow
 
         ClearCurrentMsg();
 
-        if (!SetupForNewMovie(next_reel, &loaded_video))
+        if (!SwapInNewReel(&next_reel, &loaded_video))
         {
             // assert(false);
             // MsgBox("Error in setup for new movie.\n");
@@ -1632,19 +1632,25 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 // todo: peruse this for memory leaks. also: better name!
 
 // make into a moveifile / staticmovie method?
-bool SetupForNewMovie(MovieReel inMovie, RunningMovie *outMovie)
+bool SwapInNewReel(MovieReel *newMovie, RunningMovie *outMovie)
 {
 
     OutputDebugString("\n\nold:\n");
     OutputDebugString(outMovie->reel.title);
     OutputDebugString("\n\nnew:\n");
-    OutputDebugString(inMovie.title);
+    OutputDebugString(newMovie->title);
 
     // swap reels
-    outMovie->reel.SwapReels(inMovie);
+    outMovie->reel.SwapReels(newMovie);
+
+    OutputDebugString("\n\nafter swap:\n");
+    OutputDebugString("\n\nloaded:\n");
+    OutputDebugString(outMovie->reel.title);
+    OutputDebugString("\n\nunused:\n");
+    OutputDebugString(newMovie->title);
 
 
-    inMovie.FreeEverything();
+    // newMovie->FreeEverything();
     // outMovie->reel = DeepCopyMovieReel(inMovie);
 
     // temp pointer for the rest of this function

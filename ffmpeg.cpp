@@ -84,22 +84,22 @@ struct MovieReel
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
     }
 
-    void SwapReels(MovieReel bReel)
+    void SwapReels(MovieReel *bReel)
     {
         // MovieReel temp = bReel;
 
         MovieReel temp;
-        temp.vfc = bReel.vfc;
-        temp.afc = bReel.vfc;
-        temp.video = bReel.video;
-        temp.audio = bReel.audio;
-        strcpy(temp.title, bReel.title);
+        temp.vfc = bReel->vfc;
+        temp.afc = bReel->vfc;
+        temp.video = bReel->video;
+        temp.audio = bReel->audio;
+        strcpy(temp.title, bReel->title);
 
-        bReel.vfc = vfc;
-        bReel.afc = vfc;
-        bReel.video = video;
-        bReel.audio = audio;
-        strcpy(bReel.title, title);
+        bReel->vfc = vfc;
+        bReel->afc = vfc;
+        bReel->video = video;
+        bReel->audio = audio;
+        strcpy(bReel->title, title);
 
         vfc = temp.vfc;
         afc = temp.vfc;
