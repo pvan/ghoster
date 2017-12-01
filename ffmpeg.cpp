@@ -512,6 +512,14 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
 {
 
+    // special case to skip text files for now,
+    // ffmpeg likes to eat these up and then our code doesn't know what to do with them
+    if (StringEndsWith(videopath, ".txt") || StringEndsWith(audiopath, ".txt"))
+    {
+        LogError("Any txt file not supported yet.");
+        return false;
+    }
+
     MovieAV file;
 
     file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -528,6 +536,9 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
         LogError(msg);
         return false;
     }
+
+    // todo: need to call avformat_close_input() at some point after avformat_open_input
+    // (when no longer using the file maybe?)
 
     // populate fc->streams
     if (avformat_find_stream_info(file.vfc, 0) < 0 ||
@@ -582,7 +593,6 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     // if neither, this probably isn't a video file
     if (file.video.index == -1 && file.audio.index == -1)
     {
-        MsgBox("tesT");
         LogError("ffmpeg: No audio or video streams in file.");
         return false;
     }
@@ -591,7 +601,6 @@ bool OpenMovieAV(char *videopath, char *audiopath, MovieAV *outMovie)
     // edit: also doesn't work
     if (!file.video.codecContext && !file.audio.codecContext)
     {
-        MsgBox("tesT2");
         LogError("ffmpeg: No audio or video streams in file.");
         return false;
     }

@@ -27,7 +27,11 @@
     [x] menu options
     [ ] positioning/sizing options
 
-[ ] overlay display: play/pause feedback, etc
+[/] overlay display: play/pause feedback, etc
+    [x] basic single messages
+    [ ] icon/bitmaps (esp play/pause)
+    [ ] multiple messages
+    [ ] display scrolling log?
 
 
 [x] load urls with timestamps

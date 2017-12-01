@@ -193,6 +193,32 @@ bool StringBeginsWith(const char *str, const char *front)
     }
     return true;
 }
+// this is case sensitive
+bool StringEndsWith(const char *str, const char *end)
+{
+    int strLen = strlen(str);
+    int endLen = strlen(end);
+    for (int i = 0; i < endLen; i++)
+    {
+        // recall str[len-1] is the last character of the string
+        if (str[(strLen-1)-i] != end[(endLen-1)-i]) return false;
+    }
+    return true;
+}
+bool Test_StringEndsWith()
+{
+    assert(StringEndsWith("test.test.txt", ".txt"));
+    assert(StringEndsWith("test.txt", ".txt"));
+    assert(StringEndsWith("test.txt", "t"));
+    assert(StringEndsWith("test.txt\n", "t\n"));
+    assert(StringEndsWith("test.txt", ""));
+    assert(StringEndsWith("", ""));
+    assert(!StringEndsWith("test.txt", ".txt2"));
+    assert(!StringEndsWith("test.txt2", ".txt"));
+    assert(!StringEndsWith("", "txt"));
+    assert(!StringEndsWith("test.txt\n", ".txt"));
+    return true;
+}
 
 // a simple guess at least
 bool StringIsUrl(const char *path)
@@ -1865,13 +1891,13 @@ int SecondsFromStringTimestamp(char *timestamp)
 
 bool Test_SecondsFromStringTimestamp()
 {
-    if (SecondsFromStringTimestamp("#t=21s1m") != 21+60) return false;
-    if (SecondsFromStringTimestamp("&t=216") != 216) return false;
-    if (SecondsFromStringTimestamp("12") != 12) return false;
-    if (SecondsFromStringTimestamp("12s") != 12) return false;
-    if (SecondsFromStringTimestamp("854s") != 854) return false;
-    if (SecondsFromStringTimestamp("2m14s") != 2*60+14) return false;
-    if (SecondsFromStringTimestamp("3h65m0s") != 3*60*60+65*60+0) return false;
+    assert(SecondsFromStringTimestamp("#t=21s1m") == 21+60);
+    assert(SecondsFromStringTimestamp("&t=216") == 216);
+    assert(SecondsFromStringTimestamp("12") == 12);
+    assert(SecondsFromStringTimestamp("12s") == 12);
+    assert(SecondsFromStringTimestamp("854s") == 854);
+    assert(SecondsFromStringTimestamp("2m14s") == 2*60+14);
+    assert(SecondsFromStringTimestamp("3h65m0s") == 3*60*60+65*60+0);
     return true;
 }
 
@@ -3207,6 +3233,7 @@ int CALLBACK WinMain(
 
 
     assert(Test_SecondsFromStringTimestamp());
+    assert(Test_StringEndsWith());
 
 
     // load icons/bitmaps
