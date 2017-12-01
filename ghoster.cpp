@@ -716,9 +716,31 @@ struct GhosterWindow
 
 
 
+
+    void QueueNewMsg(char *msg, u32 col = 0xff888888)
+    {
+        // todo: transmopgrify here, skip the second buffer
+        // buffer.rawMsg.Set(msg);
+
+        TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
+
+        // message.displayNewMsg = true;
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+    }
+    void ClearCurrentMsg()
+    {
+        QueueNewMsg("", 0x0);  // no message
+        message.msLeftOfMsg = -1;
+    }
+
+
     void LoadNewMovie()
     {
         OutputDebugString("Ready to load new movie...\n");
+
+        ClearCurrentMsg();
+
         message.loadNewMovie = false;
         if (!SetupForNewMovie(message.newMovieToRun, &loaded_video))
         {
@@ -751,18 +773,6 @@ struct GhosterWindow
         system.winWID = wid;
         system.winHEI = hei;
         message.resizeWindowBuffers = true;
-    }
-
-    void QueueNewMsg(char *msg, u32 col = 0xff888888)
-    {
-        // todo: transmopgrify here, skip the second buffer
-        // buffer.rawMsg.Set(msg);
-
-        TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
-
-        // message.displayNewMsg = true;
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
     }
 
     void Init()
@@ -1859,9 +1869,10 @@ bool Test_SecondsFromStringTimestamp()
 
 bool CreateNewMovieFromPath(char *path, RunningMovie *newMovie)
 {
-    // if (!SetupForNewMovie(newMovie->av_movie, newMovie)) return false;
-    global_ghoster.state.bufferingOrLoading = true;
-    global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
+    // try waiting on this until we confirm it's a good path/file
+    // global_ghoster.state.bufferingOrLoading = true;
+    // global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
+    global_ghoster.QueueNewMsg("fetching...", 0xaaaaaaff);
 
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
