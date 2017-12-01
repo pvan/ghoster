@@ -252,7 +252,7 @@ void LogMessage(char *s);
 struct RunningMovie
 {
 
-    MovieAV reel;
+    MovieReel reel;
 
     // better place for these?
     struct SwsContext *sws_context;
@@ -415,7 +415,7 @@ struct AppMessages
     double seekProportion = 0;
 
     bool loadNewMovie = false;
-    // MovieAV newMovieToRun;
+    // MovieReel newMovieToRun;
 
     int startAtSeconds = 0;
 
@@ -671,7 +671,7 @@ void TransmogrifyText(char *src, char *dest)
 }
 
 
-bool SetupForNewMovie(MovieAV movie, RunningMovie *outMovie);
+bool SetupForNewMovie(MovieReel movie, RunningMovie *outMovie);
 
 
 void setWallpaperMode(HWND, bool);
@@ -689,7 +689,7 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
 
     RunningMovie loaded_video;
-    MovieAV next_reel;
+    MovieReel next_reel;
 
     double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
 
@@ -1560,9 +1560,9 @@ void SetTitle(HWND hwnd, char *title)
 }
 
 
-// fill movieAV with data from movie at path
+// fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
+bool LoadMovieReelFromPath(char *path, MovieReel *newMovie, char *outTitle)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
@@ -1601,7 +1601,7 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
     }
     else if (path[1] == ':')
     {
-        // *newMovie = OpenMovieAV(path, path);
+        // *newMovie = OpenMovieReel(path, path);
         if (!newMovie->SetFromPaths(path, path))
         {
             global_ghoster.QueueNewMsg("invalid file", 0x7676eeff);
@@ -1630,14 +1630,16 @@ bool LoadMovieAVFromPath(char *path, MovieAV *newMovie, char *outTitle)
 // todo: peruse this for memory leaks. also: better name!
 
 // make into a moveifile / staticmovie method?
-bool SetupForNewMovie(MovieAV inMovie, RunningMovie *outMovie)
+bool SetupForNewMovie(MovieReel inMovie, RunningMovie *outMovie)
 {
 
     // swap reels
     outMovie->reel.SwapReels(inMovie);
 
-    // outMovie->av_movie = DeepCopyMovieAV(inMovie);
-    MovieAV *movie = &outMovie->reel;
+
+    // temp pointer for the rest of this function
+    MovieReel *movie = &outMovie->reel;
+
 
     // set window size on video source resolution
     if (movie->video.codecContext)
@@ -1826,11 +1828,11 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     char *path = (char*)lpParam;
 
-    // todo: move title into movieAV? rename to movieFile or something?
+    // todo: move title into MovieReel? rename to movieFile or something?
     char *title = global_title_buffer;
 
-    // MovieAV newMovie;
-    if (!LoadMovieAVFromPath(path, &global_ghoster.next_reel, title))
+    // MovieReel newMovie;
+    if (!LoadMovieReelFromPath(path, &global_ghoster.next_reel, title))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -1843,7 +1845,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     SetTitle(global_ghoster.system.window, title);
 
-    // global_ghoster.message.newMovieToRun = DeepCopyMovieAV(newMovie);
+    // global_ghoster.message.newMovieToRun = DeepCopyMovieReel(newMovie);
     global_ghoster.message.loadNewMovie = true;
 
     return 0;

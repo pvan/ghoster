@@ -59,7 +59,9 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 }
 
 
-struct MovieAV
+// basically a ffmpeg static movie info
+// would "MovieSource" be a better name?
+struct MovieReel
 {
     AVFormatContext *vfc = 0;
     AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
@@ -80,9 +82,9 @@ struct MovieAV
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
     }
 
-    void SwapReels(MovieAV newReel)
+    void SwapReels(MovieReel newReel)
     {
-        MovieAV temp = newReel;
+        MovieReel temp = newReel;
 
         newReel.vfc = vfc;
         newReel.afc = vfc;
@@ -106,7 +108,7 @@ struct MovieAV
             return false;
         }
 
-        // MovieAV file;
+        // MovieReel file;
 
         // free current video if exists
         FreeEverything();
@@ -202,9 +204,9 @@ struct MovieAV
 };
 
 // avoid this for now until we get the mem leaks cleaned up
-// MovieAV DeepCopyMovieAV(MovieAV source)
+// MovieReel DeepCopyMovieReel(MovieReel source)
 // {
-//     MovieAV dest;
+//     MovieReel dest;
 //     dest.vfc = source.vfc;
 //     dest.afc = source.afc;
 //     dest.video.index = source.video.index;
