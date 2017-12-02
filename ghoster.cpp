@@ -131,6 +131,27 @@ static HICON global_icon_y4;
 
 
 
+
+int randomInt(int upToAndNotIncluding)
+{
+    // todo: oddly this only-seed-once code is throwing something off
+    // todo: replace with proper randomness anyway (lib?)
+
+    // static bool global_already_seeded_rand = false;
+    // if (!global_already_seeded_rand)
+    // {
+    //     char asdf[123];
+    //     sprintf(asdf,"\n\n\n%i\n\n\n", GetTickCount());
+    //     OutputDebugString(asdf);
+
+        // global_already_seeded_rand = true;
+        srand(GetTickCount());
+    // }
+    return rand() % upToAndNotIncluding;
+}
+
+
+
 char *TEST_FILES[] = {
     "D:/~phil/projects/ghoster/test-vids/tall.mp4",
     "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
@@ -281,6 +302,58 @@ char *RANDOM_ON_LAUNCH[] = {
 
 };
 
+static int *alreadyPlayedRandos = 0;
+static int alreadyPlayedCount = 0;
+bool alreadyPlayed(int index)
+{
+    if (!alreadyPlayedRandos) return false;
+    for (int i = 0; i < alreadyPlayedCount; i++)
+    {
+        if (alreadyPlayedRandos[i] == index)
+            return true;
+    }
+    return false;
+}
+void outputAlreadyPlayedList()
+{
+    if (!alreadyPlayedRandos) return;
+    for (int i = 0; i < alreadyPlayedCount; i++)
+    {
+        char buf[123];
+        sprintf(buf, "\n%i\n", alreadyPlayedRandos[i]);
+        OutputDebugString(buf);
+    }
+}
+int getUnplayedIndex()
+{
+    int randomCount = sizeof(RANDOM_ON_LAUNCH) / sizeof(RANDOM_ON_LAUNCH[0]);
+    if (!alreadyPlayedRandos)
+    {
+        alreadyPlayedRandos = (int*)malloc(sizeof(int) * randomCount);
+    }
+
+    if (alreadyPlayedCount >= randomCount) // we've gone through every video once
+    {
+        // keep our last video so we never get same twice in row
+        alreadyPlayedRandos[0] = alreadyPlayedRandos[alreadyPlayedCount-1];
+        alreadyPlayedCount = 1;
+    }
+
+    // todo: technically unbounded
+    int r = randomInt(randomCount);
+    while (alreadyPlayed(r))
+    {
+        r = randomInt(randomCount);
+    }
+
+    alreadyPlayedRandos[alreadyPlayedCount++] = r;
+
+    // outputAlreadyPlayedList();
+
+    return r;
+}
+
+
 
 // progress bar position
 const int PROGRESS_BAR_H = 22;
@@ -305,6 +378,7 @@ const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 
 // how long to leave messages on screen (including any fade time ATM)
 double MS_TO_DISPLAY_MSG = 3000;
+
 
 
 
@@ -361,25 +435,6 @@ bool StringIsUrl(const char *path)
     if (StringBeginsWith(path, "http")) return true;
     if (StringBeginsWith(path, "www")) return true;
     return false;
-}
-
-
-int randomInt(int upToAndNotIncluding)
-{
-    // todo: oddly this only-seed-once code is throwing something off
-    // todo: replace with proper randomness anyway (lib?)
-
-    // static bool global_already_seeded_rand = false;
-    // if (!global_already_seeded_rand)
-    // {
-    //     char asdf[123];
-    //     sprintf(asdf,"\n\n\n%i\n\n\n", GetTickCount());
-    //     OutputDebugString(asdf);
-
-        // global_already_seeded_rand = true;
-        srand(GetTickCount());
-    // }
-    return rand() % upToAndNotIncluding;
 }
 
 int nearestInt(double in)
@@ -586,6 +641,12 @@ struct AppMessages
     {
         strcpy_s(file_to_load, 1024, path);
         load_new_file = true;
+    }
+
+    void QueuePlayRandom()
+    {
+        int r = getUnplayedIndex();
+        QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
     }
 
 
@@ -2119,6 +2180,7 @@ bool CreateNewMovieFromPath(char *path)
 
 
 
+
 // todo: pass in ghoster app to run here?
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
@@ -2129,20 +2191,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     // LOAD FILE
     if (!global_ghoster.message.load_new_file)
     {
-        int randomCount = sizeof(RANDOM_ON_LAUNCH) / sizeof(RANDOM_ON_LAUNCH[0]);
-
-        char buf[123];
-        sprintf(buf, "\n\ncount: %i\n\n\n", randomCount);
-        OutputDebugString(buf);
-
-        int r = randomInt(randomCount);
-
-        char buf2[123];
-        sprintf(buf2, "\n\nr: %i\n\n\n", r);
-        OutputDebugString(buf2);
-
-        global_ghoster.message.QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
-        // global_ghoster.message.QueueLoadMovie(TEST_FILES[0]);
+        global_ghoster.message.QueuePlayRandom();
     }
 
 
@@ -3219,6 +3268,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
                 global_ghoster.message.QueueLoadMovie(TEST_FILES[wParam - 0x30]);
+            }
+            if (wParam == VK_OEM_3) // ~
+            {
+                global_ghoster.message.QueuePlayRandom();
             }
         } break;
 

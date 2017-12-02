@@ -29,6 +29,7 @@ const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
 #define ID_SEP 1015
 #define ID_ICONMENU 1016
 #define ID_COPYURL 1017
+#define ID_RANDO 1018
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -68,6 +69,7 @@ menuItem menuItems[] =
     {ID_REPEAT       , L"Repeat"                         , &global_ghoster.state.repeat         , 0, 0, 0 },
     {ID_VOLUME       , L"Volume"                         , 0, &global_ghoster.state.volume         , 0, 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
+    {ID_RANDO        , L"Play Random"                    , 0                                    , 0, 0, 0 },
     {ID_PASTE        , L"Paste Clipboard URL Or File"    , 0                                    , 0, 0, 0 },
     {ID_COPYURL      , L"Copy URL Or File To Clipboard"  , 0                                    , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
@@ -254,6 +256,9 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         case ID_WALLPAPER:
             setWallpaperMode(global_ghoster.system.window, !global_ghoster.state.wallpaperMode);
+            break;
+        case ID_RANDO:
+            global_ghoster.message.QueuePlayRandom();
             break;
         // case ID_SEP:
         //     return; // don't close popup
