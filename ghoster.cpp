@@ -146,6 +146,140 @@ char *TEST_FILES[] = {
     "https://www.youtube.com/watch?v=NAvOdjRsOoI"
 };
 
+char *RANDOM_ON_LAUNCH[] = {
+    "https://www.youtube.com/watch?v=RYbe-35_BaA",  // 7-11
+    "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",  // AV sync
+    "https://www.youtube.com/watch?v=tprMEs-zfQA",  // mother of all funk chords
+    "https://www.youtube.com/watch?v=K0uxjdcZWyk",  // AV sync with LR
+    "https://www.youtube.com/watch?v=FI-4HNQg1JI",  // oscar peterson
+    "https://www.youtube.com/watch?v=OJpQgSZ49tk",  // that one vid from prototype dev
+    "https://www.youtube.com/watch?v=dzUNFqOwjfA",  // timelapse
+    "https://www.youtube.com/watch?v=6D-A6CL3Pv8",  // timelapse
+    "https://www.youtube.com/watch?v=Pi8k1lTqrkQ",  // music video
+    "https://www.youtube.com/watch?v=gRAw5wsAKik",  // music video
+    "https://www.youtube.com/watch?v=rpWUDU_GEL4",  // little sadie
+    "https://www.youtube.com/watch?v=NVb5GV6lntU",  // psychill mix
+    "https://www.youtube.com/watch?v=8t3XYNxnUBs",  // psychill mix
+    "https://www.youtube.com/watch?v=3WLNhLs5sFg",  // ambient sunrise
+    "https://www.youtube.com/watch?v=P5_GlAOCHyE",  // space
+    "https://www.youtube.com/watch?v=DgPaCWJL7XI",  // deep dream grocery
+    "https://www.youtube.com/watch?v=FFoPYw55C_c",  // pixel music vid
+    "https://www.youtube.com/watch?v=iYUh88gr7DI",  // popeye tangerine dream
+    "https://www.youtube.com/watch?v=9wPb07EPDD4",  // "visual project"
+    "https://www.youtube.com/watch?v=XxfNqvoXRug",  // porches
+    "https://www.youtube.com/watch?v=wA2APi0cTYY",  // satantango
+    "https://www.youtube.com/watch?v=F0O_6nMvqiM",  // yule log
+    "https://www.youtube.com/watch?v=aia3bqQfXNk",  // l'eclisse
+    "https://www.youtube.com/watch?v=UW8tpjJt0xc",  // rabbit hole 2 mix
+    "https://www.youtube.com/watch?v=APmBT96ETJk",  // kiki mix
+    "https://www.youtube.com/watch?v=p_FF-VN7xmg",  // snow day in raleigh
+    "https://www.youtube.com/watch?v=XKDGZ-VWLMg",  // raining in tokyo
+    "https://www.youtube.com/watch?v=_JPa3BNi6l4",  // gondry daft p backwards
+    "https://www.youtube.com/watch?v=kGN0B0WqCgM",  // volare
+    "https://www.youtube.com/watch?v=gZo1BLYcMJ4",  // mario rpg
+    "https://www.youtube.com/watch?v=i53jrrMT6XQ",  // singsingsing reversed
+    "https://www.youtube.com/watch?v=lJJW0dE5GF0",  // queen of the night
+    "https://www.youtube.com/watch?v=EyPyjprGvW0",  // dragon roost
+    "https://www.youtube.com/watch?v=hqXpaTu8UrM",  // gymnopedie take five
+    "https://www.youtube.com/watch?v=qpMIijaTePA",  // samantha fish
+    "https://www.youtube.com/watch?v=CN3-4Z4ae_0",  // wind games
+    "https://www.youtube.com/watch?v=aeEQDtk63H4",  // daft train
+    "https://www.youtube.com/watch?v=pC0HpEq-rb0",  // music video
+    "https://www.youtube.com/watch?v=aB4M9rl8GvM",  // big charade
+    "https://www.youtube.com/watch?v=uieM18rZdHY",  // fox in space
+    "https://www.youtube.com/watch?v=NAh9oLs67Cw&t=60",  // garfield
+    "https://www.youtube.com/watch?v=a9zvWR14KJQ",  // synthwave mix
+    "https://www.youtube.com/watch?v=6gYBXRwsDjY",  // transfiguration
+    // "https://www.youtube.com/watch?v=ggqrEMtA3TU",  // coffee & cig
+    "https://www.youtube.com/watch?v=L8CxZWazgxY",  // cousins?
+    "https://www.youtube.com/watch?v=T6JEW93Ock8",  // somewhere in cali
+    "https://www.youtube.com/watch?v=u1MKUJN7vUk",  // bande a part
+    "https://www.youtube.com/watch?v=69gZRgMcNZo",  // down by law
+    "https://www.youtube.com/watch?v=OQN6Gkv4JRU",  // fallen angels
+    "https://www.youtube.com/watch?v=zdjXoZB-Oc4",  // days of being wild
+    "https://www.youtube.com/watch?v=M1F0lBnsnkE",  // uptown funk hollywood dance supercut
+    "https://www.youtube.com/watch?v=ahoJReiCaPk",  // Hellzapoppin
+    "https://www.youtube.com/watch?v=PVG_QA5stBc",  // dancing at the movies
+    "https://www.youtube.com/watch?v=E-6xk4W6N20",  // disney to madeon
+    "https://www.youtube.com/watch?v=nUWur-T598s",  // brick chase
+    "https://www.youtube.com/watch?v=2jQ-ehu3ZS8",  // strictly ballroom
+    "https://www.youtube.com/watch?v=UUO5WPaIr-s",  // strictly ballroom paso doble
+    "https://www.youtube.com/watch?v=hOZKbOwNGhQ",  // ratcatcher window scene
+    "https://www.youtube.com/watch?v=GTFaOxLlJCA",  // blue cheer
+    "https://www.youtube.com/watch?v=7Z0lNch5qkQ",  // morvern callar scene
+    "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
+    "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car
+    "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
+    "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera
+    "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video
+    "https://www.youtube.com/watch?v=0o9qDBFKmGw",  // my brightest diamond
+    "https://www.youtube.com/watch?v=19r7ctge2lI&t=18",  // birds
+    "https://www.youtube.com/watch?v=hi4pzKvuEQM",  // chet faker
+    "https://www.youtube.com/watch?v=kMyIFrEZtnw",  // raw run
+    "https://www.youtube.com/watch?v=LscksnGO09Q",  // raw run puebla
+    "https://www.youtube.com/watch?v=RjzC1Dgh17A",  // ghostbusters
+    "https://www.youtube.com/watch?v=6KES5UH6fHE",  // peking opera blues
+    "https://www.youtube.com/watch?v=ygI-2F8ApUM",  // brodyquest
+    "https://www.youtube.com/watch?v=ekdLYH04LHQ",  // electric feel cover
+    "https://www.youtube.com/watch?v=ckJVotYWyRQ",  // portico quartet live
+    "https://www.youtube.com/watch?v=GRPw0xGwYNQ",  // smore jazz, tv
+    "https://www.youtube.com/watch?v=Pv-Do30-P8A",  // graffiti timelapse
+    "https://www.youtube.com/watch?v=hE7l6Adoiiw",  // coming from biomed?
+    "https://www.youtube.com/watch?v=Sk_ga0Y_lnM",  // russian dance
+    "https://www.youtube.com/watch?v=voBp8BLU9Gk",  // magenta
+    "https://www.youtube.com/watch?v=HFBjfzsOtx0",  // spaceship ambience
+    "https://www.youtube.com/watch?v=9pVWfzsgLoQ",  // train nordland line
+    "https://www.youtube.com/watch?v=u9a1EQS_9Wo",  // ambient space - alien
+    "https://www.youtube.com/watch?v=m4oZZhpMXP4",  // cathedral mix
+    "https://www.youtube.com/watch?v=6ddO3jPUFpg",  // winter ambient
+    "https://www.youtube.com/watch?v=g9fZ9YZsQ9A",  // uakti live
+    "https://www.youtube.com/watch?v=T9hHKYfXIE0",  // monkees shred
+    "https://www.youtube.com/watch?v=w4x-571JN3Q",  // fake dr levin
+    "https://www.youtube.com/watch?v=Gel58oDnB3c&t=690",  // manups dance party
+    "https://www.youtube.com/watch?v=MLrC7e3vSv8",  // africa toto cover
+    "https://www.youtube.com/watch?v=IBd26L_MWHQ",  // fractal 3d
+    "https://www.youtube.com/watch?v=M21g2rVwlV8",  // ambient guitar live
+    "https://www.youtube.com/watch?v=LI0YmPY1g2E",  // more ambient
+    "https://www.youtube.com/watch?v=kQva3_lBNaY",  // tintinology
+    "https://www.youtube.com/watch?v=lt8rfsm2mUE",  // possibly in michigan
+    "https://www.youtube.com/watch?v=KH4NrUxcsYs",  // how to crush can
+    "https://www.youtube.com/watch?v=SqFu5O-oPmU",  // video games and the human condition
+    "https://www.youtube.com/watch?v=7uUl_aTbOzQ",  // jon blow on deep work // todo: full
+    "https://www.youtube.com/watch?v=YwSZvHqf9qM",  // tangled up in blue live
+    "https://www.youtube.com/watch?v=8pTEmbeENF4",  // bret victor
+    "https://www.youtube.com/watch?v=JQRRnAhmB58",  // dancing in the rain
+    "https://www.youtube.com/watch?v=90TzDXjWTdo",  // daft charleston
+    "https://www.youtube.com/watch?v=SAMEIH2_f1k",  // squash & stretch
+    "https://www.youtube.com/watch?v=hsNKSbTNd5I",  // dakhabrakha tiny desk
+    "https://www.youtube.com/watch?v=o7rpXLdgtEY",  // beirut
+    "https://www.youtube.com/watch?v=CBrj4S24074",  // dragon speech
+    "https://www.youtube.com/watch?v=cDVBtuWkMS8",  // horowitz plays chopin
+    "https://www.youtube.com/watch?v=TNSbRj8sKAs",  // soronprfbs door
+    "https://www.youtube.com/watch?v=5-3r3UAMz48",  // street knights
+    "https://www.youtube.com/watch?v=xuXignAhNpw",  // 1965 chess AP
+    "https://www.youtube.com/watch?v=_5Hr1C62Smk",  // koyaanisqatsi backwards
+    "https://www.youtube.com/watch?v=00jWiadrkTo",  // rocket league
+    "https://www.youtube.com/watch?v=9ZX_XCYokQo",  // glenn gould
+    "https://www.youtube.com/watch?v=04abkYHAbO4",  // art style test
+    "https://www.youtube.com/watch?v=UhHYQTK5RWo",  // libertango live
+    "https://www.youtube.com/watch?v=AXTwB-NftjA",  // kid at wedding
+    "https://www.youtube.com/watch?v=4KzFe50RQkQ",  // wind trees ambient
+    "https://www.youtube.com/watch?v=InbaU387Wl8",  // pepe silvia w/ drums
+    "https://www.youtube.com/watch?v=KgqORthqbuM?t=114",  // raise the dead live
+    "https://www.youtube.com/watch?v=HJD-GeSJ-oY",  // mathnet trial
+    "https://www.youtube.com/watch?v=WJiCUdLBxuI",  // van session 17
+    "https://www.youtube.com/watch?v=63gdelpCp4k",  // love like a sunset
+
+    // "https://vimeo.com/137025856",  // barcelona
+    // "https://vimeo.com/242445221",  // tarkovsky candle (we'll blame the witness for getting the yt version blocked)
+    // "https://vimeo.com/241007433",  // art of flying
+    // "http://www.gdcvault.com/play/1014652/An-Apology-for-Roger",
+    // "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+    // "http://www.myspace.com/video/g4-1/what-39-s-up-cover-jil-is-lucky-fou-du-roi/54341496",
+    // "http://extension765.com/soderblogh/18-raiders",
+    // "http://www.dailymotion.com/video/xxhhuh",  // peking opera blues pt1
+
+};
 
 
 // progress bar position
@@ -229,6 +363,25 @@ bool StringIsUrl(const char *path)
     return false;
 }
 
+
+int randomInt(int upToAndNotIncluding)
+{
+    // todo: oddly this only-seed-once code is throwing something off
+    // todo: replace with proper randomness anyway (lib?)
+
+    // static bool global_already_seeded_rand = false;
+    // if (!global_already_seeded_rand)
+    // {
+    //     char asdf[123];
+    //     sprintf(asdf,"\n\n\n%i\n\n\n", GetTickCount());
+    //     OutputDebugString(asdf);
+
+        // global_already_seeded_rand = true;
+        srand(GetTickCount());
+    // }
+    return rand() % upToAndNotIncluding;
+}
+
 int nearestInt(double in)
 {
     return floor(in + 0.5);
@@ -247,6 +400,8 @@ void LogMessage(char *s);
 #include "sdl.cpp"
 
 #include "timer.cpp"
+
+
 
 
 struct RollingMovie
@@ -1553,8 +1708,8 @@ void SetTitle(HWND hwnd, char *title)
 {
     // system tray hover
     NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
-    assert(strlen(title) < 64);
-    strcpy_s(info.szTip, 64, title); // todo: check length
+    assert(strlen(title) < 256);
+    strcpy_s(info.szTip, 256, title); // todo: check length
     info.hIcon = global_ghoster.system.icon;
     Shell_NotifyIcon(NIM_MODIFY, &info);
 
@@ -1623,7 +1778,10 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
     else
     {
         // MsgBox("not full filepath or url\n");
-        global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
+        char buf[123];
+        sprintf(buf, "invalid path or url\n%s", path);
+        global_ghoster.QueueNewMsg(buf, 0x7676eeff);
+        // global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
         return false;
     }
 
@@ -1970,7 +2128,22 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
     // LOAD FILE
     if (!global_ghoster.message.load_new_file)
-        global_ghoster.message.QueueLoadMovie(TEST_FILES[0]);
+    {
+        int randomCount = sizeof(RANDOM_ON_LAUNCH) / sizeof(RANDOM_ON_LAUNCH[0]);
+
+        char buf[123];
+        sprintf(buf, "\n\ncount: %i\n\n\n", randomCount);
+        OutputDebugString(buf);
+
+        int r = randomInt(randomCount);
+
+        char buf2[123];
+        sprintf(buf2, "\n\nr: %i\n\n\n", r);
+        OutputDebugString(buf2);
+
+        global_ghoster.message.QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
+        // global_ghoster.message.QueueLoadMovie(TEST_FILES[0]);
+    }
 
 
 
@@ -2144,16 +2317,6 @@ HICON GetIconByInt(int i)
     return global_icon_b;
 }
 
-static bool global_already_seeded_rand = false;
-int randomInt(int upToAndNotIncluding)
-{
-    if (!global_already_seeded_rand)
-    {
-        global_already_seeded_rand = true;
-        srand(time(0));
-    }
-    return rand() % upToAndNotIncluding;
-}
 
 HICON RandomIcon()
 {
