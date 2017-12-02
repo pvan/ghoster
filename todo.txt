@@ -1,5 +1,21 @@
 
 
+bugs: 
+
+[ ] single click breaks at some poin, maybe after loading or double clicking
+
+[ ] flickering when resizing introduced after adding overlay
+[ ] when resizing, black bars exist in the new space 
+    (maybe render after resize, or always stretch render buffer to screen?)
+[ ] black bar when loading new video is different size 
+    (window resized before display buffer i guess)
+
+
+todo:
+
+[ ] handle fps, timing etc correctly when no video loaded
+
+
 [ ] narrow down what dlls we actually need?
 
 
@@ -18,28 +34,13 @@
 [ ] load random url vid if internet, otherwise none
 
 
-[x] make loading anim frame rate independent
-
-
-
-[x] test loading urls with no internet
-    -"no video" error response
-
-
-[x] set notification popup and window title to video name
-
-
-
-[x] debug and release build folders?
-
 [ ] alt tab should close the menu probably 
     (doesn't work if highlighting submenu)
 
 
-
 [x] command line options
     [x] menu options
-    [ ] positioning/sizing options
+    [ ] positioning/sizing options [add checkmark when done]
 
 [/] overlay display: play/pause feedback, etc
     [x] basic single messages
@@ -48,14 +49,8 @@
     [ ] display scrolling log?
 
 
-[x] load urls with timestamps
-[x] copy url to clipboard with timestamp
-
-
 [ ] percent bar incorrect when seeking some urls?
     [ ] which?
-
-
 
 
 [/] seems like mem leak on loading files
@@ -159,6 +154,20 @@ if ghost mode forced always on top, should it also be automatically disabled whe
 if we pre-process the file in parallel to display, we could seek much faster on files with spaced out I-frames
 
 
+
+write text on the image directly with ffmpeg?
+
+low vid framerate (eg maybe if audio only),
+things that we check each loop like if mouse leaves window will feel very slow
+their responsiveness is basically frame rate dependent
+
+kind of annoying...
+if we are fullscreen ghost mode transparent and disable ghost mode, 
+trying to click on the task bar will seek somewhere else in the video
+maybe disabling ghost mode should always reset opacity and topmost??
+and should it set our opacity much lower too? i guess not
+
+
 ---instructions-------
 
 to load a file
@@ -214,6 +223,7 @@ d/l / decode loop
 preview random frame when loading while paused
 
 filters!
+pixel shaders, eg splash on click
 
 random a/v mashup
 
