@@ -949,7 +949,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewMsg("Play", 0x5aec5aff);
+            QueueNewMsg("Play", 0x7cec7aff);
         }
         rolling_movie.audio_stopwatch.Start();
         if (rolling_movie.reel.IsAudioAvailable())
@@ -961,7 +961,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewMsg("Pause", 0xee7676ff);
+            QueueNewMsg("Pause", 0xfa8686ff);
         }
         rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
