@@ -171,7 +171,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=RYbe-35_BaA",  // 7-11
     "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",  // AV sync
     "https://www.youtube.com/watch?v=tprMEs-zfQA",  // mother of all funk chords
-    "https://www.youtube.com/watch?v=K0uxjdcZWyk",  // AV sync with LR
+    "https://www.youtube.com/watch?v=K0uxjdcZWyk",  // AV sync with LR  // todo: fails??
     "https://www.youtube.com/watch?v=FI-4HNQg1JI",  // oscar peterson
     "https://www.youtube.com/watch?v=OJpQgSZ49tk",  // that one vid from prototype dev
     "https://www.youtube.com/watch?v=dzUNFqOwjfA",  // timelapse
@@ -300,7 +300,12 @@ char *RANDOM_ON_LAUNCH[] = {
     // "http://extension765.com/soderblogh/18-raiders",
     // "http://www.dailymotion.com/video/xxhhuh",  // peking opera blues pt1
 
+    "https://www.youtube.com/watch?v=-ZggJNsAuIw",  // sleight ride in 7/8
+    "https://www.youtube.com/watch?v=YvI_FNrczzQ",  // vince guaraldi
+    "https://www.youtube.com/watch?v=dNUbEDPWrvw",  // sufjan i'll be home for xmas
+
 };
+static int xmasCount = 3; // how many of the trailing songs in the list are december easter eggs? // todo: generalize
 
 static int *alreadyPlayedRandos = 0;
 static int alreadyPlayedCount = 0;
@@ -314,23 +319,36 @@ bool alreadyPlayed(int index)
     }
     return false;
 }
-void outputAlreadyPlayedList()
-{
-    if (!alreadyPlayedRandos) return;
-    for (int i = 0; i < alreadyPlayedCount; i++)
-    {
-        char buf[123];
-        sprintf(buf, "\n%i\n", alreadyPlayedRandos[i]);
-        OutputDebugString(buf);
-    }
-}
+// void outputAlreadyPlayedList()
+// {
+//     if (!alreadyPlayedRandos) return;
+//     for (int i = 0; i < alreadyPlayedCount; i++)
+//     {
+//         char buf[123];
+//         sprintf(buf, "\n%i\n", alreadyPlayedRandos[i]);
+//         OutputDebugString(buf);
+//     }
+// }
 int getUnplayedIndex()
 {
     int randomCount = sizeof(RANDOM_ON_LAUNCH) / sizeof(RANDOM_ON_LAUNCH[0]);
+
+    // note alloc before we reduce so we always have enough space
     if (!alreadyPlayedRandos)
     {
         alreadyPlayedRandos = (int*)malloc(sizeof(int) * randomCount);
     }
+
+
+    // todo: better way to do this
+    // drop the xmas songs if not december
+    char month[32];
+    int res = GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, 0, "M", (char*)&month, 32);
+    if (month[1] != '2') // _2 = december
+    {
+        randomCount -= xmasCount;
+    }
+
 
     if (alreadyPlayedCount >= randomCount) // we've gone through every video once
     {
