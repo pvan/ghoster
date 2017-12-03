@@ -302,12 +302,13 @@ void InitOpenGL(HWND window)
 // need to render to fbo to do so?
 void RenderToScreenGL(void *memory, int sWID, int sHEI,
                       int dWID, int dHEI,
-                      int overlayWID, int overlayHEI,
                       HWND window, double dt,
                       bool letterbox, double aspect_ratio,
                       float proportion, bool drawProgressBar, bool drawBuffering,
-                      void *textMemory, double textAlpha)
+                      MessageOverlay overlay1
+                      )
 {
+
     HDC hdc = GetDC(window);
 
 
@@ -417,6 +418,10 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
     }
 
 
+    int overlayWID = overlay1.bitmap.width;
+    int overlayHEI = overlay1.bitmap.height;
+    void *textMemory = overlay1.bitmap.memory;
+    double textAlpha = overlay1.alpha;
 
     if (textAlpha > 0)
     {

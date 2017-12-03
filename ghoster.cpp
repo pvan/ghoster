@@ -1660,20 +1660,13 @@ struct GhosterWindow
                         system.winHEI,
                         // system.winWID,
                         // system.winHEI,
-                        debug_overlay.bitmap.width,
-                        debug_overlay.bitmap.height,
                         destWin,
                         temp_dt,
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
                         rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        debug_overlay.bitmap.memory, debug_overlay.alpha
+                        debug_overlay
                         );
-        // RenderToScreen_FF((void*)rolling_movie.vid_buffer, 960, 720, destWin);
-        // Render_GDI((void*)rolling_movie.vid_buffer, 960, 720, destWin);
-
-        // delete[] textMem;
-
 
 
         // REPEAT
