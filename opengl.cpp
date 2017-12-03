@@ -305,7 +305,8 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
                       HWND window, double dt,
                       bool letterbox, double aspect_ratio,
                       float proportion, bool drawProgressBar, bool drawBuffering,
-                      MessageOverlay overlay1
+                      MessageOverlay overlay1,
+                      MessageOverlay overlay2
                       )
 {
 
@@ -418,37 +419,35 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
     }
 
 
+    // OVERLAY1
     int overlayWID = overlay1.bitmap.width;
     int overlayHEI = overlay1.bitmap.height;
     void *textMemory = overlay1.bitmap.memory;
     double textAlpha = overlay1.alpha;
-
     if (textAlpha > 0)
     {
-    //     char buf[123];
-    //     sprintf(buf, "%u %u %u %u\n",
-    //             ((u8*)textMemory)[0],
-    //             ((u8*)textMemory)[1],
-    //             ((u8*)textMemory)[2],
-    //             ((u8*)textMemory)[3]);
-    //     OutputDebugString(buf);
-
         glViewport(0, 0, dWID, dHEI);
         glUniform1f(alpha_loc, textAlpha);
-
-
-        // // this also causes flicker, unless alpha is max
-        // u32 red = 0xaaff0000;
-        // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 1, 1, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, &red);
-
-        // this definitely seems to be the cause of the flicker
-        // but it also goes away if textAlpha is max
-        // or if we take out our main glDrawArrays above
-        // hmmm...
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+            check_gl_error("glTexImage2D overlay1");
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    }
 
-            check_gl_error("glTexImage2D");
-        // glUniform1i(tex_loc, 0);   // texture id of 0
+    // OVERLAY2
+    overlayWID = overlay2.bitmap.width;
+    overlayHEI = overlay2.bitmap.height;
+    textMemory = overlay2.bitmap.memory;
+    textAlpha = overlay2.alpha;
+    // int overlayWID = overlay2.bitmap.width;
+    // int overlayHEI = overlay2.bitmap.height;
+    // void *textMemory = overlay2.bitmap.memory;
+    // double textAlpha = overlay2.alpha;
+    if (textAlpha > 0)
+    {
+        glViewport(0, 0, dWID, dHEI);
+        glUniform1f(alpha_loc, textAlpha);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+            check_gl_error("glTexImage2D overlay2");
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 

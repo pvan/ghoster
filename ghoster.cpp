@@ -246,7 +246,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=voBp8BLU9Gk",  // magenta
     "https://www.youtube.com/watch?v=HFBjfzsOtx0",  // spaceship ambience
     "https://www.youtube.com/watch?v=9pVWfzsgLoQ",  // train nordland line
-    "https://www.youtube.com/watch?v=u9a1EQS_9Wo",  // ambient space - alien
+    "https://www.youtube.com/watch?v=u9a1EQS_9Wo",  // ambient space, alien  // todo: cut?
     "https://www.youtube.com/watch?v=m4oZZhpMXP4",  // cathedral mix
     "https://www.youtube.com/watch?v=6ddO3jPUFpg",  // winter ambient
     "https://www.youtube.com/watch?v=g9fZ9YZsQ9A",  // uakti live
@@ -780,7 +780,6 @@ struct AppColorBuffer
 
     void SetFromText(HWND win, char *text, int fontSize, Color col, Color bkCol, bool center)
     {
-
         int wid = width;
         int hei = height;
 
@@ -815,6 +814,7 @@ struct AppColorBuffer
         ReleaseDC(win, hdc);
 
 
+        u8 bkAlpha = bkCol.a;
 
         // one idea
         // but we need to solve the stretching issue as well,
@@ -829,16 +829,14 @@ struct AppColorBuffer
                 u8 *a = textMem + ((wid*y)+x)*4 + 3;
 
                 *a = 255;
-                // *a = 125;
 
-                // now trying alpha from black
-                // these are pretty much all terrible but min is the least bad
+                // todo: not quite right under new system i think
                 *a = min(min(*r, *g), *b);
 
                 if (*r == bkCol.r &&
                     *g == bkCol.g &&
                     *b == bkCol.b)
-                    *a = 0;
+                    *a = bkAlpha;
             }
         }
 
@@ -1157,7 +1155,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewMsg("Play", 0x7cec7aff);
+            QueueNewSplash("Play", 0x7cec7aff);
         }
         rolling_movie.audio_stopwatch.Start();
         if (rolling_movie.reel.IsAudioAvailable())
@@ -1169,7 +1167,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewMsg("Pause", 0xfa8686ff);
+            QueueNewSplash("Pause", 0xfa8686ff);
         }
         rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
@@ -1208,8 +1206,8 @@ struct GhosterWindow
         sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        message.splashBackgroundCol.hex = col;
+        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
     {
@@ -1217,8 +1215,8 @@ struct GhosterWindow
         sprintf(buf, "%s: %f\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        message.splashBackgroundCol.hex = col;
+        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
     {
@@ -1226,14 +1224,14 @@ struct GhosterWindow
         sprintf(buf, "%s: %i\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        message.splashBackgroundCol.hex = col;
+        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
         AddToScrollingDisplay(msg, debug_overlay.text.memory);
-        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        message.splashBackgroundCol.hex = col;
+        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
     }
 
     void QueueNewSplash(char *msg, u32 col = 0xff888888)
@@ -1358,6 +1356,7 @@ struct GhosterWindow
         {
             message.resizeWindowBuffers = false;
             debug_overlay.Resize(system.winWID, system.winHEI);
+            splash_overlay.Resize(system.winWID, system.winHEI);
         }
 
 
@@ -1628,23 +1627,19 @@ struct GhosterWindow
 
 
 
-        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.splashBackgroundCol, false);
+        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, {0x00000000}, false);
 
         if (state.displayDebugText) debug_overlay.alpha = 1;
         else debug_overlay.alpha = 0;
 
 
         splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
-
-        // static double t = 0;
-        // t += temp_dt;
-        // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
-        double textAlpha = 0;
-        double maxA = 0.65; // implicit min of 0
-        // textAlpha = lerp(maxA, minA, message.msLeftOfSplash / MS_TO_DISPLAY_MSG);
+        splash_overlay.alpha = 0;
         if (message.msLeftOfSplash > 0)
         {
-            textAlpha = ((-cos(message.msLeftOfSplash*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+            message.msLeftOfSplash -= temp_dt;
+            double maxA = 0.65; // implicit min of 0
+            splash_overlay.alpha = ((-cos(message.msLeftOfSplash*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
         }
 
 
@@ -1668,7 +1663,8 @@ struct GhosterWindow
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
                         rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        debug_overlay
+                        debug_overlay,
+                        splash_overlay
                         );
 
 
