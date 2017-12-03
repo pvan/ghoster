@@ -544,12 +544,13 @@ struct AppSystemState
 
     HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
 
-    bool contextMenuOpen;
 
 
     bool fullscreen = false;  // could be in app state maybe
     WINDOWPLACEMENT last_win_pos;
 
+
+    bool contextMenuOpen;
 
 
     // mouse state
@@ -985,13 +986,20 @@ void TransmogrifyText(char *src, char *dest)
 }
 
 
-const int MAX_MSGS = 10;
+const int MAX_MSGS = 15;
 int msgCount = 0;
+void ClearScrollingDisplay(char *allMsgs)
+{
+    msgCount = 0;
+    allMsgs[0] = '\0';
+}
 void AddToScrollingDisplay(char *newMsg, char *allMsgs)
 {
     char *temp = (char*)malloc(1024*5); // todo same as init
 
-    if (msgCount >= MAX_MSGS)
+    msgCount++;
+
+    if (msgCount > MAX_MSGS)
     {
         char *secondLine = allMsgs;
         while (1)
@@ -1012,12 +1020,16 @@ void AddToScrollingDisplay(char *newMsg, char *allMsgs)
 
     int len = strlen(allMsgs);
     char *end = allMsgs; while(*end) end++;
-    *end = '\n'; // convert old null terminator to newline
-    end++; // start copying after that
+    if (end != allMsgs) // not empty
+    {
+        if (*(end-1) == '\n') end--; // use existing \n if there
+        else *end = '\n'; // convert old null terminator to newline
+        end++; // start copying after that
+    }
     // memcpy(end, newMsg, strlen(newMsg));
     strcpy(end, newMsg);
 
-    msgCount++;
+    free(temp);
 
 }
 
@@ -1094,7 +1106,39 @@ struct GhosterWindow
     }
 
 
+    void EmptyMsgQueue()
+    {
+        ClearScrollingDisplay(buffer.msg.memory);
+        // buffer.msg.memory[0] = '\0';
+        // msgCount = 0;
+    }
+    void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
+    {
+        char buf[123];
+        sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
+        AddToScrollingDisplay(buf, buffer.msg.memory);
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+    }
+    void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
+    {
+        char buf[123];
+        sprintf(buf, "%s: %f\n", msg, val);
+
+        AddToScrollingDisplay(buf, buffer.msg.memory);
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+    }
+    void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
+    {
+        char buf[123];
+        sprintf(buf, "%s: %i\n", msg, val);
+
+        AddToScrollingDisplay(buf, buffer.msg.memory);
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+    }
 
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
@@ -1193,6 +1237,20 @@ struct GhosterWindow
         // replace this with the-one-dt-to-rule-them-all, maybe from app_timer
         double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
         msLastFrame = state.app_timer.MsSinceStart();
+
+
+
+
+        EmptyMsgQueue();
+        QueueNewMsg(system.contextMenuOpen, "sytem.contextMenuOpen");
+        QueueNewMsg(system.mDownPoint, "sytem.mDownPoint");
+        QueueNewMsg(system.mDown, "sytem.mDown");
+        QueueNewMsg(system.ctrlDown, "sytem.ctrlDown");
+        QueueNewMsg(system.clickingOnProgressBar, "sytem.clickingOnProgressBar");
+        QueueNewMsg(system.mouseHasMovedSinceDownL, "sytem.mouseHasMovedSinceDownL");
+        QueueNewMsg(system.msOfLastMouseMove, "sytem.msOfLastMouseMove");
+        QueueNewMsg(" ");
+
 
 
         if (message.resizeWindowBuffers ||
