@@ -603,7 +603,7 @@ HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
     return bitmap;
 }
 
-void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
+void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref, bool center)
 {
 
     int destW = destRect.right - destRect.left;
@@ -627,9 +627,8 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fon
 
                 HFONT oldFont = (HFONT)SelectObject(memDC, font);
 
-                    UINT format = DT_CENTER|DT_TOP|DT_WORDBREAK;
-                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = 0;
+                    UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    if (center) format = DT_CENTER|DT_TOP|DT_WORDBREAK;
 
                     RECT testRect = destRect;
                     int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
@@ -779,7 +778,7 @@ struct AppColorBuffer
         assert(memory); //todo for now
     }
 
-    void SetFromText(HWND win, char *text, int fontSize, Color col, Color bkCol)
+    void SetFromText(HWND win, char *text, int fontSize, Color col, Color bkCol, bool center)
     {
 
         int wid = width;
@@ -788,12 +787,7 @@ struct AppColorBuffer
         HDC hdc = GetDC(win);
             HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(bkCol.r, bkCol.g, bkCol.b));
 
-                // if (message.msLeftOfMsg > 0)
-                // {
-                //     // message.msLeftOfMsg -= temp_dt;
-                //     // PutTextOnBitmap(hdc, hBitmap, debug_overlay.text.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
-                    PutTextOnBitmap2(hdc, hBitmap, text, {0,0,wid,hei}, fontSize, RGB(col.r, col.g, col.b));
-                // }
+                PutTextOnBitmap(hdc, hBitmap, text, {0,0,wid,hei}, fontSize, RGB(col.r, col.g, col.b), center);
 
                 BITMAPINFO bmi = {0};
                 bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
@@ -1235,27 +1229,33 @@ struct GhosterWindow
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
     }
-
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
-        // // todo: transmopgrify here, skip the second buffer
-        // // buffer.rawMsg.Set(msg);
-
-        // TransmogrifyText(msg, debug_overlay.text.memory); // todo: check length somehow hmm...
-
-        // // message.displayNewMsg = true;
-        // message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        // message.msgBackgroundCol.hex = col;
-
-
         AddToScrollingDisplay(msg, debug_overlay.text.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
+    }
+
+    void QueueNewSplash(char *msg, u32 col = 0xff888888)
+    {
+        // todo: transmopgrify here, skip the second buffer
+        // buffer.rawMsg.Set(msg);
+
+        TransmogrifyText(msg, debug_overlay.text.memory); // todo: check length somehow hmm...
+
+        // message.displayNewMsg = true;
+        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        message.msgBackgroundCol.hex = col;
+
+
+        // AddToScrollingDisplay(msg, debug_overlay.text.memory);
+        // message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        // message.msgBackgroundCol.hex = col;
 
     }
     void ClearCurrentMsg()
     {
-        QueueNewMsg("", 0x0);  // no message
+        QueueNewSplash("", 0x0);  // no message
         message.msLeftOfMsg = -1;
     }
 
@@ -1628,10 +1628,13 @@ struct GhosterWindow
 
 
 
-        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.msgBackgroundCol);
+        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.msgBackgroundCol, false);
 
         if (state.displayDebugText) debug_overlay.alpha = 1;
         else debug_overlay.alpha = 0;
+
+
+        //msg_overlay.bitmap.SetFromText
 
         // // static double t = 0;
         // // t += temp_dt;
