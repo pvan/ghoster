@@ -778,6 +778,78 @@ struct AppColorBuffer
         memory = (u8*)malloc(width * height * sizeof(u32));
         assert(memory); //todo for now
     }
+
+    void SetFromText(HWND win, char *text, int fontSize, Color col, Color bkCol)
+    {
+
+        int wid = width;
+        int hei = height;
+
+        HDC hdc = GetDC(win);
+            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(bkCol.r, bkCol.g, bkCol.b));
+
+                // if (message.msLeftOfMsg > 0)
+                // {
+                //     // message.msLeftOfMsg -= temp_dt;
+                //     // PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
+                    PutTextOnBitmap2(hdc, hBitmap, text, {0,0,wid,hei}, fontSize, RGB(col.r, col.g, col.b));
+                // }
+
+                BITMAPINFO bmi = {0};
+                bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
+
+                // Get the BITMAPINFO structure from the bitmap
+                if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &bmi, DIB_RGB_COLORS)) {
+                    OutputDebugString("GetDIBits error1\n");
+                }
+
+                // create the bitmap buffer
+                // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
+                u8 *textMem = memory;
+
+                // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
+                // necessary to read the color table - you might not want this.
+                bmi.bmiHeader.biCompression = BI_RGB;
+                bmi.bmiHeader.biHeight *= -1;
+
+                // get the actual bitmap buffer
+                if(0 == GetDIBits(hdc, hBitmap, 0, -bmi.bmiHeader.biHeight, (LPVOID)textMem, &bmi, DIB_RGB_COLORS)) {
+                    OutputDebugString("GetDIBits error2\n");
+                }
+
+            DeleteObject(hBitmap);
+        ReleaseDC(win, hdc);
+
+
+
+        // one idea
+        // but we need to solve the stretching issue as well,
+        // maybe a different solution will catch both
+        for (int x = 0; x < wid; x++)
+        {
+            for (int y = 0; y < hei; y++)
+            {
+                u8 *b = textMem + ((wid*y)+x)*4 + 0;
+                u8 *g = textMem + ((wid*y)+x)*4 + 1;
+                u8 *r = textMem + ((wid*y)+x)*4 + 2;
+                u8 *a = textMem + ((wid*y)+x)*4 + 3;
+
+                *a = 255;
+                // *a = 125;
+
+                // now trying alpha from black
+                // these are pretty much all terrible but min is the least bad
+                *a = min(min(*r, *g), *b);
+
+                if (*r == bkCol.r &&
+                    *g == bkCol.g &&
+                    *b == bkCol.b)
+                    *a = 0;
+            }
+        }
+
+
+    }
 };
 
 
@@ -1533,96 +1605,7 @@ struct GhosterWindow
 
 
 
-        int wid = buffer.overlay.width;
-        int hei = buffer.overlay.height;
-        // int wid = system.winWID;
-        // int hei = system.winHEI;
-        // winRect;
-        // GetWindowRect(system.window, &winRect);
-        // int wid = winRect.right - winRect.left;
-        // int hei = winRect.bottom - winRect.top;
-
-        HDC hdc = GetDC(system.window);
-            Color col = message.msgBackgroundCol;
-            HBITMAP hBitmap = CreateSolidColorBitmap(hdc, wid, hei, RGB(col.r, col.g, col.b));
-
-                if (message.msLeftOfMsg > 0)
-                {
-                    // message.msLeftOfMsg -= temp_dt;
-                    // PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
-                    PutTextOnBitmap2(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 20, RGB(255, 255, 255));
-                }
-
-                BITMAPINFO bmi = {0};
-                bmi.bmiHeader.biSize = sizeof(bmi.bmiHeader);
-
-                // Get the BITMAPINFO structure from the bitmap
-                if(0 == GetDIBits(hdc, hBitmap, 0, 0, NULL, &bmi, DIB_RGB_COLORS)) {
-                    OutputDebugString("GetDIBits error1\n");
-                }
-
-                // create the bitmap buffer
-                // BYTE* textMem = new BYTE[bmi.bmiHeader.biSizeImage];
-                u8 *textMem = buffer.overlay.memory;
-
-                // Better do this here - the original bitmap might have BI_BITFILEDS, which makes it
-                // necessary to read the color table - you might not want this.
-                bmi.bmiHeader.biCompression = BI_RGB;
-                bmi.bmiHeader.biHeight *= -1;
-
-                // get the actual bitmap buffer
-                if(0 == GetDIBits(hdc, hBitmap, 0, -bmi.bmiHeader.biHeight, (LPVOID)textMem, &bmi, DIB_RGB_COLORS)) {
-                    OutputDebugString("GetDIBits error2\n");
-                }
-
-            DeleteObject(hBitmap);
-        ReleaseDC(system.window, hdc);
-
-
-
-        // one idea
-        // but we need to solve the stretching issue as well,
-        // maybe a different solution will catch both
-        for (int x = 0; x < wid; x++)
-        {
-            for (int y = 0; y < hei; y++)
-            {
-                u8 *b = textMem + ((wid*y)+x)*4 + 0;
-                u8 *g = textMem + ((wid*y)+x)*4 + 1;
-                u8 *r = textMem + ((wid*y)+x)*4 + 2;
-                u8 *a = textMem + ((wid*y)+x)*4 + 3;
-
-                // if we start with all white,
-                // the amount off black we are should be our alpha right?
-                // edit: unfortunately it doesn't work since we
-                // get uneven color for subpixel accuracy or some other text rendering reason
-                // *a = 255-*r;
-
-                // ok so try alpha from most white value
-                // edit: better but still have up some weird edges
-                // *a = min(min(255-*r, 255-*g), 255-*b);
-
-                *a = 255;
-                // *a = 125;
-
-                // now trying alpha from black
-                // these are pretty much all terrible but min is the least bad
-                *a = min(min(*r, *g), *b);
-                // *a = max(max(*r, *g), *b);
-                // *a = (*r + *g + *b)/3.0;
-
-                // u8 average = (*r + *g + *b)/3.0;
-                // *r = average;
-                // *g = average;
-                // *b = average;
-                // *a = average;
-
-                if (*r == col.r &&
-                    *g == col.g &&
-                    *b == col.b)
-                    *a = 0;
-            }
-        }
+        buffer.overlay.SetFromText(system.window, buffer.msg.memory, 20, {0xffffffff}, message.msgBackgroundCol);
 
 
 double textAlpha = 1;
@@ -1661,7 +1644,7 @@ double textAlpha = 1;
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
                         rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        textMem, textAlpha
+                        buffer.overlay.memory, textAlpha
                         );
         // RenderToScreen_FF((void*)rolling_movie.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)rolling_movie.vid_buffer, 960, 720, destWin);
