@@ -140,10 +140,6 @@ int randomInt(int upToAndNotIncluding)
     // static bool global_already_seeded_rand = false;
     // if (!global_already_seeded_rand)
     // {
-    //     char asdf[123];
-    //     sprintf(asdf,"\n\n\n%i\n\n\n", GetTickCount());
-    //     OutputDebugString(asdf);
-
         // global_already_seeded_rand = true;
         srand(GetTickCount());
     // }
@@ -231,7 +227,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
     "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car
     "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
-    "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera
+    "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // todo: fail?
     "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video
     "https://www.youtube.com/watch?v=0o9qDBFKmGw",  // my brightest diamond
     "https://www.youtube.com/watch?v=19r7ctge2lI&t=18",  // birds
@@ -897,6 +893,79 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fon
     DeleteDC(memDC);
 }
 
+// only difference is left justifiy and shrink to make room for scrolling text
+void PutTextOnBitmap2(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
+{
+
+    int destW = destRect.right - destRect.left;
+    int destH = destRect.bottom - destRect.top;
+    int x = destW / 2.0;
+    int y = destH / 2.0;
+
+    // create a device context for the skin
+    HDC memDC = CreateCompatibleDC(hdc);
+
+        // select the skin bitmap
+        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+
+            SetTextColor(memDC, cref);
+            SetBkMode(memDC, TRANSPARENT);
+
+            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
+            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+
+                HFONT oldFont = (HFONT)SelectObject(memDC, font);
+
+                    UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = 0;
+
+                    RECT testRect = destRect;
+                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                    int testW = testRect.right-testRect.left;
+                    while (testW > destW && fontSize >= 6)
+                    {
+                        char buf[321];
+                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
+                        OutputDebugString(buf);
+
+                        fontSize -= 2;
+
+                        // reset our font so we can re-create it smaller
+                        SelectObject(memDC, oldFont);
+                        DeleteObject(font);
+
+                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+                        // new smaller font
+                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+                        oldFont = (HFONT)SelectObject(memDC, font);
+
+                        testRect = destRect;
+                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                        testW = testRect.right-testRect.left;
+                    }
+
+                    OutputDebugString("\n");
+
+                    destRect.top = y - textH/2.0;  // center vertically
+                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
+                    DrawText(memDC, text, -1, &destRect, format);
+
+                    // view rect
+                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
+                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
+
+                SelectObject(memDC, oldFont);
+            DeleteObject(font);
+
+        SelectObject(memDC, oldBitmap);
+
+    DeleteDC(memDC);
+}
+
 
 
 void TransmogrifyText(char *src, char *dest)
@@ -913,6 +982,43 @@ void TransmogrifyText(char *src, char *dest)
     }
     dest--; // override that last space
     *dest = '\0';
+}
+
+
+const int MAX_MSGS = 10;
+int msgCount = 0;
+void AddToScrollingDisplay(char *newMsg, char *allMsgs)
+{
+    char *temp = (char*)malloc(1024*5); // todo same as init
+
+    if (msgCount >= MAX_MSGS)
+    {
+        char *secondLine = allMsgs;
+        while (1)
+        {
+            assert(*secondLine); // should be at least one \n if we reached max msgs
+            if (*secondLine == '\n')
+            {
+                secondLine++;
+                break;
+            }
+
+            secondLine++;
+        }
+
+        strcpy(temp, secondLine);
+        strcpy(allMsgs, temp);
+    }
+
+    int len = strlen(allMsgs);
+    char *end = allMsgs; while(*end) end++;
+    *end = '\n'; // convert old null terminator to newline
+    end++; // start copying after that
+    // memcpy(end, newMsg, strlen(newMsg));
+    strcpy(end, newMsg);
+
+    msgCount++;
+
 }
 
 
@@ -992,14 +1098,20 @@ struct GhosterWindow
 
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
-        // todo: transmopgrify here, skip the second buffer
-        // buffer.rawMsg.Set(msg);
+        // // todo: transmopgrify here, skip the second buffer
+        // // buffer.rawMsg.Set(msg);
 
-        TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
+        // TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
 
-        // message.displayNewMsg = true;
+        // // message.displayNewMsg = true;
+        // message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
+        // message.msgBackgroundCol.hex = col;
+
+
+        AddToScrollingDisplay(msg, buffer.msg.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
+
     }
     void ClearCurrentMsg()
     {
@@ -1053,7 +1165,7 @@ struct GhosterWindow
         state.app_timer.Start();  // now started in ghoster.init
 
 
-        buffer.msg.Allocate(1024); // todo: some big length // todo: add length checks during usage
+        buffer.msg.Allocate(1024*5); // todo: some big length // todo: add length checks during usage
 
 
         // todo: move this to ghoster app
@@ -1375,8 +1487,9 @@ struct GhosterWindow
 
                 if (message.msLeftOfMsg > 0)
                 {
-                    message.msLeftOfMsg -= temp_dt;
-                    PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
+                    // message.msLeftOfMsg -= temp_dt;
+                    // PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
+                    PutTextOnBitmap2(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 20, RGB(255, 255, 255));
                 }
 
                 BITMAPINFO bmi = {0};
@@ -1433,7 +1546,7 @@ struct GhosterWindow
 
                 // now trying alpha from black
                 // these are pretty much all terrible but min is the least bad
-                // *a = min(min(*r, *g), *b);
+                *a = min(min(*r, *g), *b);
                 // *a = max(max(*r, *g), *b);
                 // *a = (*r + *g + *b)/3.0;
 
@@ -1442,22 +1555,27 @@ struct GhosterWindow
                 // *g = average;
                 // *b = average;
                 // *a = average;
+
+                if (*r == col.r &&
+                    *g == col.g &&
+                    *b == col.b)
+                    *a = 0;
             }
         }
 
 
+double textAlpha = 1;
 
-
-        // static double t = 0;
-        // t += temp_dt;
-        // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
-        double textAlpha = 0;
-        double maxA = 0.65; // implicit min of 0
-        // textAlpha = lerp(maxA, minA, message.msLeftOfMsg / MS_TO_DISPLAY_MSG);
-        if (message.msLeftOfMsg > 0)
-        {
-            textAlpha = ((-cos(message.msLeftOfMsg*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
-        }
+        // // static double t = 0;
+        // // t += temp_dt;
+        // // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
+        // double textAlpha = 0;
+        // double maxA = 0.65; // implicit min of 0
+        // // textAlpha = lerp(maxA, minA, message.msLeftOfMsg / MS_TO_DISPLAY_MSG);
+        // if (message.msLeftOfMsg > 0)
+        // {
+        //     textAlpha = ((-cos(message.msLeftOfMsg*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+        // }
 
 
 

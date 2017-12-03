@@ -233,3 +233,5 @@ green screen masking type functionality?
 
 if no video, visualize audio
 
+face detection googly eyes? no, that's taking it too far
+
