@@ -791,7 +791,7 @@ struct AppColorBuffer
                 // if (message.msLeftOfMsg > 0)
                 // {
                 //     // message.msLeftOfMsg -= temp_dt;
-                //     // PutTextOnBitmap(hdc, hBitmap, buffer.msg.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
+                //     // PutTextOnBitmap(hdc, hBitmap, debug_overlay.text.memory, {0,0,wid,hei}, 36, RGB(255, 255, 255));
                     PutTextOnBitmap2(hdc, hBitmap, text, {0,0,wid,hei}, fontSize, RGB(col.r, col.g, col.b));
                 // }
 
@@ -874,10 +874,26 @@ struct AppTextBuffer
     // }
 };
 
+struct MessageOverlay
+{
+    AppColorBuffer bitmap;
+    AppTextBuffer text;
+
+    void Allocate(int wid, int hei, int textLength)
+    {
+        bitmap.Allocate(wid, hei);
+        text.Allocate(textLength);
+    }
+    void Resize(int wid, int hei)
+    {
+        bitmap.Allocate(wid, hei); // color buffer handles its own freeing
+    }
+};
+
 struct AppBuffers
 {
-    AppColorBuffer overlay;
-    AppTextBuffer msg;
+    // AppColorBuffer overlay;
+    // AppTextBuffer msg;
     //AppTextBuffer rawMsg;
 };
 
@@ -1138,6 +1154,10 @@ struct GhosterWindow
     AppMessages message;
 
 
+    MessageOverlay debug_overlay;
+    MessageOverlay msg_overlay;
+
+
     void appPlay(bool userRequest = true)
     {
         if (userRequest)
@@ -1183,8 +1203,8 @@ struct GhosterWindow
 
     void EmptyMsgQueue()
     {
-        ClearScrollingDisplay(buffer.msg.memory);
-        // buffer.msg.memory[0] = '\0';
+        ClearScrollingDisplay(debug_overlay.text.memory);
+        // debug_overlay.text.memory[0] = '\0';
         // msgCount = 0;
     }
     void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
@@ -1192,7 +1212,7 @@ struct GhosterWindow
         char buf[123];
         sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
-        AddToScrollingDisplay(buf, buffer.msg.memory);
+        AddToScrollingDisplay(buf, debug_overlay.text.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
     }
@@ -1201,7 +1221,7 @@ struct GhosterWindow
         char buf[123];
         sprintf(buf, "%s: %f\n", msg, val);
 
-        AddToScrollingDisplay(buf, buffer.msg.memory);
+        AddToScrollingDisplay(buf, debug_overlay.text.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
     }
@@ -1210,7 +1230,7 @@ struct GhosterWindow
         char buf[123];
         sprintf(buf, "%s: %i\n", msg, val);
 
-        AddToScrollingDisplay(buf, buffer.msg.memory);
+        AddToScrollingDisplay(buf, debug_overlay.text.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
     }
@@ -1220,14 +1240,14 @@ struct GhosterWindow
         // // todo: transmopgrify here, skip the second buffer
         // // buffer.rawMsg.Set(msg);
 
-        // TransmogrifyText(msg, buffer.msg.memory); // todo: check length somehow hmm...
+        // TransmogrifyText(msg, debug_overlay.text.memory); // todo: check length somehow hmm...
 
         // // message.displayNewMsg = true;
         // message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         // message.msgBackgroundCol.hex = col;
 
 
-        AddToScrollingDisplay(msg, buffer.msg.memory);
+        AddToScrollingDisplay(msg, debug_overlay.text.memory);
         message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
         message.msgBackgroundCol.hex = col;
 
@@ -1284,7 +1304,9 @@ struct GhosterWindow
         state.app_timer.Start();  // now started in ghoster.init
 
 
-        buffer.msg.Allocate(1024*5); // todo: some big length // todo: add length checks during usage
+
+        debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
+        msg_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
 
 
         // todo: move this to ghoster app
@@ -1329,12 +1351,12 @@ struct GhosterWindow
 
 
         if (message.resizeWindowBuffers ||
-            system.winWID != buffer.overlay.width ||
-            system.winHEI != buffer.overlay.height
+            system.winWID != debug_overlay.bitmap.width ||
+            system.winHEI != debug_overlay.bitmap.height
             )
         {
             message.resizeWindowBuffers = false;
-            buffer.overlay.Allocate(system.winWID, system.winHEI);
+            debug_overlay.Resize(system.winWID, system.winHEI);
         }
 
 
@@ -1605,7 +1627,7 @@ struct GhosterWindow
 
 
 
-        buffer.overlay.SetFromText(system.window, buffer.msg.memory, 20, {0xffffffff}, message.msgBackgroundCol);
+        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.msgBackgroundCol);
 
 
 double textAlpha = 1;
@@ -1637,14 +1659,14 @@ double textAlpha = 1;
                         system.winHEI,
                         // system.winWID,
                         // system.winHEI,
-                        buffer.overlay.width,
-                        buffer.overlay.height,
+                        debug_overlay.bitmap.width,
+                        debug_overlay.bitmap.height,
                         destWin,
                         temp_dt,
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
                         rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        buffer.overlay.memory, textAlpha
+                        debug_overlay.bitmap.memory, textAlpha
                         );
         // RenderToScreen_FF((void*)rolling_movie.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)rolling_movie.vid_buffer, 960, 720, destWin);
