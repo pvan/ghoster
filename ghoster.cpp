@@ -815,29 +815,30 @@ struct AppColorBuffer
 
         u8 bkAlpha = bkCol.a;
 
-        // one idea
-        // but we need to solve the stretching issue as well,
-        // maybe a different solution will catch both
-        for (int x = 0; x < wid; x++)
-        {
-            for (int y = 0; y < hei; y++)
-            {
-                u8 *b = textMem + ((wid*y)+x)*4 + 0;
-                u8 *g = textMem + ((wid*y)+x)*4 + 1;
-                u8 *r = textMem + ((wid*y)+x)*4 + 2;
-                u8 *a = textMem + ((wid*y)+x)*4 + 3;
+        // too slow fullscreen
+        // // one idea
+        // // but we need to solve the stretching issue as well,
+        // // maybe a different solution will catch both
+        // for (int x = 0; x < wid; x++)
+        // {
+        //     for (int y = 0; y < hei; y++)
+        //     {
+        //         u8 *b = textMem + ((wid*y)+x)*4 + 0;
+        //         u8 *g = textMem + ((wid*y)+x)*4 + 1;
+        //         u8 *r = textMem + ((wid*y)+x)*4 + 2;
+        //         u8 *a = textMem + ((wid*y)+x)*4 + 3;
 
-                *a = 255;
+        //         *a = 255;
 
-                // todo: not quite right under new system i think
-                *a = min(min(*r, *g), *b);
+        //         // todo: not quite right under new system i think
+        //         *a = min(min(*r, *g), *b);
 
-                if (*r == bkCol.r &&
-                    *g == bkCol.g &&
-                    *b == bkCol.b)
-                    *a = bkAlpha;
-            }
-        }
+        //         if (*r == bkCol.r &&
+        //             *g == bkCol.g &&
+        //             *b == bkCol.b)
+        //             *a = bkAlpha;
+        //     }
+        // }
 
 
     }
