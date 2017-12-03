@@ -913,8 +913,8 @@ struct AppMessages
     int startAtSeconds = 0;
 
     bool displayNewMsg = false;
-    double msLeftOfMsg = 0;
-    Color msgBackgroundCol;
+    double msLeftOfSplash = 0;
+    Color splashBackgroundCol;
 
 
 
@@ -1150,7 +1150,7 @@ struct GhosterWindow
 
 
     MessageOverlay debug_overlay;
-    MessageOverlay msg_overlay;
+    MessageOverlay splash_overlay;
 
 
     void appPlay(bool userRequest = true)
@@ -1208,8 +1208,8 @@ struct GhosterWindow
         sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
+        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
     {
@@ -1217,8 +1217,8 @@ struct GhosterWindow
         sprintf(buf, "%s: %f\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
+        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
     {
@@ -1226,14 +1226,14 @@ struct GhosterWindow
         sprintf(buf, "%s: %i\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
+        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
         AddToScrollingDisplay(msg, debug_overlay.text.memory);
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
+        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        message.splashBackgroundCol.hex = col;
     }
 
     void QueueNewSplash(char *msg, u32 col = 0xff888888)
@@ -1241,22 +1241,22 @@ struct GhosterWindow
         // todo: transmopgrify here, skip the second buffer
         // buffer.rawMsg.Set(msg);
 
-        TransmogrifyText(msg, debug_overlay.text.memory); // todo: check length somehow hmm...
+        TransmogrifyText(msg, splash_overlay.text.memory); // todo: check length somehow hmm...
 
         // message.displayNewMsg = true;
-        message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        message.msgBackgroundCol.hex = col;
+        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        message.splashBackgroundCol.hex = col;
 
 
         // AddToScrollingDisplay(msg, debug_overlay.text.memory);
-        // message.msLeftOfMsg = MS_TO_DISPLAY_MSG;
-        // message.msgBackgroundCol.hex = col;
+        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
 
     }
     void ClearCurrentMsg()
     {
         QueueNewSplash("", 0x0);  // no message
-        message.msLeftOfMsg = -1;
+        message.msLeftOfSplash = -1;
     }
 
 
@@ -1307,7 +1307,7 @@ struct GhosterWindow
 
 
         debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
-        msg_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
+        splash_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
 
 
         // todo: move this to ghoster app
@@ -1628,24 +1628,24 @@ struct GhosterWindow
 
 
 
-        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.msgBackgroundCol, false);
+        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.splashBackgroundCol, false);
 
         if (state.displayDebugText) debug_overlay.alpha = 1;
         else debug_overlay.alpha = 0;
 
 
-        //msg_overlay.bitmap.SetFromText
+        splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
 
-        // // static double t = 0;
-        // // t += temp_dt;
-        // // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
-        // double textAlpha = 0;
-        // double maxA = 0.65; // implicit min of 0
-        // // textAlpha = lerp(maxA, minA, message.msLeftOfMsg / MS_TO_DISPLAY_MSG);
-        // if (message.msLeftOfMsg > 0)
-        // {
-        //     textAlpha = ((-cos(message.msLeftOfMsg*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
-        // }
+        // static double t = 0;
+        // t += temp_dt;
+        // double textAlpha = (sin(t*M_PI*2 / 3000) + 1.0)/2.0;
+        double textAlpha = 0;
+        double maxA = 0.65; // implicit min of 0
+        // textAlpha = lerp(maxA, minA, message.msLeftOfSplash / MS_TO_DISPLAY_MSG);
+        if (message.msLeftOfSplash > 0)
+        {
+            textAlpha = ((-cos(message.msLeftOfSplash*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+        }
 
 
 
