@@ -31,7 +31,7 @@ todo:
 [ ] improve video resize quality (compare to vlc eg)
 
 
-[ ] load random url vid if internet, otherwise none
+[x] load random url vid if internet, otherwise none
 
 
 [ ] alt tab should close the menu probably 
@@ -49,7 +49,7 @@ todo:
     [ ] display scrolling log?
 
 
-[ ] percent bar incorrect when seeking some urls?
+[?] percent bar incorrect when seeking some urls?
     [ ] which?
 
 
