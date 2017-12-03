@@ -530,6 +530,8 @@ struct AppState {
 
     bool bufferingOrLoading = true;
 
+    bool displayDebugText = false;
+
 };
 
 
@@ -565,6 +567,203 @@ struct AppSystemState
 };
 
 
+
+struct Color
+{
+    union
+    {
+        u32 hex;
+        struct
+        {
+            u8 a;
+            u8 r;
+            u8 g;
+            u8 b;
+        };
+    };
+};
+
+HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
+{
+    HDC memDC  = CreateCompatibleDC(hdc);
+    HBITMAP bitmap = CreateCompatibleBitmap(hdc, width, height);
+
+    HBRUSH brushFill = CreateSolidBrush(cref);
+    HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+    HBRUSH  oldBrush = (HBRUSH)SelectObject(memDC, brushFill);
+    SelectObject(memDC, GetStockObject(NULL_PEN));
+
+    Rectangle(memDC, 0, 0, width+1, height+1);  // apparently +1s needed
+
+    SelectObject(memDC, oldBrush); // do we really need this if we're destroying the memDC?
+    SelectObject(memDC, oldBitmap);
+    DeleteObject(brushFill);
+    DeleteDC(memDC);
+
+    return bitmap;
+}
+
+void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
+{
+
+    int destW = destRect.right - destRect.left;
+    int destH = destRect.bottom - destRect.top;
+    int x = destW / 2.0;
+    int y = destH / 2.0;
+
+    // create a device context for the skin
+    HDC memDC = CreateCompatibleDC(hdc);
+
+        // select the skin bitmap
+        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+
+            SetTextColor(memDC, cref);
+            SetBkMode(memDC, TRANSPARENT);
+
+            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
+            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+
+                HFONT oldFont = (HFONT)SelectObject(memDC, font);
+
+                    UINT format = DT_CENTER|DT_TOP|DT_WORDBREAK;
+                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = 0;
+
+                    RECT testRect = destRect;
+                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                    int testW = testRect.right-testRect.left;
+                    while (testW > destW && fontSize >= 6)
+                    {
+                        char buf[321];
+                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
+                        OutputDebugString(buf);
+
+                        fontSize -= 2;
+
+                        // reset our font so we can re-create it smaller
+                        SelectObject(memDC, oldFont);
+                        DeleteObject(font);
+
+                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+                        // new smaller font
+                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+                        oldFont = (HFONT)SelectObject(memDC, font);
+
+                        testRect = destRect;
+                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                        testW = testRect.right-testRect.left;
+                    }
+
+                    OutputDebugString("\n");
+
+                    destRect.top = y - textH/2.0;  // center vertically
+                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
+                    DrawText(memDC, text, -1, &destRect, format);
+
+                    // view rect
+                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
+                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
+
+                SelectObject(memDC, oldFont);
+            DeleteObject(font);
+
+        SelectObject(memDC, oldBitmap);
+
+    DeleteDC(memDC);
+}
+
+// only difference is left justifiy and shrink to make room for scrolling text
+void PutTextOnBitmap2(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
+{
+
+    int destW = destRect.right - destRect.left;
+    int destH = destRect.bottom - destRect.top;
+    int x = destW / 2.0;
+    int y = destH / 2.0;
+
+    // create a device context for the skin
+    HDC memDC = CreateCompatibleDC(hdc);
+
+        // select the skin bitmap
+        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
+
+            SetTextColor(memDC, cref);
+            SetBkMode(memDC, TRANSPARENT);
+
+            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
+            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+
+                HFONT oldFont = (HFONT)SelectObject(memDC, font);
+
+                    UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
+                    // UINT format = 0;
+
+                    RECT testRect = destRect;
+                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                    int testW = testRect.right-testRect.left;
+                    while (testW > destW && fontSize >= 6)
+                    {
+                        char buf[321];
+                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
+                        OutputDebugString(buf);
+
+                        fontSize -= 2;
+
+                        // reset our font so we can re-create it smaller
+                        SelectObject(memDC, oldFont);
+                        DeleteObject(font);
+
+                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
+
+                        // new smaller font
+                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
+                        oldFont = (HFONT)SelectObject(memDC, font);
+
+                        testRect = destRect;
+                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
+                        testW = testRect.right-testRect.left;
+                    }
+
+                    OutputDebugString("\n");
+
+                    destRect.top = y - textH/2.0;  // center vertically
+                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
+                    DrawText(memDC, text, -1, &destRect, format);
+
+                    // view rect
+                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
+                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
+
+                SelectObject(memDC, oldFont);
+            DeleteObject(font);
+
+        SelectObject(memDC, oldBitmap);
+
+    DeleteDC(memDC);
+}
+
+void TransmogrifyText(char *src, char *dest)
+{
+    while (*src)
+    {
+        *dest = toupper(*src);
+        dest++;
+        // *dest = ' ';
+        *dest = '\u00A0';  // nbsp
+        dest++;
+
+        src++;
+    }
+    dest--; // override that last space
+    *dest = '\0';
+}
+
 struct AppColorBuffer
 {
     u8 *memory = 0;
@@ -580,6 +779,7 @@ struct AppColorBuffer
         assert(memory); //todo for now
     }
 };
+
 
 struct AppTextBuffer
 {
@@ -607,21 +807,6 @@ struct AppBuffers
     AppColorBuffer overlay;
     AppTextBuffer msg;
     //AppTextBuffer rawMsg;
-};
-
-struct Color
-{
-    union
-    {
-        u32 hex;
-        struct
-        {
-            u8 a;
-            u8 r;
-            u8 g;
-            u8 b;
-        };
-    };
 };
 
 struct AppMessages
@@ -802,188 +987,6 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 
 
 
-HBITMAP CreateSolidColorBitmap(HDC hdc, int width, int height, COLORREF cref)
-{
-    HDC memDC  = CreateCompatibleDC(hdc);
-    HBITMAP bitmap = CreateCompatibleBitmap(hdc, width, height);
-
-    HBRUSH brushFill = CreateSolidBrush(cref);
-    HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
-    HBRUSH  oldBrush = (HBRUSH)SelectObject(memDC, brushFill);
-    SelectObject(memDC, GetStockObject(NULL_PEN));
-
-    Rectangle(memDC, 0, 0, width+1, height+1);  // apparently +1s needed
-
-    SelectObject(memDC, oldBrush); // do we really need this if we're destroying the memDC?
-    SelectObject(memDC, oldBitmap);
-    DeleteObject(brushFill);
-    DeleteDC(memDC);
-
-    return bitmap;
-}
-
-void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
-{
-
-    int destW = destRect.right - destRect.left;
-    int destH = destRect.bottom - destRect.top;
-    int x = destW / 2.0;
-    int y = destH / 2.0;
-
-    // create a device context for the skin
-    HDC memDC = CreateCompatibleDC(hdc);
-
-        // select the skin bitmap
-        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
-
-            SetTextColor(memDC, cref);
-            SetBkMode(memDC, TRANSPARENT);
-
-            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
-            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-
-                HFONT oldFont = (HFONT)SelectObject(memDC, font);
-
-                    UINT format = DT_CENTER|DT_TOP|DT_WORDBREAK;
-                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = 0;
-
-                    RECT testRect = destRect;
-                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                    int testW = testRect.right-testRect.left;
-                    while (testW > destW && fontSize >= 6)
-                    {
-                        char buf[321];
-                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
-                        OutputDebugString(buf);
-
-                        fontSize -= 2;
-
-                        // reset our font so we can re-create it smaller
-                        SelectObject(memDC, oldFont);
-                        DeleteObject(font);
-
-                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-                        // new smaller font
-                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-                        oldFont = (HFONT)SelectObject(memDC, font);
-
-                        testRect = destRect;
-                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                        testW = testRect.right-testRect.left;
-                    }
-
-                    OutputDebugString("\n");
-
-                    destRect.top = y - textH/2.0;  // center vertically
-                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
-                    DrawText(memDC, text, -1, &destRect, format);
-
-                    // view rect
-                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
-                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
-
-                SelectObject(memDC, oldFont);
-            DeleteObject(font);
-
-        SelectObject(memDC, oldBitmap);
-
-    DeleteDC(memDC);
-}
-
-// only difference is left justifiy and shrink to make room for scrolling text
-void PutTextOnBitmap2(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
-{
-
-    int destW = destRect.right - destRect.left;
-    int destH = destRect.bottom - destRect.top;
-    int x = destW / 2.0;
-    int y = destH / 2.0;
-
-    // create a device context for the skin
-    HDC memDC = CreateCompatibleDC(hdc);
-
-        // select the skin bitmap
-        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
-
-            SetTextColor(memDC, cref);
-            SetBkMode(memDC, TRANSPARENT);
-
-            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
-            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-
-                HFONT oldFont = (HFONT)SelectObject(memDC, font);
-
-                    UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = 0;
-
-                    RECT testRect = destRect;
-                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                    int testW = testRect.right-testRect.left;
-                    while (testW > destW && fontSize >= 6)
-                    {
-                        char buf[321];
-                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
-                        OutputDebugString(buf);
-
-                        fontSize -= 2;
-
-                        // reset our font so we can re-create it smaller
-                        SelectObject(memDC, oldFont);
-                        DeleteObject(font);
-
-                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-                        // new smaller font
-                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-                        oldFont = (HFONT)SelectObject(memDC, font);
-
-                        testRect = destRect;
-                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                        testW = testRect.right-testRect.left;
-                    }
-
-                    OutputDebugString("\n");
-
-                    destRect.top = y - textH/2.0;  // center vertically
-                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
-                    DrawText(memDC, text, -1, &destRect, format);
-
-                    // view rect
-                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
-                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
-
-                SelectObject(memDC, oldFont);
-            DeleteObject(font);
-
-        SelectObject(memDC, oldBitmap);
-
-    DeleteDC(memDC);
-}
-
-
-
-void TransmogrifyText(char *src, char *dest)
-{
-    while (*src)
-    {
-        *dest = toupper(*src);
-        dest++;
-        // *dest = ' ';
-        *dest = '\u00A0';  // nbsp
-        dest++;
-
-        src++;
-    }
-    dest--; // override that last space
-    *dest = '\0';
-}
 
 
 const int MAX_MSGS = 15;
@@ -3466,6 +3469,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (wParam == VK_OEM_3) // ~
             {
                 global_ghoster.message.QueuePlayRandom();
+            }
+            if (wParam == VK_TAB)
+            {
+                global_ghoster.state.displayDebugText = !global_ghoster.state.displayDebugText;
             }
         } break;
 
