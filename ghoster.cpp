@@ -878,6 +878,7 @@ struct MessageOverlay
 {
     AppColorBuffer bitmap;
     AppTextBuffer text;
+    float alpha;
 
     void Allocate(int wid, int hei, int textLength)
     {
@@ -1629,8 +1630,8 @@ struct GhosterWindow
 
         debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, message.msgBackgroundCol);
 
-
-double textAlpha = 1;
+        if (state.displayDebugText) debug_overlay.alpha = 1;
+        else debug_overlay.alpha = 0;
 
         // // static double t = 0;
         // // t += temp_dt;
@@ -1666,7 +1667,7 @@ double textAlpha = 1;
                         state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
                         rolling_movie.aspect_ratio,
                         percent, drawProgressBar, state.bufferingOrLoading,
-                        debug_overlay.bitmap.memory, textAlpha
+                        debug_overlay.bitmap.memory, debug_overlay.alpha
                         );
         // RenderToScreen_FF((void*)rolling_movie.vid_buffer, 960, 720, destWin);
         // Render_GDI((void*)rolling_movie.vid_buffer, 960, 720, destWin);
