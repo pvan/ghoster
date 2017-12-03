@@ -504,23 +504,24 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
 
     glViewport(0, 0, dWID, dHEI);
 
-
+    if (overlay1.msLeftOfDisplay > 0)
     {
         GLTtext *text = gltCreateText();
         gltSetText(text, overlay1.text.memory);
 
-        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+        gltColor(1.0f, 1.0f, 1.0f, overlay1.alpha);
         gltDrawText2D(text, 0, 0, 2);
 
         gltDeleteText(text);
     }
 
 
+    if (overlay2.msLeftOfDisplay > 0)
     {
         GLTtext *text = gltCreateText();
         gltSetText(text, overlay2.text.memory);
 
-        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+        gltColor(1.0f, 1.0f, 1.0f, overlay2.alpha);
         gltDrawText2DAligned(text, dWID/2, dHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
         gltDeleteText(text);

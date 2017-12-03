@@ -870,19 +870,34 @@ struct AppTextBuffer
 
 struct MessageOverlay
 {
-    AppColorBuffer bitmap;
+    // AppColorBuffer bitmap;
     AppTextBuffer text;
     float alpha;
 
+    double msLeftOfDisplay = 0;
+    // Color splashBackgroundCol;
+
+    int maxLines = 1;
+
+
     void Allocate(int wid, int hei, int textLength)
     {
-        bitmap.Allocate(wid, hei);
+        // bitmap.Allocate(wid, hei);
         text.Allocate(textLength);
     }
     void Resize(int wid, int hei)
     {
-        bitmap.Allocate(wid, hei); // color buffer handles its own freeing
+        // bitmap.Allocate(wid, hei); // color buffer handles its own freeing
     }
+
+    void QueueNewMsg(char *str)
+    {
+        // todo: move message manip into here?
+        // add update for handling time? (prefer not, any other way? msSince maybe?)
+        // add hard enable toggle?
+    }
+
+
 };
 
 struct AppBuffers
@@ -911,10 +926,6 @@ struct AppMessages
     // MovieReel newMovieToRun;
 
     int startAtSeconds = 0;
-
-    bool displayNewMsg = false;
-    double msLeftOfSplash = 0;
-    Color splashBackgroundCol;
 
 
 
@@ -1243,9 +1254,8 @@ struct GhosterWindow
 
         TransmogrifyText(msg, splash_overlay.text.memory); // todo: check length somehow hmm...
 
-        // message.displayNewMsg = true;
-        message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        message.splashBackgroundCol.hex = col;
+        splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
+        // message.splashBackgroundCol.hex = col;
 
 
         // AddToScrollingDisplay(msg, debug_overlay.text.memory);
@@ -1256,7 +1266,7 @@ struct GhosterWindow
     void ClearCurrentSplash()
     {
         QueueNewSplash("", 0x0);  // no message
-        message.msLeftOfSplash = -1;
+        splash_overlay.msLeftOfDisplay = -1;
     }
 
 
@@ -1351,15 +1361,15 @@ struct GhosterWindow
 
 
 
-        if (message.resizeWindowBuffers ||
-            system.winWID != debug_overlay.bitmap.width ||
-            system.winHEI != debug_overlay.bitmap.height
-            )
-        {
-            message.resizeWindowBuffers = false;
-            debug_overlay.Resize(system.winWID, system.winHEI);
-            splash_overlay.Resize(system.winWID, system.winHEI);
-        }
+        // if (message.resizeWindowBuffers ||
+        //     system.winWID != debug_overlay.bitmap.width ||
+        //     system.winHEI != debug_overlay.bitmap.height
+        //     )
+        // {
+        //     message.resizeWindowBuffers = false;
+        //     // debug_overlay.Resize(system.winWID, system.winHEI);
+        //     // splash_overlay.Resize(system.winWID, system.winHEI);
+        // }
 
 
         if (message.loadNewMovie)
@@ -1629,19 +1639,27 @@ struct GhosterWindow
 
 
 
-        debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, {0x00000000}, false);
+        // debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, {0x00000000}, false);
 
-        if (state.displayDebugText) debug_overlay.alpha = 1;
-        else debug_overlay.alpha = 0;
-
-
-        splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
-        splash_overlay.alpha = 0;
-        if (message.msLeftOfSplash > 0)
+        if (state.displayDebugText)
         {
-            message.msLeftOfSplash -= temp_dt;
+            debug_overlay.alpha = 1;
+            debug_overlay.msLeftOfDisplay = 1;
+        }
+        else
+        {
+            debug_overlay.alpha = 0;
+            debug_overlay.msLeftOfDisplay = 0;
+        }
+
+
+        // splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
+        splash_overlay.alpha = 0;
+        if (splash_overlay.msLeftOfDisplay > 0)
+        {
+            splash_overlay.msLeftOfDisplay -= temp_dt;
             double maxA = 0.65; // implicit min of 0
-            splash_overlay.alpha = ((-cos(message.msLeftOfSplash*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+            splash_overlay.alpha = ((-cos(splash_overlay.msLeftOfDisplay*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
         }
 
 
