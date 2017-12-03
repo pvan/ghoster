@@ -5,6 +5,8 @@
 
 
 
+
+
 #define GL_READ_FRAMEBUFFER               0x8CA8
 #define GL_COLOR_ATTACHMENT0              0x8CE0
 #define GL_VERTEX_SHADER                  0x8B31
@@ -15,6 +17,9 @@
 #define GL_COMPILE_STATUS                 0x8B81
 #define GL_LINK_STATUS                    0x8B82
 #define GL_TEXTURE0                       0x84C0
+#define GL_CLAMP_TO_EDGE                  0x812F
+
+#define GLchar char
 
 // or just dl glext.h
 typedef void (APIENTRY * PFGL_GEN_FBO) (GLsizei n, GLuint *ids);
@@ -47,6 +52,16 @@ typedef void (APIENTRY * PFGL_EVA) (GLuint index);
 typedef void (APIENTRY * PFGL_UNI) (GLint location, GLint v0);
 typedef void (APIENTRY * PFGL_UNIF) (GLint location, GLfloat v0);
 typedef void (APIENTRY * PFGL_TEX) (GLenum texture);
+typedef void (APIENTRY * PFGL_DELVA) (GLsizei n, const GLuint *arrays);
+typedef void (APIENTRY * PFGL_DELBUF) (GLsizei n, const GLuint * buffers);
+typedef void (APIENTRY * PFGL_UNI4F) (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
+typedef void (APIENTRY * PFGL_UNIFV) (GLuint program, GLint location, GLfloat *params);
+typedef void (APIENTRY * PFGL_DELPROG) (GLuint program);
+typedef void (APIENTRY * PFGL_DELSHAD) (GLuint shader);
+typedef void (APIENTRY * PFGL_BINDAL) (GLuint program, GLuint index, const GLchar *name);
+typedef void (APIENTRY * PFGL_BINDFDL) (GLuint program, GLuint colorNumber, const char * name);
+typedef void (APIENTRY * PFGL_DETS) (GLuint program, GLuint shader);
+typedef void (APIENTRY * PFGL_UNI4FV) (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
 
 
 static PFGL_GEN_FBO glGenFramebuffers;
@@ -78,7 +93,21 @@ static PFGL_EVA glEnableVertexAttribArray;
 static PFGL_UNI glUniform1i;
 static PFGL_UNIF glUniform1f;
 static PFGL_TEX glActiveTexture;
+static PFGL_DELVA glDeleteVertexArrays;
+static PFGL_DELBUF glDeleteBuffers;
+static PFGL_UNI4F glUniform4f;
+static PFGL_UNIFV glGetUniformfv;
+static PFGL_DELPROG glDeleteProgram;
+static PFGL_DELSHAD glDeleteShader;
+static PFGL_BINDAL glBindAttribLocation;
+static PFGL_BINDFDL glBindFragDataLocation;
+static PFGL_DETS glDetachShader;
+static PFGL_UNI4FV glUniformMatrix4fv;
 
+
+
+
+#include "lib\gltext.h"
 
 
 
@@ -189,6 +218,16 @@ void InitOpenGL(HWND window)
     glUniform1i = (PFGL_UNI)wglGetProcAddress("glUniform1i");
     glUniform1f = (PFGL_UNIF)wglGetProcAddress("glUniform1f");
     glActiveTexture = (PFGL_TEX)wglGetProcAddress("glActiveTexture");
+    glDeleteVertexArrays = (PFGL_DELVA)wglGetProcAddress("glDeleteVertexArrays");
+    glDeleteBuffers = (PFGL_DELBUF)wglGetProcAddress("glDeleteBuffers");
+    glUniform4f=  (PFGL_UNI4F)wglGetProcAddress("glUniform4f");
+    glGetUniformfv = (PFGL_UNIFV)wglGetProcAddress("glGetUniformfv");
+    glDeleteProgram = (PFGL_DELPROG)wglGetProcAddress("glDeleteProgram");
+    glDeleteShader = (PFGL_DELSHAD)wglGetProcAddress("glDeleteShader");
+    glBindAttribLocation = (PFGL_BINDAL)wglGetProcAddress("glBindAttribLocation");
+    glBindFragDataLocation = (PFGL_BINDFDL)wglGetProcAddress("glBindFragDataLocation");
+    glDetachShader = (PFGL_DETS)wglGetProcAddress("glDetachShader");
+    glUniformMatrix4fv = (PFGL_UNI4FV)wglGetProcAddress("glUniformMatrix4fv");
 
 
     const char *vertex_shader = MULTILINE_STRING
@@ -292,6 +331,15 @@ void InitOpenGL(HWND window)
     // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // wglMakeCurrent(NULL, NULL);
+
+
+    // Initialize glText
+    if(!gltInit())
+    {
+        LogError("Failed to initialize glText\n");
+        // glfwTerminate();
+        // return EXIT_FAILURE;
+    }
 
 }
 
@@ -419,40 +467,70 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
     }
 
 
-    // OVERLAY1
-    int overlayWID = overlay1.bitmap.width;
-    int overlayHEI = overlay1.bitmap.height;
-    void *textMemory = overlay1.bitmap.memory;
-    double textAlpha = overlay1.alpha;
-    if (textAlpha > 0)
+    // // OVERLAY1
+    // int overlayWID = overlay1.bitmap.width;
+    // int overlayHEI = overlay1.bitmap.height;
+    // void *textMemory = overlay1.bitmap.memory;
+    // double textAlpha = overlay1.alpha;
+    // if (textAlpha > 0)
+    // {
+    //     glViewport(0, 0, dWID, dHEI);
+    //     glUniform1f(alpha_loc, textAlpha);
+    //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+    //         check_gl_error("glTexImage2D overlay1");
+    //     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    // }
+
+    // // OVERLAY2
+    // overlayWID = overlay2.bitmap.width;
+    // overlayHEI = overlay2.bitmap.height;
+    // textMemory = overlay2.bitmap.memory;
+    // textAlpha = overlay2.alpha;
+    // // int overlayWID = overlay2.bitmap.width;
+    // // int overlayHEI = overlay2.bitmap.height;
+    // // void *textMemory = overlay2.bitmap.memory;
+    // // double textAlpha = overlay2.alpha;
+    // if (textAlpha > 0)
+    // {
+    //     glViewport(0, 0, dWID, dHEI);
+    //     glUniform1f(alpha_loc, textAlpha);
+    //     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
+    //         check_gl_error("glTexImage2D overlay2");
+    //     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    // }
+
+
+
+
+    glViewport(0, 0, dWID, dHEI);
+
+
     {
-        glViewport(0, 0, dWID, dHEI);
-        glUniform1f(alpha_loc, textAlpha);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
-            check_gl_error("glTexImage2D overlay1");
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        GLTtext *text = gltCreateText();
+        gltSetText(text, overlay1.text.memory);
+
+        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+        gltDrawText2D(text, 0, 0, 2);
+
+        gltDeleteText(text);
     }
 
-    // OVERLAY2
-    overlayWID = overlay2.bitmap.width;
-    overlayHEI = overlay2.bitmap.height;
-    textMemory = overlay2.bitmap.memory;
-    textAlpha = overlay2.alpha;
-    // int overlayWID = overlay2.bitmap.width;
-    // int overlayHEI = overlay2.bitmap.height;
-    // void *textMemory = overlay2.bitmap.memory;
-    // double textAlpha = overlay2.alpha;
-    if (textAlpha > 0)
+
     {
-        glViewport(0, 0, dWID, dHEI);
-        glUniform1f(alpha_loc, textAlpha);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, overlayWID, overlayHEI, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, textMemory);
-            check_gl_error("glTexImage2D overlay2");
-        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+        GLTtext *text = gltCreateText();
+        gltSetText(text, overlay2.text.memory);
+
+        gltColor(1.0f, 1.0f, 1.0f, 1.0f);
+        gltDrawText2DAligned(text, dWID/2, dHEI/2, 4, GLT_CENTER, GLT_CENTER);
+
+        gltDeleteText(text);
     }
+
+
 
 
     SwapBuffers(hdc);
+
 
     // wglMakeCurrent(NULL, NULL);
 

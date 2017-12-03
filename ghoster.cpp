@@ -828,15 +828,17 @@ struct AppColorBuffer
         //         u8 *r = textMem + ((wid*y)+x)*4 + 2;
         //         u8 *a = textMem + ((wid*y)+x)*4 + 3;
 
-        //         *a = 255;
+        //         // *a = 255;
 
         //         // todo: not quite right under new system i think
-        //         *a = min(min(*r, *g), *b);
 
         //         if (*r == bkCol.r &&
         //             *g == bkCol.g &&
         //             *b == bkCol.b)
         //             *a = bkAlpha;
+        //         else
+        //             *a = min(min(*r, *g), *b);
+
         //     }
         // }
 
@@ -3666,6 +3668,7 @@ int CALLBACK WinMain(
 
 
     global_ghoster.Init();
+
 
 
 
