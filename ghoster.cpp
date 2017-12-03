@@ -167,7 +167,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=RYbe-35_BaA",  // 7-11
     "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",  // AV sync
     "https://www.youtube.com/watch?v=tprMEs-zfQA",  // mother of all funk chords
-    "https://www.youtube.com/watch?v=K0uxjdcZWyk",  // AV sync with LR  // todo: fails??
+    // "https://www.youtube.com/watch?v=K0uxjdcZWyk",  // AV sync with LR  // todo: fails??
     "https://www.youtube.com/watch?v=FI-4HNQg1JI",  // oscar peterson
     "https://www.youtube.com/watch?v=OJpQgSZ49tk",  // that one vid from prototype dev
     "https://www.youtube.com/watch?v=dzUNFqOwjfA",  // timelapse
@@ -193,7 +193,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=XKDGZ-VWLMg",  // raining in tokyo
     "https://www.youtube.com/watch?v=_JPa3BNi6l4",  // gondry daft p backwards
     "https://www.youtube.com/watch?v=kGN0B0WqCgM",  // volare
-    "https://www.youtube.com/watch?v=gZo1BLYcMJ4",  // mario rpg
+    // "https://www.youtube.com/watch?v=gZo1BLYcMJ4",  // mario rpg  // todo: crash at end
     "https://www.youtube.com/watch?v=i53jrrMT6XQ",  // singsingsing reversed
     "https://www.youtube.com/watch?v=lJJW0dE5GF0",  // queen of the night
     "https://www.youtube.com/watch?v=EyPyjprGvW0",  // dragon roost
@@ -207,9 +207,8 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=NAh9oLs67Cw&t=60",  // garfield
     "https://www.youtube.com/watch?v=a9zvWR14KJQ",  // synthwave mix
     "https://www.youtube.com/watch?v=6gYBXRwsDjY",  // transfiguration
-    // "https://www.youtube.com/watch?v=ggqrEMtA3TU",  // coffee & cig
     "https://www.youtube.com/watch?v=L8CxZWazgxY",  // cousins?
-    "https://www.youtube.com/watch?v=T6JEW93Ock8",  // somewhere in cali
+    // "https://www.youtube.com/watch?v=T6JEW93Ock8",  // somewhere in cali
     "https://www.youtube.com/watch?v=u1MKUJN7vUk",  // bande a part
     "https://www.youtube.com/watch?v=69gZRgMcNZo",  // down by law
     "https://www.youtube.com/watch?v=OQN6Gkv4JRU",  // fallen angels
@@ -227,7 +226,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
     "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car
     "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
-    "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // todo: fail?
+    // "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // todo: fail?
     "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video
     "https://www.youtube.com/watch?v=0o9qDBFKmGw",  // my brightest diamond
     "https://www.youtube.com/watch?v=19r7ctge2lI&t=18",  // birds
@@ -3106,7 +3105,10 @@ void onMouseUpL()
     global_ghoster.system.mDown = false;
 
     if (global_awkward_next_mup_was_closing_menu)
+    {
+        global_awkward_next_mup_was_closing_menu = false;
         return;
+    }
 
     if (global_ghoster.system.mouseHasMovedSinceDownL)
     {

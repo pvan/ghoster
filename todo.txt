@@ -1,5 +1,11 @@
 
 
+[ ] encapsulate submenu / menu [instance in ghoster class?]
+
+[ ] proper render layer / api, eg drawTexturedQuad
+    [ ] try swapping in directx to avoid opengl/nvidia/windows bug
+
+
 bugs: 
 
 [ ] single click breaks at some poin, maybe after loading or double clicking
@@ -166,6 +172,9 @@ if we are fullscreen ghost mode transparent and disable ghost mode,
 trying to click on the task bar will seek somewhere else in the video
 maybe disabling ghost mode should always reset opacity and topmost??
 and should it set our opacity much lower too? i guess not
+
+
+possible for youtube-dl to not clsoe if process forced close at the wrong time?
 
 
 ---instructions-------
