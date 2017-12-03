@@ -1732,6 +1732,11 @@ void LogMessage(char *s)
 {
     OutputDebugString(s);
 }
+// for displaying to user
+void SplashMessage(char *s, u32 col = 0x7676eeff)
+{
+    global_ghoster.QueueNewSplash(s, col);
+}
 
 
 
@@ -1784,10 +1789,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
         0, 0,
         &si, &pi))
     {
-        // char errmsg[123];
-        // sprintf(errmsg, "Error creating youtube-dl process.\nCode: %i", GetLastError());
-        // MsgBox(errmsg);
-        global_ghoster.QueueNewMsg("youtube-dl CreateProcess() error", 0x7676eeff);
+        LogError("youtube-dl: CreateProcess() error");
         return false;
     }
 
@@ -1797,8 +1799,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
     {
-        // OutputDebugString("Error with CloseHandle()");
-        global_ghoster.QueueNewMsg("CloseHandle() error", 0x7676eeff);
+        LogError("youtube-dl: CloseHandle() error");
         return false;
     }
 
@@ -1811,17 +1812,13 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     DWORD bytesRead;
     if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
     {
-        // too big?
-        // MsgBox("Error reading pipe, not enough buffer space?");
-        global_ghoster.QueueNewMsg("Read pipe error!", 0x7676eeff);
+        LogError("youtube-dl: Read pipe error!");
         return false;
     }
 
     if (bytesRead == 0)
     {
-        // no output?
-        // MsgBox("No data from reading pipe.");
-        global_ghoster.QueueNewMsg("Pipe empty", 0x7676eeff);
+        LogError("youtube-dl: Pipe empty");
         return false;
     }
 
@@ -2001,8 +1998,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
                 free(video_url);
                 free(audio_url);
 
-                // global_ghoster.QueueNewMsg("failed to use url video", 0x7676eeff);
-                global_ghoster.QueueNewMsg("video failed", 0x7676eeff);
+                SplashMessage("video failed");
                 return false;
             }
             free(video_url);
@@ -2013,8 +2009,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
             free(video_url);
             free(audio_url);
 
-            // global_ghoster.QueueNewMsg("url video inaccessible", 0x7676eeff);
-            global_ghoster.QueueNewMsg("no video", 0x7676eeff);
+            SplashMessage("no video");
             return false;
         }
     }
@@ -2023,7 +2018,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
         // *newMovie = OpenMovieReel(path, path);
         if (!newMovie->SetFromPaths(path, path))
         {
-            global_ghoster.QueueNewMsg("invalid file", 0x7676eeff);
+            SplashMessage("invalid file");
             return false;
         }
 
@@ -2037,11 +2032,9 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
     }
     else
     {
-        // MsgBox("not full filepath or url\n");
         char buf[123];
         sprintf(buf, "invalid path or url\n%s", path);
-        global_ghoster.QueueNewMsg(buf, 0x7676eeff);
-        // global_ghoster.QueueNewMsg("invalid path or url", 0x7676eeff);
+        SplashMessage(buf);
         return false;
     }
 
@@ -2163,8 +2156,7 @@ bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
 
     if (!outMovie->frame_output)
     {
-        // MsgBox("ffmpeg: Couldn't alloc frame.");
-        global_ghoster.QueueNewMsg("ffmpeg: Couldn't alloc frame", 0x7676eeff);
+        LogError("ffmpeg: Couldn't alloc frame");
         return false;
     }
 
@@ -2260,7 +2252,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
         // for now don't override them with a new (since our queue is only 1 deep)
         // char errbuf[123];
         // sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
-        // global_ghoster.QueueNewMsg("load failed", 0x7676eeff);
+        LogError("load failed");
         return false;
     }
 
@@ -2336,7 +2328,7 @@ bool CreateNewMovieFromPath(char *path)
     // try waiting on this until we confirm it's a good path/file
     // global_ghoster.state.bufferingOrLoading = true;
     // global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
-    global_ghoster.QueueNewMsg("fetching...", 0xaaaaaaff);
+    SplashMessage("fetching...", 0xaaaaaaff);
 
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
