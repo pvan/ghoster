@@ -1250,7 +1250,7 @@ struct GhosterWindow
         // message.splashBackgroundCol.hex = col;
 
     }
-    void ClearCurrentMsg()
+    void ClearCurrentSplash()
     {
         QueueNewSplash("", 0x0);  // no message
         message.msLeftOfSplash = -1;
@@ -1261,7 +1261,7 @@ struct GhosterWindow
     {
         OutputDebugString("Ready to load new movie...\n");
 
-        ClearCurrentMsg();
+        ClearCurrentSplash();
 
         if (!SwapInNewReel(&next_reel, &rolling_movie))
         {
@@ -2945,6 +2945,9 @@ void restoreVideoPositionAfterDoubleClick()
 
         global_ghoster.message.setSeek = true;
     }
+
+    // cancel any play/pause messages (todo: could cancel other valid msgs)
+    global_ghoster.ClearCurrentSplash();
 }
 
 
