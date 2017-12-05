@@ -678,78 +678,6 @@ void PutTextOnBitmap(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fon
     DeleteDC(memDC);
 }
 
-// only difference is left justifiy and shrink to make room for scrolling text
-void PutTextOnBitmap2(HDC hdc, HBITMAP bitmap, char *text, RECT destRect, int fontSize, COLORREF cref)
-{
-
-    int destW = destRect.right - destRect.left;
-    int destH = destRect.bottom - destRect.top;
-    int x = destW / 2.0;
-    int y = destH / 2.0;
-
-    // create a device context for the skin
-    HDC memDC = CreateCompatibleDC(hdc);
-
-        // select the skin bitmap
-        HGDIOBJ oldBitmap = SelectObject(memDC, bitmap);
-
-            SetTextColor(memDC, cref);
-            SetBkMode(memDC, TRANSPARENT);
-
-            int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-            // HFONT font = (HFONT)GetStockObject(ANSI_VAR_FONT);
-            HFONT font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-
-                HFONT oldFont = (HFONT)SelectObject(memDC, font);
-
-                    UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = DT_LEFT|DT_TOP|DT_WORDBREAK;
-                    // UINT format = 0;
-
-                    RECT testRect = destRect;
-                    int textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                    int testW = testRect.right-testRect.left;
-                    while (testW > destW && fontSize >= 6)
-                    {
-                        char buf[321];
-                        sprintf(buf, "testW: %i, destW: %i\n", testW, destW);
-                        OutputDebugString(buf);
-
-                        fontSize -= 2;
-
-                        // reset our font so we can re-create it smaller
-                        SelectObject(memDC, oldFont);
-                        DeleteObject(font);
-
-                        int nHeight = -MulDiv(fontSize, GetDeviceCaps(hdc, LOGPIXELSY), 72);
-
-                        // new smaller font
-                        font = CreateFont(nHeight, 0,0,0,0,0,0,0,0,0,0,0,0, "Segoe UI");
-                        oldFont = (HFONT)SelectObject(memDC, font);
-
-                        testRect = destRect;
-                        textH = DrawText(memDC, text, -1, &testRect, format | DT_CALCRECT);
-                        testW = testRect.right-testRect.left;
-                    }
-
-                    OutputDebugString("\n");
-
-                    destRect.top = y - textH/2.0;  // center vertically
-                    destRect.bottom = destRect.top + textH; // not needed unless we view the rect
-                    DrawText(memDC, text, -1, &destRect, format);
-
-                    // view rect
-                    // Rectangle(memDC, destRect.left, destRect.top, destRect.right, destRect.bottom);
-                    // Rectangle(memDC, testRect.left, testRect.top, testRect.right, testRect.bottom);
-
-                SelectObject(memDC, oldFont);
-            DeleteObject(font);
-
-        SelectObject(memDC, oldBitmap);
-
-    DeleteDC(memDC);
-}
 
 void TransmogrifyText(char *src, char *dest)
 {
@@ -1156,7 +1084,7 @@ struct GhosterWindow
     RollingMovie rolling_movie;
     MovieReel next_reel;
 
-    double msLastFrame; // todo: replace this with app timer, make timer usage more obvious
+    double msLastFrame; // todo: replace this with app timer? make timer usage more obvious
 
     // buffers mostly, anything on the heap
     AppBuffers buffer;
@@ -1676,7 +1604,6 @@ struct GhosterWindow
         RendererStartFrame(destWin);
 
 
-
         static float t = 0;
         if (state.bufferingOrLoading)
         {
@@ -1710,10 +1637,6 @@ struct GhosterWindow
             // movie frame
             RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
 
-            // todo: improve these calls
-            RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-            RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
-
             if (drawProgressBar)
             {
                 int pos = (int)(percent * (double)system.winWID);
@@ -1727,6 +1650,10 @@ struct GhosterWindow
                 RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
             }
         }
+
+        // todo: improve the args needed for these calls?
+        RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
         RendererSwap(destWin);
 
@@ -2121,6 +2048,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 
 
 // todo: peruse this for memory leaks. also: better name!
+// done and done, but maybe another pass over both
 
 // make into a moveifile / staticmovie method?
 bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)

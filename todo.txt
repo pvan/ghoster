@@ -1,5 +1,16 @@
 
 
+
+
+[ ] lose our "small" window size of we load a video in fullscreen
+
+
+[ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
+    [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
+
+[ ] add proper random lib
+
+
 [ ] encapsulate submenu / menu [instance in ghoster class?]
 
 [ ] proper render layer / api, eg drawTexturedQuad
@@ -243,4 +254,7 @@ green screen masking type functionality?
 if no video, visualize audio
 
 face detection googly eyes? no, that's taking it too far
+
+automatic audio adjust starting volume??
+
 
