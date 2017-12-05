@@ -416,6 +416,21 @@ void RenderMsgOverlay(MessageOverlay overlay, int x, int y, int scale, int horiz
     }
 }
 
+RECT RendererCalcLetterBoxRect(int dWID, int dHEI, double aspect_ratio)
+{
+    int calcWID = (int)((double)dHEI * aspect_ratio);
+    int calcHEI = (int)((double)dWID / aspect_ratio);
+
+    if (calcWID > dWID)  // letterbox
+        calcWID = dWID;
+    else
+        calcHEI = dHEI;  // pillarbox
+
+    int posX = ((double)dWID - (double)calcWID) / 2.0;
+    int posY = ((double)dHEI - (double)calcHEI) / 2.0;
+
+    return {posX, posY, calcWID, calcHEI};
+}
 
 
 

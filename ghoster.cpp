@@ -1676,26 +1676,12 @@ struct GhosterWindow
         RendererClear();
 
 
-        RECT subRect = {0};
-        // todo: make into renderer function
+        RECT subRect = {0}; // code for fill to entire window
         // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+        // certainly seems easier to change viewport
         if (state.lock_aspect && system.fullscreen)
         {
-            int dWID = system.winWID;
-            int dHEI = system.winHEI;
-
-            int calcWID = (int)((double)dHEI * rolling_movie.aspect_ratio);
-            int calcHEI = (int)((double)dWID / rolling_movie.aspect_ratio);
-
-            if (calcWID > dWID)  // letterbox
-                calcWID = dWID;
-            else
-                calcHEI = dHEI;  // pillarbox
-
-            int posX = ((double)dWID - (double)calcWID) / 2.0;
-            int posY = ((double)dHEI - (double)calcHEI) / 2.0;
-
-            subRect = {posX, posY, calcWID, calcHEI};
+            subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
         }
 
         // movie frame
