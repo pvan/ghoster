@@ -1670,20 +1670,28 @@ struct GhosterWindow
             destWin = global_wallpaper_window;
         }
 
+
+    HDC hdcCurrent = GetDC(destWin);
+    // winCurrent = window;
+    // wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
+
         // movie frame
-        RenderQuadToWindow(destWin, rolling_movie.vid_buffer, 960, 720, 1);
+        RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, {0,0,system.winWID,system.winHEI});
 
         int pos = (int)(percent * (double)system.winWID);
         // progress bar (grey)
         RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
         u32 gray = 0xaaaaaaaa;
-        RenderQuadToWindow(destWin, (u8*)&gray, 1, 1, 0.4, destSubRect);
+        RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
         // progress bar (red)
         destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
         u32 red = 0xffff0000;
-        RenderQuadToWindow(destWin, (u8*)&red, 1, 1, 0.6, destSubRect);
+        RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
 
-        RendererSwap(destWin);
+        // RendererSwap(destWin);
+
+    SwapBuffers(hdcCurrent);
+    ReleaseDC(destWin, hdcCurrent);
 
         // RenderToScreenGL((void*)rolling_movie.vid_buffer,
         //                 960,
