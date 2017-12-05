@@ -350,7 +350,7 @@ static HDC hdcCurrent;
 static HWND winCurrent; // need this for when we release hdc.. better way?
 
 
-void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, double quadAlpha)
+void RenderQuadToWindow(HWND window, u8 *quadMem, int quadWid, int quadHei, double quadAlpha)
 {
 
     hdcCurrent = GetDC(window);
@@ -359,11 +359,11 @@ void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, double quad
 
 
     RECT winRect; GetWindowRect(winCurrent, &winRect);
-    int dWID = winRect.right - winRect.left - 1;
-    int dHEI = winRect.bottom - winRect.top - 1;
+    int destWid = winRect.right - winRect.left - 1;
+    int destHei = winRect.bottom - winRect.top - 1;
 
 
-    glViewport(0, 0, dWID, dHEI);
+    glViewport(0, 0, destWid, destHei);
 
     glUseProgram(shader_program);
 
@@ -376,8 +376,8 @@ void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, double quad
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, quadWid, quadHei,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, quadMem);
         check_gl_error("glTexImage2D");
 
     GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
