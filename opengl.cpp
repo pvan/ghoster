@@ -348,14 +348,20 @@ void InitOpenGL(HWND window)
 // // hdc for this frame.. maybe cache per or pass in?
 static HDC hdcCurrent;
 static HWND winCurrent; // need this for when we release hdc.. better way?
-static RECT winRectCurrent;
+// static RECT winRectCurrent;
+static int currentWid;
+static int currentHei;
 
 void RendererStartFrame(HWND window)
 {
     hdcCurrent = GetDC(window);
     winCurrent = window;
     wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
-    GetWindowRect(window, &winRectCurrent);
+
+    RECT winRect;
+    GetWindowRect(window, &winRect);
+    currentWid = winRect.right-winRect.left;
+    currentHei = winRect.bottom-winRect.top;
 }
 
 void RendererClear()
@@ -364,10 +370,13 @@ void RendererClear()
     glClearColor(0, 0, 0, 0);  // r g b a  looks like
 }
 
-void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest)
+void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
 {
     // todo: only change if passed in? set viewport to window size in startframe?
-    glViewport(dest.left, dest.top, dest.right-dest.left-0, dest.bottom-dest.top-0);
+    if (dest.left == 0 && dest.top == 0 && dest.right == 0 && dest.bottom == 0)
+        glViewport(0, 0, currentWid, currentHei);
+    else
+        glViewport(dest.left, dest.top, dest.right-dest.left-0, dest.bottom-dest.top-0);
 
     glUseProgram(shader_program);
     glUniform1f(alpha_location, quadAlpha);
@@ -391,10 +400,9 @@ void RendererSwap(HWND window)
     ReleaseDC(winCurrent, hdcCurrent);
 }
 
-void RenderMsgOverlay(MessageOverlay overlay, int w, int h)
+void RenderMsgOverlay(MessageOverlay overlay)
 {
-    // glViewport(0, 0, winRectCurrent.right, winRectCurrent.bottom);
-    glViewport(0, 0, w, h);
+    glViewport(0, 0, currentWid, currentHei);
 
     if (overlay.msLeftOfDisplay > 0)
     {
