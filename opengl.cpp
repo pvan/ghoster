@@ -364,10 +364,11 @@ void RendererStartFrame(HWND window)
     currentHei = winRect.bottom-winRect.top;
 }
 
-void RendererClear()
+void RendererClear(double r = 0, double g = 0, double b = 0, double a = 1)
 {
+    // glViewport(0, 0, currentWid, currentHei); // not sure if needed or wanted
     glClear(GL_COLOR_BUFFER_BIT);
-    glClearColor(0, 0, 0, 0);  // r g b a  looks like
+    glClearColor(r, g, b, a);
 }
 
 void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
