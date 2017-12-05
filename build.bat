@@ -67,6 +67,6 @@ REM copy to release folder....
 set release_folder=ghoster
 
 IF NOT EXIST %release_folder% mkdir %release_folder%
-xcopy /s /y /q %build_folder%\*.dll %release_folder%
-xcopy /s /y /q %build_folder%\ghoster.exe %release_folder%
-xcopy /s /y /q %build_folder%\youtube-dl.exe %release_folder%
+xcopy /s /y /q %build_folder%\*.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\ghoster.exe %release_folder%>NUL
+xcopy /s /y /q %build_folder%\youtube-dl.exe %release_folder%>NUL
