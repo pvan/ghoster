@@ -1676,8 +1676,9 @@ struct GhosterWindow
         // movie frame
         RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1);
 
-        RenderMsgOverlay(debug_overlay);
-        // RenderMsgOverlay(debug_overlay);
+        // todo: improve these calls
+        RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
         if (drawProgressBar)
         {

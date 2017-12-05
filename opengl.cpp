@@ -372,7 +372,6 @@ void RendererClear()
 
 void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
 {
-    // todo: only change if passed in? set viewport to window size in startframe?
     if (dest.left == 0 && dest.top == 0 && dest.right == 0 && dest.bottom == 0)
         glViewport(0, 0, currentWid, currentHei);
     else
@@ -400,8 +399,9 @@ void RendererSwap(HWND window)
     ReleaseDC(winCurrent, hdcCurrent);
 }
 
-void RenderMsgOverlay(MessageOverlay overlay)
+void RenderMsgOverlay(MessageOverlay overlay, int x, int y, int scale, int horizAlign, int vertAlign)
 {
+    // todo: add option for dest rect here like quadToRect?
     glViewport(0, 0, currentWid, currentHei);
 
     if (overlay.msLeftOfDisplay > 0)
@@ -410,7 +410,7 @@ void RenderMsgOverlay(MessageOverlay overlay)
         gltSetText(text, overlay.text.memory);
 
         gltColor(1.0f, 1.0f, 1.0f, overlay.alpha);
-        gltDrawText2D(text, 0, 0, 2);
+        gltDrawText2DAligned(text, x, y, scale, horizAlign, vertAlign);
 
         gltDeleteText(text);
     }
