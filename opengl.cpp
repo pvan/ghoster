@@ -355,56 +355,44 @@ static HDC hdcCurrent;
 static HWND winCurrent; // need this for when we release hdc.. better way?
 
 
-void RenderQuadToWindow(HWND window, u8 *quadMem, int quadWid, int quadHei, double quadAlpha)
+void RenderQuadToWindow(HWND window, u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
 {
-
     hdcCurrent = GetDC(window);
     winCurrent = window;
     wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
 
-
     RECT winRect; GetWindowRect(winCurrent, &winRect);
-    int destWid = winRect.right - winRect.left - 1;
-    int destHei = winRect.bottom - winRect.top - 1;
+    int destWid = winRect.right - winRect.left - 0;
+    int destHei = winRect.bottom - winRect.top - 0;
 
-
-    glViewport(0, 0, destWid, destHei);
+    if (dest.left == 0 && dest.right == 0 && dest.right == 0 && dest.bottom == 0)
+        glViewport(0, 0, destWid, destHei);
+    else
+        glViewport(dest.left, dest.top, dest.right-dest.left-0, dest.bottom-dest.top-0);
 
     glUseProgram(shader_program);
-
-
+    glUniform1f(alpha_location, quadAlpha);
+    glUniform1i(tex_location, 0);   // texture id of 0
 
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, tex);
 
-
-    glUniform1f(alpha_location, quadAlpha);
-    glUniform1i(tex_location, 0);   // texture id of 0
-
-
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, quadWid, quadHei,
-                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, quadMem);
-        check_gl_error("glTexImage2D");
-
-
-
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, quadWid, quadHei, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, quadMem);
+    check_gl_error("glTexImage2D");
 
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    glClear(GL_COLOR_BUFFER_BIT);
-    glClearColor(0, 0, 0, 0);  // r g b a  looks like
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // glClearColor(0, 0, 0, 0);  // r g b a  looks like
 
     glBindVertexArray(vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
-
 }
 
 void RendererSwap(HWND window)
 {
     SwapBuffers(hdcCurrent);
     ReleaseDC(winCurrent, hdcCurrent);
-
 }
 
 
