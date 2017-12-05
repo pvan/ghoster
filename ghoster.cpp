@@ -483,7 +483,12 @@ struct RollingMovie
 
     double duration;
     double elapsed;
-    Stopwatch audio_stopwatch; // todo: audit this: is audio a misnomer now? what is it actually used for?
+
+    // todo: not used anymore
+    // if we need another timer, could probably rename this and comment it back it
+    // but might want to set it each frame to the ts_audio that we use for syncing a/v
+    // Stopwatch audio_stopwatch;
+
     double aspect_ratio; // feels like it'd be better to store this as a rational
 
     i64 ptsOfLastVideo;
@@ -1020,7 +1025,7 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
         // OutputDebugString(msbuf);
 
 
-    movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
+    // movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
 
 
     // step through frames for both contexts until we reach our desired timestamp
@@ -1032,7 +1037,7 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
         movie->sws_context,
         movie->reel.video.index,
         movie->frame_output,
-        movie->audio_stopwatch.MsElapsed(),// - msAudioLatencyEstimate,
+        ts.seconds() * 1000.0,// - msAudioLatencyEstimate,
         0,
         true,
         &movie->ptsOfLastVideo,
@@ -1170,7 +1175,7 @@ struct GhosterWindow
         {
             QueueNewSplash("Play", 0x7cec7aff);
         }
-        rolling_movie.audio_stopwatch.Start();
+        // rolling_movie.audio_stopwatch.Start();
         if (rolling_movie.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
         rolling_movie.is_paused = false;
@@ -1182,7 +1187,7 @@ struct GhosterWindow
         {
             QueueNewSplash("Pause", 0xfa8686ff);
         }
-        rolling_movie.audio_stopwatch.Pause();
+        // rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         rolling_movie.is_paused = true;
     }
@@ -1197,7 +1202,7 @@ struct GhosterWindow
         }
         if (!rolling_movie.is_paused)
         {
-            if (rolling_movie.was_paused || !rolling_movie.audio_stopwatch.timer.started)
+            if (rolling_movie.was_paused)// || !rolling_movie.audio_stopwatch.timer.started)
             {
                 appPlay(userRequest);
             }
@@ -1539,7 +1544,7 @@ struct GhosterWindow
                     ts_audio = timestamp::FromVideoPTS(rolling_movie);
                 }
 
-                // use our ts audio to get track bar position
+                // use ts audio to get track bar position
                 rolling_movie.elapsed = ts_audio.seconds();
                 percent = rolling_movie.elapsed/rolling_movie.duration;
 
@@ -2172,7 +2177,7 @@ bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
     outMovie->duration = (double)movie->vfc->duration / (double)AV_TIME_BASE;
     outMovie->elapsed = 0;
 
-    outMovie->audio_stopwatch.ResetCompletely();
+    // outMovie->audio_stopwatch.ResetCompletely();
 
 
     // SET FPS BASED ON LOADED VIDEO
@@ -3010,8 +3015,12 @@ void saveVideoPositionForAfterDoubleClick()
 {
     global_ghoster.message.savestate_is_saved = true;
 
-    global_ghoster.rolling_movie.elapsed = global_ghoster.rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
-    double percent = global_ghoster.rolling_movie.elapsed / global_ghoster.rolling_movie.duration;
+    // global_ghoster.rolling_movie.elapsed = global_ghoster.rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
+    // double percent = global_ghoster.rolling_movie.elapsed / global_ghoster.rolling_movie.duration;
+
+    // todo: this won't be sub-frame accurate
+    // but i guess if we're pausing for a split second it won't be exact anyway
+    double percent = global_ghoster.rolling_movie.elapsed/global_ghoster.rolling_movie.duration;
     global_ghoster.message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
 }
 
