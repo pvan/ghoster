@@ -1447,13 +1447,6 @@ struct GhosterWindow
 
             }
 
-            // best place for this?
-            rolling_movie.elapsed = rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
-            percent = rolling_movie.elapsed/rolling_movie.duration;
-                // char durbuf[123];
-                // sprintf(durbuf, "elapsed: %.2f  /  %.2f  (%.f%%)\n", rolling_movie.elapsed, rolling_movie.duration, percent*100);
-                // OutputDebugString(durbuf);
-
 
             if (!rolling_movie.is_paused)
             {
@@ -1545,6 +1538,10 @@ struct GhosterWindow
                 {
                     ts_audio = timestamp::FromVideoPTS(rolling_movie);
                 }
+
+                // use our ts audio to get track bar position
+                rolling_movie.elapsed = ts_audio.seconds();
+                percent = rolling_movie.elapsed/rolling_movie.duration;
 
                 // assuming we've filled the sdl buffer, we are 1 second ahead
                 // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
@@ -1698,10 +1695,10 @@ struct GhosterWindow
             RendererClear();
 
             RECT subRect = {0}; // code for fill to entire window
-            // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-            // certainly seems easier to change viewport
             if (state.lock_aspect && system.fullscreen)
             {
+                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+                // certainly seems easier to change viewport
                 subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
             }
 
