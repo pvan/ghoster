@@ -1671,27 +1671,30 @@ struct GhosterWindow
         }
 
 
-    HDC hdcCurrent = GetDC(destWin);
-    // winCurrent = window;
-    // wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
+        RendererStartFrame(destWin);
 
         // movie frame
         RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, {0,0,system.winWID,system.winHEI});
 
-        int pos = (int)(percent * (double)system.winWID);
-        // progress bar (grey)
-        RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-        u32 gray = 0xaaaaaaaa;
-        RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
-        // progress bar (red)
-        destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-        u32 red = 0xffff0000;
-        RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+        RenderMsgOverlay(debug_overlay, system.winWID, system.winHEI);
+        // RenderMsgOverlay(debug_overlay);
 
-        // RendererSwap(destWin);
+        if (drawProgressBar)
+        {
+            int pos = (int)(percent * (double)system.winWID);
+            // progress bar (grey)
+            RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+            u32 gray = 0xaaaaaaaa;
+            RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+            // progress bar (red)
+            destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
+            u32 red = 0xffff0000;
+            RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+        }
 
-    SwapBuffers(hdcCurrent);
-    ReleaseDC(destWin, hdcCurrent);
+
+        RendererSwap(destWin);
+
 
         // RenderToScreenGL((void*)rolling_movie.vid_buffer,
         //                 960,

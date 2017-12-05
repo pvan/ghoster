@@ -330,8 +330,6 @@ void InitOpenGL(HWND window)
     tex_location = glGetUniformLocation(shader_program, "tex");
 
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBindVertexArray(vao);
 
 
 
@@ -348,8 +346,17 @@ void InitOpenGL(HWND window)
 
 
 // // hdc for this frame.. maybe cache per or pass in?
-// static HDC hdcCurrent;
-// static HWND winCurrent; // need this for when we release hdc.. better way?
+static HDC hdcCurrent;
+static HWND winCurrent; // need this for when we release hdc.. better way?
+static RECT winRectCurrent;
+
+void RendererStartFrame(HWND window)
+{
+    hdcCurrent = GetDC(window);
+    winCurrent = window;
+    wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
+    GetWindowRect(window, &winRectCurrent);
+}
 
 void RendererClear()
 {
@@ -359,6 +366,7 @@ void RendererClear()
 
 void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest)
 {
+    // todo: only change if passed in? set viewport to window size in startframe?
     glViewport(dest.left, dest.top, dest.right-dest.left-0, dest.bottom-dest.top-0);
 
     glUseProgram(shader_program);
@@ -371,15 +379,34 @@ void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, R
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, quadWid, quadHei, 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, quadMem);
     check_gl_error("glTexImage2D");
 
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBindVertexArray(vao);
+
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
-// void RendererSwap(HWND window)
-// {
-//     SwapBuffers(hdcCurrent);
-//     ReleaseDC(winCurrent, hdcCurrent);
-// }
+void RendererSwap(HWND window)
+{
+    SwapBuffers(hdcCurrent);
+    ReleaseDC(winCurrent, hdcCurrent);
+}
 
+void RenderMsgOverlay(MessageOverlay overlay, int w, int h)
+{
+    // glViewport(0, 0, winRectCurrent.right, winRectCurrent.bottom);
+    glViewport(0, 0, w, h);
+
+    if (overlay.msLeftOfDisplay > 0)
+    {
+        GLTtext *text = gltCreateText();
+        gltSetText(text, overlay.text.memory);
+
+        gltColor(1.0f, 1.0f, 1.0f, overlay.alpha);
+        gltDrawText2D(text, 0, 0, 2);
+
+        gltDeleteText(text);
+    }
+}
 
 
 
