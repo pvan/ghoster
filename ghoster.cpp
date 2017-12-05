@@ -1670,13 +1670,7 @@ struct GhosterWindow
             destWin = global_wallpaper_window;
         }
 
-        RenderQuadToWindow(destWin, rolling_movie.vid_buffer,
-                        960,
-                        720,
-                        system.winWID,
-                        system.winHEI,
-                        1
-                        );
+        RenderQuadToWindow(destWin, rolling_movie.vid_buffer, 960, 720, 1);
         RendererSwap(destWin);
 
         // RenderToScreenGL((void*)rolling_movie.vid_buffer,

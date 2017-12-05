@@ -350,7 +350,7 @@ static HDC hdcCurrent;
 static HWND winCurrent; // need this for when we release hdc.. better way?
 
 
-void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, int dWID, int dHEI, double quadAlpha)
+void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, double quadAlpha)
 {
 
     hdcCurrent = GetDC(window);
@@ -358,13 +358,11 @@ void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, int dWID, i
     wglMakeCurrent(hdcCurrent, gl_rendering_context); // map future gl calls to our hdc
 
 
-    // RECT winRect; GetWindowRect(winCurrent, &winRect);
-    // int dWID = winRect.right - winRect.left - 1;
-    // int dHEI = winRect.bottom - winRect.top - 1;
+    RECT winRect; GetWindowRect(winCurrent, &winRect);
+    int dWID = winRect.right - winRect.left - 1;
+    int dHEI = winRect.bottom - winRect.top - 1;
 
 
-    // if window size changed.. could also call in WM_SIZE and not pass dWID here
-    // or get  dWID dHEI from destination window?
     glViewport(0, 0, dWID, dHEI);
 
     glUseProgram(shader_program);
