@@ -1673,8 +1673,33 @@ struct GhosterWindow
 
         RendererStartFrame(destWin);
 
+        RendererClear();
+
+
+        RECT subRect = {0};
+        // todo: make into renderer function
+        // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+        if (state.lock_aspect && system.fullscreen)
+        {
+            int dWID = system.winWID;
+            int dHEI = system.winHEI;
+
+            int calcWID = (int)((double)dHEI * rolling_movie.aspect_ratio);
+            int calcHEI = (int)((double)dWID / rolling_movie.aspect_ratio);
+
+            if (calcWID > dWID)  // letterbox
+                calcWID = dWID;
+            else
+                calcHEI = dHEI;  // pillarbox
+
+            int posX = ((double)dWID - (double)calcWID) / 2.0;
+            int posY = ((double)dHEI - (double)calcHEI) / 2.0;
+
+            subRect = {posX, posY, calcWID, calcHEI};
+        }
+
         // movie frame
-        RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1);
+        RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
 
         // todo: improve these calls
         RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
