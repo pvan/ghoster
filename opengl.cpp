@@ -345,6 +345,69 @@ void InitOpenGL(HWND window)
 
 
 
+// hdc for this frame.. maybe cache per or pass in?
+static HDC hdcCurrent;
+static HWND winCurrent; // need this for when we release hdc.. better way?
+
+
+void RenderQuadToWindow(HWND window, u8 *memory, int sWID, int sHEI, int dWID, int dHEI, double quadAlpha)
+{
+
+    hdcCurrent = GetDC(window);
+    winCurrent = window;
+    wglMakeCurrent(hdcCurrent, gl_rendering_context); // map future gl calls to our hdc
+
+
+    // RECT winRect; GetWindowRect(winCurrent, &winRect);
+    // int dWID = winRect.right - winRect.left - 1;
+    // int dHEI = winRect.bottom - winRect.top - 1;
+
+
+    // if window size changed.. could also call in WM_SIZE and not pass dWID here
+    // or get  dWID dHEI from destination window?
+    glViewport(0, 0, dWID, dHEI);
+
+    glUseProgram(shader_program);
+
+
+    GLuint alpha_loc = glGetUniformLocation(shader_program, "alpha");
+    glUniform1f(alpha_loc, quadAlpha);
+
+
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, tex);
+
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, sWID, sHEI,
+                 0, GL_BGRA_EXT, GL_UNSIGNED_BYTE, memory);
+        check_gl_error("glTexImage2D");
+
+    GLuint tex_loc = glGetUniformLocation(shader_program, "tex");
+    glUniform1i(tex_loc, 0);   // texture id of 0
+
+
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glClearColor(0, 0, 0, 0);  // r g b a  looks like
+
+    glBindVertexArray(vao);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+
+}
+
+void RendererSwap(HWND window)
+{
+    SwapBuffers(hdcCurrent);
+    ReleaseDC(winCurrent, hdcCurrent);
+
+}
+
+
+
+
 
 // TODO: pull out progress bar rendering from this function
 // need to render to fbo to do so?
@@ -359,10 +422,7 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
 {
 
     HDC hdc = GetDC(window);
-
-
     wglMakeCurrent(hdc, gl_rendering_context); // map future gl calls to our hdc
-
 
     // if window size changed.. could also call in WM_SIZE and not pass dWID here
     // or get  dWID dHEI from destination window?
@@ -529,13 +589,9 @@ void RenderToScreenGL(void *memory, int sWID, int sHEI,
 
 
 
-
     SwapBuffers(hdc);
-
-
-    // wglMakeCurrent(NULL, NULL);
-
     ReleaseDC(window, hdc);
+
 }
 
 
