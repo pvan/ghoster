@@ -1066,6 +1066,8 @@ void AddToScrollingDisplay(char *newMsg, char *allMsgs)
 
 bool SwapInNewReel(MovieReel *movie, RollingMovie *outMovie);
 
+void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio);
+
 
 void setWallpaperMode(HWND, bool);
 void setFullscreen(bool);
@@ -1216,6 +1218,19 @@ struct GhosterWindow
             QueueNewMsg("invalid file", 0x7676eeff);
         }
 
+        if (system.fullscreen)
+        {
+            // kind of hacky solution
+            setFullscreen(false);
+            SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
+            setFullscreen(true);  // we need to set this anyway in the case that we launch fullscreen
+        }
+        else
+        {
+            SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
+        }
+
+
         if (message.startAtSeconds != 0)
         {
             double videoFPS = 1000.0 / rolling_movie.targetMsPerFrame;
@@ -1229,9 +1244,6 @@ struct GhosterWindow
         // need to recreate wallpaper window basically
         if (state.wallpaperMode)
             setWallpaperMode(system.window, state.wallpaperMode);
-
-        if (system.fullscreen)
-            setFullscreen(system.fullscreen); // mostly for launching in fullscreen mode
     }
 
 
@@ -1921,6 +1933,7 @@ void SetWindowToNativeRes(HWND hwnd, RollingMovie movie)
     SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
 }
 
+
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
 {
     RECT winRect;
@@ -1935,10 +1948,8 @@ void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
     //     MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
     // else
     //     MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
-
     // now always adjusting width
-    // MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
-    SetWindowSize(hwnd, nw, h);
+    MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
 }
 
 
@@ -2084,7 +2095,6 @@ bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
 
     outMovie->aspect_ratio = (double)outMovie->vidWID / (double)outMovie->vidHEI;
 
-    SetWindowToAspectRatio(global_ghoster.system.window, outMovie->aspect_ratio);
 
 
     // MAKE NOTE OF VIDEO LENGTH
