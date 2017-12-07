@@ -3039,34 +3039,48 @@ void SnapRectToMonitor(RECT in, RECT *out)
 
 void appDragWindow(HWND hwnd, int x, int y)
 {
-    WINDOWPLACEMENT winpos;
-    winpos.length = sizeof(WINDOWPLACEMENT);
-    if (GetWindowPlacement(hwnd, &winpos))
+
+    if (global_ghoster.system.fullscreen)
     {
-        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.system.fullscreen)
-        {
-            // ShowWindow(hwnd, SW_RESTORE);
+        // this restores window size, sets not topmost (if needed) etc
+        setFullscreen(false);
 
-            SetWindowPos(
-                global_ghoster.system.window,
-                0,
-                global_ghoster.system.last_win_pos.rcNormalPosition.left,
-                global_ghoster.system.last_win_pos.rcNormalPosition.top,
-                global_ghoster.system.last_win_pos.rcNormalPosition.right -
-                global_ghoster.system.last_win_pos.rcNormalPosition.left,
-                global_ghoster.system.last_win_pos.rcNormalPosition.bottom -
-                global_ghoster.system.last_win_pos.rcNormalPosition.top,
-                0);
-            global_ghoster.system.fullscreen = false;
-
-            // move window to mouse..
-            int mouseX = x;
-            int mouseY = y;
-            int winX = mouseX - global_ghoster.system.winWID/2;
-            int winY = mouseY - global_ghoster.system.winHEI/2;
-            MoveWindow(hwnd, winX, winY, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);
-        }
+        // move window to mouse..
+        int mouseX = x;
+        int mouseY = y;
+        int winX = mouseX - global_ghoster.system.winWID/2;
+        int winY = mouseY - global_ghoster.system.winHEI/2;
+        MoveWindow(hwnd, winX, winY, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);
     }
+
+    // WINDOWPLACEMENT winpos;
+    // winpos.length = sizeof(WINDOWPLACEMENT);
+    // if (GetWindowPlacement(hwnd, &winpos))
+    // {
+    //     if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.system.fullscreen)
+    //     {
+    //         // ShowWindow(hwnd, SW_RESTORE);
+
+    //         SetWindowPos(
+    //             global_ghoster.system.window,
+    //             0,
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.left,
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.top,
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.right -
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.left,
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.bottom -
+    //             global_ghoster.system.last_win_pos.rcNormalPosition.top,
+    //             0);
+    //         global_ghoster.system.fullscreen = false;
+
+    //         // move window to mouse..
+    //         int mouseX = x;
+    //         int mouseY = y;
+    //         int winX = mouseX - global_ghoster.system.winWID/2;
+    //         int winY = mouseY - global_ghoster.system.winHEI/2;
+    //         MoveWindow(hwnd, winX, winY, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);
+    //     }
+    // }
 
     global_ghoster.system.mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
