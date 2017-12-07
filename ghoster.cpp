@@ -3476,7 +3476,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
-
+        case WM_SYSKEYDOWN:  // req for alt?
         case WM_KEYDOWN: {
             if (wParam == 0x56) // V
             {
@@ -3488,6 +3488,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             if (wParam == 0x11) // ctrl
             {
                 global_ghoster.system.ctrlDown = true;
+            }
+            if (wParam == VK_RETURN) // enter
+            {
+                if ((HIWORD(lParam) & KF_ALTDOWN)) // +alt
+                {
+                    toggleFullscreen();
+                }
             }
         } break;
 
