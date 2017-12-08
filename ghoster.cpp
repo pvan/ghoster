@@ -1323,7 +1323,10 @@ struct GhosterWindow
         // QueueNewMsg((double)message.startAtSeconds, "message.startAtSeconds");
         // QueueNewMsg(message.file_to_load, "message.file_to_load");
         // QueueNewMsg(message.load_new_file, "message.load_new_file");
-        QueueNewMsg(" ");
+        // QueueNewMsg(" ");
+        // QueueNewMsg(popupMouseDown, "popupMouseDown");
+        // QueueNewMsg(*popupSliderCapture, "*popupSliderCapture");
+        // QueueNewMsg(" ");
 
 
 

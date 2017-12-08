@@ -84,7 +84,7 @@ struct MovieReel
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
     }
 
-    // destroys the reel passed in (we basically take the source
+    // destroys the reel passed in (we basically take the source and point our reel to it)
     void TransferFromReel(MovieReel *other)
     {
         FreeEverything();
@@ -209,18 +209,18 @@ struct MovieReel
 
 };
 
-//avoid this for now until we get the mem leaks cleaned up
-MovieReel DeepCopyMovieReel(MovieReel source)
-{
-    MovieReel dest;
-    dest.vfc = source.vfc;
-    dest.afc = source.afc;
-    dest.video.index = source.video.index;
-    dest.video.codecContext = source.video.codecContext;
-    dest.audio.index = source.audio.index;
-    dest.audio.codecContext = source.audio.codecContext;
-    return dest;
-}
+// //avoid this for now until we get the mem leaks cleaned up
+// MovieReel DeepCopyMovieReel(MovieReel source)
+// {
+//     MovieReel dest;
+//     dest.vfc = source.vfc;
+//     dest.afc = source.afc;
+//     dest.video.index = source.video.index;
+//     dest.video.codecContext = source.video.codecContext;
+//     dest.audio.index = source.audio.index;
+//     dest.audio.codecContext = source.audio.codecContext;
+//     return dest;
+// }
 
 
 
@@ -478,14 +478,13 @@ int GetNextAudioFrame(
     // is set, there can be buffered up frames that need to be flushed, so we'll do that
     if (cc->codec->capabilities & CODEC_CAP_DELAY)
     {
-        assert(false);  // todo: for now we just need an example file with this
         av_init_packet(&readingPacket);
         // Decode all the remaining frames in the buffer, until the end is reached
         int gotFrame = 0;
         while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
         {
-            // We now have a fully decoded audio frame
-            // printAudioFrameInfo(cc, frame);
+            // todo: need to actually use these last frames of decoded audio
+            // todo: just replace this whole function with send_packet/receive_frame api?
         }
     }
 

@@ -111,6 +111,15 @@ todo:
     [x] big one fixed
 
 
+[ ] handle these example cases with CODEC_CAP_DELAY
+https://www.youtube.com/watch?v=nUWur-T598s
+https://www.youtube.com/watch?v=gZo1BLYcMJ4
+https://www.youtube.com/watch?v=KH4NrUxcsYs
+    [ ] check if there is any data or it's just the flag is set
+    [ ] use the remaining data if there
+    [ ] or replace with new send/receive api which i don't think needs a special case for this
+
+
 
 ---consider-----
 
