@@ -2,11 +2,12 @@
 
 
 
-[ ] lose our "small" window size of we load a video in fullscreen
+[x] lose our "small" window size of we load a video in fullscreen
 
 
 [ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
     [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
+
 
 [ ] add proper random lib
 
@@ -19,7 +20,7 @@
 
 bugs: 
 
-[ ] single click breaks at some poin, maybe after loading or double clicking
+[x] single click breaks at some poin, maybe after loading or double clicking
 
 [ ] flickering when resizing introduced after adding overlay
 [ ] when resizing, black bars exist in the new space 
@@ -66,14 +67,6 @@ todo:
     [ ] display scrolling log?
 
 
-[?] percent bar incorrect when seeking some urls?
-    [ ] which?
-
-
-[/] seems like mem leak on loading files
-    [ ] looks like small one still there
-    [x] big one fixed
-
 
 [ ] needs a few abstraction cleanup passes
     [ ] menu windows
@@ -103,14 +96,16 @@ todo:
     hiding submenu when closing menu now, keep eye out for this
     update: definitely still happening
 
-[ ] menu bar not hiding when mouse stays still (flickers off then on)
+[x] menu bar not hiding when mouse stays still (flickers off then on)
 
-[ ] video was paused when unfullscreening and could not be unpaused again 
+[x] video was paused when unfullscreening and could not be unpaused again 
     (like it was ignoring single clicks)
     happened when unfullscreening a very vertical video.. maybe second click was off window or something?
     seems to happen when switching a lot between fullscreen via double 
-    [ ] debug display state [viewing mouse flags would probably fix this quickly]
+    [x] debug display state [viewing mouse flags would probably fix this quickly]
 
+[?] percent bar incorrect when seeking some urls?
+    [ ] which?
 
 
 ---low priority----
@@ -141,35 +136,33 @@ todo:
     [ ] "launcher" exe workaround?
 
 
+[/] seems like mem leak on loading files
+    [ ] looks like small one still there
+    [x] big one fixed
+
 
 ---consider-----
 
 step forward and backwards by a single frame?
 
-
 manual crop by resize borders but keeping window same? 
 maybe with middle mouse button
 and track with middle mouse, like a pdf or something
-
 
 when playing url...
 ..d/l asyn high quality
 ..play low quality instantly, switching to high quality on the fly?
 
-
 replace youtube-dl with homegrown/internal variant?
 
 grown/shrink which side of window based on screen location when changing aspect ratio??
 
-
 add icon to pause/play menu item
-
 
 if ghost mode forced always on top, should it also be automatically disabled when leaving ghost mode?
 
-
 if we pre-process the file in parallel to display, we could seek much faster on files with spaced out I-frames
-
+(and especially urls)
 
 
 write text on the image directly with ffmpeg?
