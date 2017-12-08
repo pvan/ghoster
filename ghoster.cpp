@@ -55,8 +55,6 @@ static bool global_is_submenu_shown = false;
 
 HINSTANCE global_hInstance;
 
-bool global_awkward_next_mup_was_closing_menu = false;
-
 
 static char *global_exe_directory;
 
@@ -848,6 +846,7 @@ struct AppMessages
     bool resizeWindowBuffers = false;
 
     bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
+    bool next_mup_was_closing_menu;
 
     bool savestate_is_saved = false;
     bool toggledPauseOnLastSingleClick = false;
@@ -1312,9 +1311,19 @@ struct GhosterWindow
         QueueNewMsg((double)selectedItem, "selectedItem");
         QueueNewMsg((double)subMenuSelectedItem, "subMenuSelectedItem");
         QueueNewMsg(global_is_submenu_shown, "global_is_submenu_shown");
-        QueueNewMsg(global_awkward_next_mup_was_closing_menu, "global_awkward_next_mup_was_closing_menu");
-
-
+        QueueNewMsg(message.next_mup_was_closing_menu, "message.next_mup_was_closing_menu");
+        QueueNewMsg(" ");
+        // QueueNewMsg(message.next_mup_was_double_click, "message.next_mup_was_double_click");
+        // QueueNewMsg(message.resizeWindowBuffers, "message.resizeWindowBuffers");
+        // QueueNewMsg(message.savestate_is_saved, "message.savestate_is_saved");
+        // QueueNewMsg(message.toggledPauseOnLastSingleClick, "message.toggledPauseOnLastSingleClick");
+        // QueueNewMsg(message.setSeek, "message.setSeek");
+        // QueueNewMsg(message.seekProportion, "message.seekProportion");
+        // QueueNewMsg(message.loadNewMovie, "message.loadNewMovie");
+        // QueueNewMsg((double)message.startAtSeconds, "message.startAtSeconds");
+        // QueueNewMsg(message.file_to_load, "message.file_to_load");
+        // QueueNewMsg(message.load_new_file, "message.load_new_file");
+        QueueNewMsg(" ");
 
 
         // if (message.resizeWindowBuffers ||
@@ -3099,7 +3108,7 @@ void appDragWindow(HWND hwnd, int x, int y)
     // }
 
     global_ghoster.system.mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
-    global_awkward_next_mup_was_closing_menu = false; // also needs to be reset here
+    global_ghoster.message.next_mup_was_closing_menu = false; // also needs to be reset here
     // (basically mups after drags aren't treated as regular mups)
 
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
@@ -3165,9 +3174,9 @@ void onMouseUpL()
 
     global_ghoster.system.mDown = false;
 
-    if (global_awkward_next_mup_was_closing_menu)
+    if (global_ghoster.message.next_mup_was_closing_menu)
     {
-        global_awkward_next_mup_was_closing_menu = false;
+        global_ghoster.message.next_mup_was_closing_menu = false;
         return;
     }
 
@@ -3691,7 +3700,7 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
         {
             if (global_ghoster.system.contextMenuOpen)
             {
-                global_awkward_next_mup_was_closing_menu = true;
+                global_ghoster.message.next_mup_was_closing_menu = true;
             }
             HideSubMenu();
             ClosePopup(global_popup_window);
