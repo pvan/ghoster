@@ -25,7 +25,7 @@ bugs:
 [ ] intermittent repeat-frame loop? maybe after seeking?
     -happened in dutch and manups vids
 
-[ ] loaded vid using previous vid timestamp if none
+[x] loaded vid using previous vid timestamp if none
 
 [ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
 

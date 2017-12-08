@@ -2379,6 +2379,10 @@ bool CreateNewMovieFromPath(char *path)
             // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
             // OutputDebugString(buf);
     }
+    else
+    {
+        global_ghoster.message.startAtSeconds = 0; // so we don't inherit start time of prev video
+    }
 
     // stop previous thread if already loading
     // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
