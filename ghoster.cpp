@@ -2472,12 +2472,12 @@ bool PasteClipboard()
 }
 
 
-bool CopyUrlToClipboard()
+bool CopyUrlToClipboard(bool withTimestamp = false)
 {
     char *url = global_ghoster.rolling_movie.cached_url;
 
     char output[URL_BUFFER_SIZE]; // todo: stack alloc ok here?
-    if (StringIsUrl(url)) {
+    if (StringIsUrl(url) && withTimestamp) {
         int secondsElapsed = global_ghoster.rolling_movie.elapsed;
         sprintf(output, "%s&t=%i", url, secondsElapsed);
     }

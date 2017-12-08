@@ -29,7 +29,8 @@ const char *ICONMENU_CLASS_NAME = "ghoster icon submenu window class";
 #define ID_SEP 1015
 #define ID_ICONMENU 1016
 #define ID_COPYURL 1017
-#define ID_RANDO 1018
+#define ID_COPYURL_TIME 1018
+#define ID_RANDO 1019
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -70,8 +71,9 @@ menuItem menuItems[] =
     {ID_VOLUME       , L"Volume"                         , 0, &global_ghoster.state.volume         , 0, 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
     {ID_RANDO        , L"Play Random"                    , 0                                    , 0, 0, 0 },
-    {ID_PASTE        , L"Paste URL Or File Path"         , 0                                    , 0, 0, 0 },
-    {ID_COPYURL      , L"Copy URL At Current Time"       , 0                                    , 0, 0, 0 },
+    {ID_PASTE        , L"Paste Clipboard URL"            , 0                                    , 0, 0, 0 },
+    {ID_COPYURL      , L"Copy URL"                       , 0                                    , 0, 0, 0 },
+    {ID_COPYURL_TIME , L"Copy URL At Current Time"       , 0                                    , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                                    , 0, 0, 0 },
     {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                                    , 0, 0, 0 },
     {ID_ASPECT       , L"Lock Aspect Ratio"              , &global_ghoster.state.lock_aspect    , 0, 0, 0 },
@@ -203,6 +205,9 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         case ID_COPYURL:
             CopyUrlToClipboard();
+            break;
+        case ID_COPYURL_TIME:
+            CopyUrlToClipboard(true);
             break;
         case ID_RESET_RES:
             SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.rolling_movie);
