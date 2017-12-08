@@ -91,6 +91,8 @@ menuItem menuItems[] =
 
 void ShowPopupWindow(int x, int y, int width, int height)
 {
+    // OutputDebugString("show menu\n");
+
     SetWindowPos(global_popup_window, HWND_TOP, x, y, width, height, SWP_SHOWWINDOW);
     // ShowWindow(global_popup_window, SW_SHOW);
 }
@@ -147,6 +149,7 @@ void OpenRClickMenuAt(HWND hwnd, POINT point)
 
 void ShowSubMenu(int posX, int posY, int wid, int hei)
 {
+    // OutputDebugString("show sub\n");
     global_is_submenu_shown = true;
     SetWindowPos(
         global_icon_menu_window,
@@ -155,6 +158,7 @@ void ShowSubMenu(int posX, int posY, int wid, int hei)
 }
 void HideSubMenu()
 {
+    // OutputDebugString("hide sub\n");
     global_is_submenu_shown = false;
     ShowWindow(global_icon_menu_window, SW_HIDE);
 }
@@ -162,6 +166,8 @@ void HideSubMenu()
 
 void ClosePopup(HWND hwnd)
 {
+    // OutputDebugString("hide menu\n");
+
     // DestroyWindow(hwnd);
     HidePopupWindow();
 

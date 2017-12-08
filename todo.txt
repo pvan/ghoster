@@ -63,8 +63,8 @@ todo:
 [/] overlay display: play/pause feedback, etc
     [x] basic single messages
     [ ] icon/bitmaps (esp play/pause)
-    [ ] multiple messages
-    [ ] display scrolling log?
+    [x] multiple messages
+    [x] display scrolling log?
 
 
 
@@ -92,7 +92,7 @@ todo:
 ---intermittent bugs---
 
 
-[ ] menu hiding but submenu not if submenu off main window
+[x] menu hiding but submenu not if submenu off main window
     hiding submenu when closing menu now, keep eye out for this
     update: definitely still happening
 

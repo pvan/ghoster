@@ -1015,7 +1015,7 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 
 
 
-const int MAX_MSGS = 15;
+const int MAX_MSGS = 20;
 int msgCount = 0;
 void ClearScrollingDisplay(char *allMsgs)
 {
@@ -1292,7 +1292,7 @@ struct GhosterWindow
 
 
 
-//asdf
+
         EmptyMsgQueue();
         QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
         QueueNewMsg(system.mDownPoint, "system.mDownPoint");
@@ -1324,6 +1324,8 @@ struct GhosterWindow
         // QueueNewMsg(message.file_to_load, "message.file_to_load");
         // QueueNewMsg(message.load_new_file, "message.load_new_file");
         QueueNewMsg(" ");
+
+
 
 
         // if (message.resizeWindowBuffers ||
@@ -1374,7 +1376,6 @@ struct GhosterWindow
         if (!PtInRect(&winRect, mPos)) {
             subMenuSelectedItem = -1;
             RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-            global_is_submenu_shown = false;//
         }
         GetWindowRect(global_popup_window, &winRect);
         if (!PtInRect(&winRect, mPos)) {
@@ -1717,11 +1718,6 @@ struct GhosterWindow
             HardSeekToFrameForTimestamp(&rolling_movie, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
         }
 
-
-        // asdf
-        // // temp speed bumps to accentuate submenu only bug
-        // for (int j = 0; j < 10000; j++) OutputDebugString("1");
-        // OutputDebugString("\n");
 
 
         // HIT FPS
