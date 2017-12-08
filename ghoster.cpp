@@ -3699,7 +3699,7 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
                 global_ghoster.message.next_mup_was_closing_menu = true;
             }
             HideSubMenu();
-            ClosePopup(global_popup_window);
+            CloseMenu();
         }
     }
 

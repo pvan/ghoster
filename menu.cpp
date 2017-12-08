@@ -164,7 +164,7 @@ void HideSubMenu()
 }
 
 
-void ClosePopup(HWND hwnd)
+void CloseMenu()
 {
     // OutputDebugString("hide menu\n");
 
@@ -275,7 +275,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
     if (item.value) return;  // don't close if clicking on slider
 
     // if (closeDontHide)
-        // ClosePopup(hwnd);
+        // CloseMenu(hwnd);
     // else
     //     ShowWindow(hwnd, SW_HIDE);
 }
@@ -651,6 +651,11 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 
     switch(message)
     {
+        case WM_KILLFOCUS: {  // if we alt-tab, etc
+            HideSubMenu();
+            if ((HWND)wParam != global_popup_window)
+                CloseMenu();
+        } break;
 
         case WM_MOUSEMOVE: {
             POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
@@ -677,7 +682,7 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
                 int indexOfClick = MouseOverMenuItem(mouse, hwnd, menu, menuCount);
                 onMenuItemClick(hwnd, menu[indexOfClick]);
                 HideSubMenu();
-                ClosePopup(global_popup_window); // close main menu, not this submenu!
+                CloseMenu(); // close main menu, not this submenu!
                 // RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             // }
             popupMouseDown = false;
@@ -693,10 +698,11 @@ LRESULT CALLBACK IconMenuWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM 
 }
 
 
+// basically for main menu only
 void onLoseFocus(HWND hwnd)
 {
     if (!global_is_submenu_shown)
-        ClosePopup(hwnd);
+        CloseMenu();
 }
 
 LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -773,7 +779,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             POINT mouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
             if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) < 0)
             {
-                ClosePopup(hwnd);
+                CloseMenu();
                 // i think to match windows we should somehow register this hit wherever it lands
             }
         } break;
@@ -800,7 +806,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // since we're no longer closing on WM_KILLFOCUS, try manual close like this
             if (MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem)) < 0)
             {
-                ClosePopup(hwnd);
+                CloseMenu();
             }
         } break;
 
@@ -813,7 +819,7 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
                 int indexOfClick = MouseOverMenuItem(mouse, hwnd, menuItems, sizeof(menuItems) / sizeof(menuItem));
                 onMenuItemClick(hwnd, menuItems[indexOfClick]);
                 if (menuItems[indexOfClick].code != ID_SEP)
-                    ClosePopup(hwnd);
+                    CloseMenu();
                 RedrawWindow(hwnd, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
             }
             // if (popupSliderCapture) ReleaseCapture();  // not sure if automatic or not

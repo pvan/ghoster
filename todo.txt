@@ -2,9 +2,6 @@
 
 
 
-[x] lose our "small" window size of we load a video in fullscreen
-
-
 [ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
     [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
 
@@ -19,8 +16,6 @@
 
 
 bugs: 
-
-[x] single click breaks at some poin, maybe after loading or double clicking
 
 [ ] flickering when resizing introduced after adding overlay
 [ ] when resizing, black bars exist in the new space 
@@ -48,12 +43,6 @@ todo:
 
 [ ] improve video resize quality (compare to vlc eg)
 
-
-[x] load random url vid if internet, otherwise none
-
-
-[ ] alt tab should close the menu probably 
-    (doesn't work if highlighting submenu)
 
 
 [x] command line options
@@ -89,25 +78,6 @@ todo:
 
 
 
----intermittent bugs---
-
-
-[x] menu hiding but submenu not if submenu off main window
-    hiding submenu when closing menu now, keep eye out for this
-    update: definitely still happening
-
-[x] menu bar not hiding when mouse stays still (flickers off then on)
-
-[x] video was paused when unfullscreening and could not be unpaused again 
-    (like it was ignoring single clicks)
-    happened when unfullscreening a very vertical video.. maybe second click was off window or something?
-    seems to happen when switching a lot between fullscreen via double 
-    [x] debug display state [viewing mouse flags would probably fix this quickly]
-
-[?] percent bar incorrect when seeking some urls?
-    [ ] which?
-
-
 ---low priority----
 
 
@@ -139,6 +109,7 @@ todo:
 [/] seems like mem leak on loading files
     [ ] looks like small one still there
     [x] big one fixed
+
 
 
 ---consider-----
