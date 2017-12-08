@@ -390,7 +390,7 @@ const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 5
 const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 
 // how long to leave messages on screen (including any fade time ATM)
-double MS_TO_DISPLAY_MSG = 3000;
+const double MS_TO_DISPLAY_MSG = 3000;
 
 
 
@@ -1287,22 +1287,33 @@ struct GhosterWindow
         // }
 
 
-        // replace this with the-one-dt-to-rule-them-all, maybe from app_timer
+        // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
         double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
         msLastFrame = state.app_timer.MsSinceStart();
 
 
 
-
+//asdf
         EmptyMsgQueue();
-        QueueNewMsg(system.contextMenuOpen, "sytem.contextMenuOpen");
-        QueueNewMsg(system.mDownPoint, "sytem.mDownPoint");
-        QueueNewMsg(system.mDown, "sytem.mDown");
-        QueueNewMsg(system.ctrlDown, "sytem.ctrlDown");
-        QueueNewMsg(system.clickingOnProgressBar, "sytem.clickingOnProgressBar");
-        QueueNewMsg(system.mouseHasMovedSinceDownL, "sytem.mouseHasMovedSinceDownL");
-        QueueNewMsg(system.msOfLastMouseMove, "sytem.msOfLastMouseMove");
+        QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
+        QueueNewMsg(system.mDownPoint, "system.mDownPoint");
+        QueueNewMsg(system.mDown, "system.mDown");
+        QueueNewMsg(system.ctrlDown, "system.ctrlDown");
+        QueueNewMsg(system.clickingOnProgressBar, "system.clickingOnProgressBar");
+        QueueNewMsg(system.mouseHasMovedSinceDownL, "system.mouseHasMovedSinceDownL");
+        QueueNewMsg(system.msOfLastMouseMove, "system.msOfLastMouseMove");
         QueueNewMsg(" ");
+        // for (int i = 0; i < alreadyPlayedCount; i++)
+        // {
+        //     QueueNewMsg((double)alreadyPlayedRandos[i], "alreadyPlayed");
+        // }
+        QueueNewMsg(global_popup_window, "global_popup_window");
+        QueueNewMsg(global_icon_menu_window, "global_icon_menu_window");
+        QueueNewMsg((double)selectedItem, "selectedItem");
+        QueueNewMsg((double)subMenuSelectedItem, "subMenuSelectedItem");
+        QueueNewMsg(global_is_submenu_shown, "global_is_submenu_shown");
+        QueueNewMsg(global_awkward_next_mup_was_closing_menu, "global_awkward_next_mup_was_closing_menu");
+
 
 
 
@@ -1697,6 +1708,11 @@ struct GhosterWindow
             HardSeekToFrameForTimestamp(&rolling_movie, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
         }
 
+
+        // asdf
+        // // temp speed bumps to accentuate submenu only bug
+        // for (int j = 0; j < 10000; j++) OutputDebugString("1");
+        // OutputDebugString("\n");
 
 
         // HIT FPS
@@ -3083,6 +3099,9 @@ void appDragWindow(HWND hwnd, int x, int y)
     // }
 
     global_ghoster.system.mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
+    global_awkward_next_mup_was_closing_menu = false; // also needs to be reset here
+    // (basically mups after drags aren't treated as regular mups)
+
     SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
 }
 
@@ -3156,6 +3175,8 @@ void onMouseUpL()
     {
         // end of a drag
         // todo: i don't think we ever actually get here on the end of a drag
+        // basically onMouseUpL is never called after a drag, not sure why
+        // but it means some special mup state reset needs to happen in appDrag
     }
     else
     {
