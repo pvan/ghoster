@@ -1,7 +1,6 @@
 
 
 
-
 [ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
     [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
 
@@ -23,6 +22,14 @@ bugs:
 [ ] black bar when loading new video is different size 
     (window resized before display buffer i guess)
 
+[ ] intermittent repeat-frame loop? maybe after seeking?
+    -happened in dutch and manups vids
+
+[ ] loaded vid using previous vid timestamp if none
+
+[ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
+
+
 
 todo:
 
@@ -42,6 +49,7 @@ todo:
 
 
 [ ] improve video resize quality (compare to vlc eg)
+    [ ] start with variable-size ffmpeg to screen buffer?
 
 
 
