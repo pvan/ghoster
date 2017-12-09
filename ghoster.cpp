@@ -561,7 +561,6 @@ struct AppSystemState
     POINT mDownPoint;
 
     bool mDown;
-    // bool ctrlDown;
     bool clickingOnProgressBar = false;
 
     bool mouseHasMovedSinceDownL = false;
@@ -612,41 +611,20 @@ struct AppTextBuffer
 
 struct MessageOverlay
 {
-    // AppColorBuffer bitmap;
     AppTextBuffer text;
     float alpha;
 
     double msLeftOfDisplay = 0;
-    // Color splashBackgroundCol;
 
     int maxLines = 1;
 
 
     void Allocate(int wid, int hei, int textLength)
     {
-        // bitmap.Allocate(wid, hei);
         text.Allocate(textLength);
     }
-    void Resize(int wid, int hei)
-    {
-        // bitmap.Allocate(wid, hei); // color buffer handles its own freeing
-    }
-
-    void QueueNewMsg(char *str)
-    {
-        // todo: move message manip into here?
-        // add update for handling time? (prefer not, any other way? msSince maybe?)
-        // add hard enable toggle?
-    }
 
 
-};
-
-struct AppBuffers
-{
-    // AppColorBuffer overlay;
-    // AppTextBuffer msg;
-    //AppTextBuffer rawMsg;
 };
 
 struct AppMessages
@@ -898,8 +876,6 @@ struct GhosterWindow
 
     double msLastFrame; // todo: replace this with app timer? make timer usage more obvious
 
-    // buffers mostly, anything on the heap
-    AppBuffers buffer;
 
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
@@ -981,8 +957,6 @@ struct GhosterWindow
     void EmptyMsgQueue()
     {
         ClearScrollingDisplay(debug_overlay.text.memory);
-        // debug_overlay.text.memory[0] = '\0';
-        // msgCount = 0;
     }
     void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
     {
@@ -990,8 +964,6 @@ struct GhosterWindow
         sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
     {
@@ -999,8 +971,6 @@ struct GhosterWindow
         sprintf(buf, "%s: %f\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
     {
@@ -1008,29 +978,17 @@ struct GhosterWindow
         sprintf(buf, "%s: %i\n", msg, val);
 
         AddToScrollingDisplay(buf, debug_overlay.text.memory);
-        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
     }
     void QueueNewMsg(char *msg, u32 col = 0xff888888)
     {
         AddToScrollingDisplay(msg, debug_overlay.text.memory);
-        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
     }
 
     void QueueNewSplash(char *msg, u32 col = 0xff888888)
     {
-        // todo: transmopgrify here, skip the second buffer
-        // buffer.rawMsg.Set(msg);
-
         TransmogrifyText(msg, splash_overlay.text.memory); // todo: check length somehow hmm...
 
         splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
-
-
-        // AddToScrollingDisplay(msg, debug_overlay.text.memory);
-        // message.msLeftOfSplash = MS_TO_DISPLAY_MSG;
         // message.splashBackgroundCol.hex = col;
 
     }
@@ -1531,24 +1489,6 @@ struct GhosterWindow
 
         RendererSwap(destWin);
 
-
-        // RenderToScreenGL((void*)rolling_movie.vid_buffer,
-        //                 960,
-        //                 720, //todo: extra bar bug qwer
-        //                 // rolling_movie.vidWID,
-        //                 // rolling_movie.vidHEI,
-        //                 system.winWID,
-        //                 system.winHEI,
-        //                 // system.winWID,
-        //                 // system.winHEI,
-        //                 destWin,
-        //                 temp_dt,
-        //                 state.lock_aspect && system.fullscreen,  // temp: aspect + fullscreen = letterbox
-        //                 rolling_movie.aspect_ratio,
-        //                 percent, drawProgressBar, state.bufferingOrLoading,
-        //                 debug_overlay,
-        //                 splash_overlay
-        //                 );
 
 
         // REPEAT
@@ -2342,18 +2282,7 @@ bool CopyUrlToClipboard(bool withTimestamp = false)
 
 
 
-// todo: what to do with this assortment of functions?
-// split into "ghoster" and "system"? and put ghoster ones in ghoster class? prep for splitting into two files?
 
-
-
-
-// HICON MakeIconFromBitmapID(HINSTANCE hInstance, int id)
-// {
-//     HBITMAP hbm = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(id), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-//     ICONINFO info = {true, 0, 0, hbm, hbm };
-//     return CreateIconIndirect(&info);
-// }
 
 HICON MakeIconFromBitmap(HINSTANCE hInstance, HBITMAP hbm)
 {
