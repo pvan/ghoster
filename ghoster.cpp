@@ -561,7 +561,7 @@ struct AppSystemState
     POINT mDownPoint;
 
     bool mDown;
-    bool ctrlDown;
+    // bool ctrlDown;
     bool clickingOnProgressBar = false;
 
     bool mouseHasMovedSinceDownL = false;
@@ -1297,10 +1297,11 @@ struct GhosterWindow
         QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
         QueueNewMsg(system.mDownPoint, "system.mDownPoint");
         QueueNewMsg(system.mDown, "system.mDown");
-        QueueNewMsg(system.ctrlDown, "system.ctrlDown");
+        // QueueNewMsg(system.ctrlDown, "system.ctrlDown");
         QueueNewMsg(system.clickingOnProgressBar, "system.clickingOnProgressBar");
         QueueNewMsg(system.mouseHasMovedSinceDownL, "system.mouseHasMovedSinceDownL");
         QueueNewMsg(system.msOfLastMouseMove, "system.msOfLastMouseMove");
+        QueueNewMsg(state.app_timer.MsSinceStart(), "state.app_timer.MsSinceStart()");
         QueueNewMsg(" ");
         // for (int i = 0; i < alreadyPlayedCount; i++)
         // {
@@ -3514,17 +3515,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SYSKEYDOWN:  // req for alt?
         case WM_KEYDOWN: {
-            if (wParam == 0x56) // V
+            if (wParam == 0x56 &&  // V
+                GetKeyState(VK_CONTROL) & 0x8000)  // ctrl
             {
-                if (global_ghoster.system.ctrlDown)
-                {
-                    PasteClipboard();
-                }
+                PasteClipboard();
             }
-            if (wParam == 0x11) // ctrl
-            {
-                global_ghoster.system.ctrlDown = true;
-            }
+            // if (wParam == 0x56) // V
+            // {
+            //     if (global_ghoster.system.ctrlDown)
+            //     {
+            //         PasteClipboard();
+            //     }
+            // }
+            // if (wParam == 0x11) // ctrl
+            // {
+            //     global_ghoster.system.ctrlDown = true;
+            // }
             if (wParam == VK_RETURN) // enter
             {
                 if ((HIWORD(lParam) & KF_ALTDOWN)) // +alt
@@ -3535,10 +3541,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_KEYUP: {
-            if (wParam == 0x11) // ctrl
-            {
-                global_ghoster.system.ctrlDown = false;
-            }
+            // if (wParam == 0x11) // ctrl
+            // {
+            //     global_ghoster.system.ctrlDown = false;
+            // }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
                 global_ghoster.message.QueueLoadMovie(TEST_FILES[wParam - 0x30]);

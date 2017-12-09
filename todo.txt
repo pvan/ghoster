@@ -31,6 +31,8 @@ bugs:
 
 [ ] resize before done loading, window disappears
 
+[ ] intermittent progress bar not hiding when mouse is still
+
 
 todo:
 
