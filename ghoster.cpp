@@ -1775,62 +1775,6 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 }
 
 
-// for timestamps in the form &t=X / &t=Xs / &t=XmYs / &t=XhYmZs
-int SecondsFromStringTimestamp(char *timestamp)
-{
-    int secondsSoFar = 0;
-
-    if (StringBeginsWith(timestamp, "&t=") || StringBeginsWith(timestamp, "#t="))
-    {
-        timestamp+=3;
-    }
-
-    char *p = timestamp;
-
-    char *nextDigits = timestamp;
-    int digitCount = 0;
-
-    char *nextUnits;
-
-    while (*p)
-    {
-
-        nextDigits = p;
-        while (isdigit((int)*p))
-        {
-            p++;
-        }
-
-        int nextNum = atoi(nextDigits);
-
-        // nextUnit = *p;
-        // if (nextUnit == '\0') nextUnit = 's';
-
-        int secondsPerUnit = 1;
-        if (*p == 'm') secondsPerUnit = 60;
-        if (*p == 'h') secondsPerUnit = 60*60;
-
-        secondsSoFar += nextNum*secondsPerUnit;
-
-        p++;
-
-    }
-
-    return secondsSoFar;
-}
-
-bool Test_SecondsFromStringTimestamp()
-{
-    assert(SecondsFromStringTimestamp("#t=21s1m") == 21+60);
-    assert(SecondsFromStringTimestamp("&t=216") == 216);
-    assert(SecondsFromStringTimestamp("12") == 12);
-    assert(SecondsFromStringTimestamp("12s") == 12);
-    assert(SecondsFromStringTimestamp("854s") == 854);
-    assert(SecondsFromStringTimestamp("2m14s") == 2*60+14);
-    assert(SecondsFromStringTimestamp("3h65m0s") == 3*60*60+65*60+0);
-    return true;
-}
-
 
 bool CreateNewMovieFromPath(char *path)
 {
