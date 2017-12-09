@@ -1141,6 +1141,25 @@ struct GhosterWindow
     }
 
 
+
+    bool clientPointIsOnProgressBar(int x, int y)
+    {
+        return y >= system.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+               y <= system.winHEI-PROGRESS_BAR_B;
+    }
+
+    void appSetProgressBar(int clientX, int clientY)
+    {
+        if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
+        {
+            double prop = (double)clientX / (double)system.winWID;
+
+            message.setSeek = true;
+            message.seekProportion = prop;
+        }
+    }
+
+
     void EmptyMsgQueue()
     {
         ClearScrollingDisplay(debug_overlay.text.memory);
@@ -3009,29 +3028,13 @@ void restoreVideoPositionAfterDoubleClick()
 
 
 
-bool clientPointIsOnProgressBar(int x, int y)
-{
-    return y >= global_ghoster.system.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-           y <= global_ghoster.system.winHEI-PROGRESS_BAR_B;
-}
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 {
     POINT newPoint = {x, y};
     ScreenToClient(hwnd, &newPoint);
-    return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
+    return global_ghoster.clientPointIsOnProgressBar(newPoint.x, newPoint.y);
 }
 
-
-void appSetProgressBar(int clientX, int clientY)
-{
-    if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
-    {
-        double prop = (double)clientX / (double)global_ghoster.system.winWID;
-
-        global_ghoster.message.setSeek = true;
-        global_ghoster.message.seekProportion = prop;
-    }
-}
 
 bool EdgeIsClose(int a, int b)
 {
@@ -3069,7 +3072,7 @@ void SnapRectToMonitor(RECT in, RECT *out)
     }
 }
 
-void appDragWindow(HWND hwnd, int x, int y)
+void sysDragWindow(HWND hwnd, int x, int y)
 {
 
     if (global_ghoster.system.fullscreen)
@@ -3146,14 +3149,15 @@ void onMouseMove(HWND hwnd, int clientX, int clientY)
         {
             global_ghoster.system.mouseHasMovedSinceDownL = true;
 
-            if (clientPointIsOnProgressBar(global_ghoster.system.mDownPoint.x,
-                                           global_ghoster.system.mDownPoint.y))
+            if (global_ghoster.clientPointIsOnProgressBar(
+                    global_ghoster.system.mDownPoint.x,
+                    global_ghoster.system.mDownPoint.y))
             {
-                appSetProgressBar(clientX, clientY);
+                global_ghoster.appSetProgressBar(clientX, clientY);
             }
             else
             {
-                appDragWindow(hwnd, clientX, clientY);
+                sysDragWindow(hwnd, clientX, clientY);
             }
         }
     }
@@ -3196,8 +3200,9 @@ void onMouseUpL()
     }
     else
     {
-        if (!clientPointIsOnProgressBar(global_ghoster.system.mDownPoint.x,
-                                        global_ghoster.system.mDownPoint.y))
+        if (!global_ghoster.clientPointIsOnProgressBar(
+                        global_ghoster.system.mDownPoint.x,
+                        global_ghoster.system.mDownPoint.y))
         {
             // since this could be the mouse up in between the two clicks of a double click,
             // wait a little bit before we actually pause (should work with 0 delay as well)
@@ -3249,7 +3254,9 @@ void onDoubleClickDownL()
 {
     if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOUBLECLICK\n");
 
-    if (clientPointIsOnProgressBar(global_ghoster.system.mDownPoint.x, global_ghoster.system.mDownPoint.y))
+    if (global_ghoster.clientPointIsOnProgressBar(
+        global_ghoster.system.mDownPoint.x,
+        global_ghoster.system.mDownPoint.y))
     {
         // OutputDebugString("on bar dbl\n");
         global_ghoster.system.clickingOnProgressBar = true;
@@ -3279,11 +3286,11 @@ void onMouseDownL(int clientX, int clientY)
     global_ghoster.system.mouseHasMovedSinceDownL = false;
     global_ghoster.system.mDownPoint = {clientX, clientY};
 
-    if (clientPointIsOnProgressBar(clientX, clientY))
+    if (global_ghoster.clientPointIsOnProgressBar(clientX, clientY))
     {
         // OutputDebugString("on bar\n");
         global_ghoster.system.clickingOnProgressBar = true;
-        appSetProgressBar(clientX, clientY);
+        global_ghoster.appSetProgressBar(clientX, clientY);
     }
     else
     {
