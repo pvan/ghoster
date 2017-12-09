@@ -3133,6 +3133,7 @@ int CALLBACK WinMain(
     int startW = 960;
     int startH = 720;
     bool startInGhostMode = false;
+    int nest = 0; // todo: enum 0=none, 1=tl, 2=tr, 3=bl, 4=br
 
 
 
@@ -3278,6 +3279,31 @@ int CALLBACK WinMain(
             startH = (double)atoi(hNum);
         }
 
+        if (StringBeginsWith(filePathOrUrl, "-tl"))
+        {
+            nest = 1;
+        }
+        if (StringBeginsWith(filePathOrUrl, "-tr"))
+        {
+            nest = 2;
+        }
+        if (StringBeginsWith(filePathOrUrl, "-bl"))
+        {
+            nest = 3;
+        }
+        if (StringBeginsWith(filePathOrUrl, "-br"))
+        {
+            nest = 4;
+        }
+        if (StringBeginsWith(filePathOrUrl, "-Bl"))  // todo: better name for above/below taskbar
+        {
+            nest = 5;
+        }
+        if (StringBeginsWith(filePathOrUrl, "-Br"))
+        {
+            nest = 6;
+        }
+
         // todo: many settings here are coupled with the setX() functions called below
         // maybe move this whole arg parsing below window creation so we don't have this two-step process?
         // update: however some (like size/pos) might be nice to have before creating window?
@@ -3323,6 +3349,28 @@ int CALLBACK WinMain(
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
     RECT neededRect = {startX, startY, startX+startW, startY+startH};
+
+    // todo: test with multiple monitors
+    if (nest != 0)
+    {
+        MONITORINFO mi = { sizeof(mi) };
+        //todo can't get from window before window exists
+        if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
+        {
+            if (nest == 1)
+                neededRect = { 0, 0, startW, startH};
+            if (nest == 2)
+                neededRect = { mi.rcMonitor.right-startW, 0, mi.rcMonitor.right, startH};
+            if (nest == 3)
+                neededRect = { 0, mi.rcWork.bottom-startH, startW, mi.rcWork.bottom};
+            if (nest == 4)
+                neededRect = { mi.rcWork.right-startW, mi.rcWork.bottom-startH, mi.rcWork.right, mi.rcWork.bottom};
+            if (nest == 5)
+                neededRect = { 0, mi.rcMonitor.bottom-startH, startW, mi.rcMonitor.bottom};
+            if (nest == 6)
+                neededRect = { mi.rcMonitor.right-startW, mi.rcMonitor.bottom-startH, mi.rcMonitor.right, mi.rcMonitor.bottom};
+        }
+    }
 
     // HWND
     global_ghoster.system.window = CreateWindowEx(

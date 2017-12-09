@@ -58,7 +58,8 @@ todo:
 
 [x] command line options
     [x] menu options
-    [ ] positioning/sizing options [add checkmark when done]
+    [x] positioning/sizing options [add checkmark when done]
+    [ ] option for just left/right/top/bottom docking individually ?
 
 [/] overlay display: play/pause feedback, etc
     [x] basic single messages

@@ -12,6 +12,6 @@ goal:
 - option to place under desktop icons ("wallpaper mode") ✔
 - play local videos or video urls ✔
 - always responsive ✔
-- command line options
+- command line options ✔
 - playlists / youtube autoplay
 
