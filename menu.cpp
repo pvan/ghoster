@@ -380,7 +380,7 @@ double *updateSliders(HWND hwnd, POINT mouse)
             if (destination_value == &global_ghoster.state.opacity)
                 setOpacity(global_ghoster.system.window, result);
             if (destination_value == &global_ghoster.state.volume)
-                setVolume(result);
+                global_ghoster.setVolume(result);
 
             return destination_value;
         }

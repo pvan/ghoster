@@ -1159,6 +1159,13 @@ struct GhosterWindow
         }
     }
 
+    void setVolume(double volume)
+    {
+        if (volume < 0) volume = 0;
+        if (volume > 1) volume = 1;
+        state.volume = volume;
+    }
+
 
     void EmptyMsgQueue()
     {
@@ -2786,12 +2793,6 @@ void setOpacity(HWND hwnd, double opacity, bool userRequest = true)
     global_ghoster.state.opacity = opacity;
     SetLayeredWindowAttributes(global_ghoster.system.window, 0, 255.0*opacity, LWA_ALPHA);
 }
-void setVolume(double volume)
-{
-    if (volume < 0) volume = 0;
-    if (volume > 1) volume = 1;
-    global_ghoster.state.volume = volume;
-}
 
 void setGhostMode(HWND hwnd, bool enable)
 {
@@ -3964,7 +3965,7 @@ int CALLBACK WinMain(
     // do not call here, wait until movie as been loaded and window is correct size
     // setFullscreen(global_ghoster.system.fullscreen);
 
-    setVolume(global_ghoster.state.volume);
+    global_ghoster.setVolume(global_ghoster.state.volume);
 
     if (startInGhostMode)
         setGhostMode(global_ghoster.system.window, startInGhostMode);
