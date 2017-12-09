@@ -29,6 +29,7 @@ bugs:
 
 [ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
 
+[ ] resize before done loading, window disappears
 
 
 todo:

@@ -2960,8 +2960,11 @@ void setWallpaperMode(HWND hwnd, bool enable)
         // EDIT: WS_MINIMIZEBOX seemed to do the trick, now everything works as expected
         // (though there could theoretically be other windows that aren't minimizable
         // (that are effected while a ghoster window is in wallpaper mode)
-        if (global_workerw)
-            ShowWindow(global_workerw, SW_SHOW);
+
+        // now that we have WS_MINIMIZEBOX, let's not re-show this
+        // so if we have multiple windows stuck to desktop, it won't hide the others behind this
+        // if (global_workerw)
+        //     ShowWindow(global_workerw, SW_SHOW);
 
         if (global_wallpaper_window)
             DestroyWindow(global_wallpaper_window);
@@ -4009,8 +4012,10 @@ int CALLBACK WinMain(
     // (but only on the first transition)
     // there could be other consequences too like windows being "put on the desktop"
     // rather than minimized when using "show desktop" (which is how we found this is needed)
-    if (global_workerw)
-        ShowWindow(global_workerw, SW_SHOW);
+
+    // no longer re-show this, so we don't hide other wallpaper-mode windows
+    // if (global_workerw)
+    //     ShowWindow(global_workerw, SW_SHOW);
 
     return 0;
 }
