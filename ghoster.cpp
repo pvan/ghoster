@@ -3127,8 +3127,17 @@ int CALLBACK WinMain(
 
 
 
+    // defaults
+    int startX = 0;
+    int startY = 0;
+    int startW = 960;
+    int startH = 720;
+    bool startInGhostMode = false;
+
+
 
     // COMMAND LINE ARGS
+
 
     wchar_t **argList;
     int argCount;
@@ -3147,7 +3156,6 @@ int CALLBACK WinMain(
         // OutputDebugString(global_exe_directory);
         // OutputDebugString("\n\n\n\n");
 
-    bool startInGhostMode = false;
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
         char filePathOrUrl[256]; // todo what max to use
@@ -3249,8 +3257,30 @@ int CALLBACK WinMain(
             global_ghoster.state.volume = (double)atoi(volNum) / 100.0;
         }
 
+        if (StringBeginsWith(filePathOrUrl, "-x"))
+        {
+            char *xNum = filePathOrUrl + 2; // 2 = length of "-x"
+            startX = (double)atoi(xNum);
+        }
+        if (StringBeginsWith(filePathOrUrl, "-y"))
+        {
+            char *yNum = filePathOrUrl + 2; // 2 = length of "-y"
+            startY = (double)atoi(yNum);
+        }
+        if (StringBeginsWith(filePathOrUrl, "-w"))
+        {
+            char *wNum = filePathOrUrl + 2; // 2 = length of "-w"
+            startW = (double)atoi(wNum);
+        }
+        if (StringBeginsWith(filePathOrUrl, "-h"))
+        {
+            char *hNum = filePathOrUrl + 2; // 2 = length of "-h"
+            startH = (double)atoi(hNum);
+        }
+
         // todo: many settings here are coupled with the setX() functions called below
         // maybe move this whole arg parsing below window creation so we don't have this two-step process?
+        // update: however some (like size/pos) might be nice to have before creating window?
     }
 
 
@@ -3292,9 +3322,7 @@ int CALLBACK WinMain(
     wc.lpszClassName = "ghoster window class";
     if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
 
-    RECT neededRect = {0};
-    neededRect.right = 960;
-    neededRect.bottom = 720;
+    RECT neededRect = {startX, startY, startX+startW, startY+startH};
 
     // HWND
     global_ghoster.system.window = CreateWindowEx(
@@ -3302,14 +3330,14 @@ int CALLBACK WinMain(
         wc.lpszClassName, "ghoster video player",
         WS_MINIMIZEBOX |   // i swear sometimes we can't shrink (via show desktop) without WS_MINIMIZEBOX
         WS_POPUP | WS_VISIBLE,
-        CW_USEDEFAULT, CW_USEDEFAULT,
-        neededRect.right - neededRect.left, neededRect.bottom - neededRect.top,
+        neededRect.left, neededRect.top,
+        neededRect.right-neededRect.left, neededRect.bottom-neededRect.top,
         0, 0, hInstance, 0);
 
     if (!global_ghoster.system.window) { MsgBox("Couldn't open window."); }
 
 
-    global_ghoster.ResizeWindow(neededRect.right, neededRect.bottom);
+    global_ghoster.ResizeWindow(neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
 
 
     // /*
