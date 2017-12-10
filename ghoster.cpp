@@ -1217,36 +1217,38 @@ struct GhosterWindow
         {
             r_clear();
 
-            RECT subRect = {0}; // code for fill to entire window
             if (state.lock_aspect && system.fullscreen)
             {
                 // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
                 // certainly seems easier to change viewport
-                // update: although now we're changing the verts
-                subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
+                // update: now we're changing the verts
+                RECT subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
+                float ndcL = r_PixelToNDC(subRect.left,   system.winWID);
+                float ndcR = r_PixelToNDC(subRect.right,  system.winWID);
+                float ndcT = r_PixelToNDC(subRect.top,    system.winHEI);
+                float ndcB = r_PixelToNDC(subRect.bottom, system.winHEI);
+                movie_screen.update(rolling_movie.vid_buffer, 960,720,  ndcL, ndcT, ndcR, ndcB);
             }
-
-            movie_screen.update(rolling_movie.vid_buffer, 960, 720);
+            else
+            {
+                movie_screen.update(rolling_movie.vid_buffer, 960,720);
+            }
             movie_screen.render(1);
 
             if (drawProgressBar)
             {
-                // int pos = (int)(percent * (double)system.winWID);
-                // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-
-                // todo: treating _H as top here, not height
                 int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
-                double ndcB = ((double)PROGRESS_BAR_B / (double)system.winHEI)*2.0 - 1.0;
-                double ndcH = ((double)progress_bar_t / (double)system.winHEI)*2.0 - 1.0;
+                double ndcB = r_PixelToNDC(PROGRESS_BAR_B, system.winHEI);
+                double ndcH = r_PixelToNDC(progress_bar_t, system.winHEI);
 
                 double neg1_to_1 = percent*2.0 - 1.0;
 
                 u32 gray = 0xffaaaaaa;
-                progress_gray.update((u8*)&gray, 1, 1,  neg1_to_1, ndcB, 1, ndcH);
+                progress_gray.update((u8*)&gray, 1,1,  neg1_to_1, ndcB, 1, ndcH);
                 progress_gray.render(0.4);
 
                 u32 red = 0xffff0000;
-                progress_red.update((u8*)&red, 1, 1,  -1, ndcB, neg1_to_1, ndcH);
+                progress_red.update((u8*)&red, 1,1,  -1, ndcB, neg1_to_1, ndcH);
                 progress_red.render(0.6);
             }
         }

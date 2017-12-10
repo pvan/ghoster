@@ -90,7 +90,6 @@ char *vertex_shader = MULTILINE_STRING
     VOUT vs_main(in VIN In)
     {
         VOUT Out;
-        // Out.Position = (In.Position - float4(0.5,0.5,0,0)) * float4(2,-2,1,1); // to ndc
         Out.Position = In.Position;
         Out.Texture  = In.Texture;
         return Out;
