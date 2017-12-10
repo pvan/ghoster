@@ -91,7 +91,8 @@ char *vertex_shader = MULTILINE_STRING
     VOUT vs_main(in VIN In)
     {
         VOUT Out;
-        Out.Position = (In.Position - float4(0.5,0.5,0,0)) * float4(2,-2,1,1); // to ndc
+        // Out.Position = (In.Position - float4(0.5,0.5,0,0)) * float4(2,-2,1,1); // to ndc
+        Out.Position = In.Position;
         Out.Texture  = In.Texture;
         return Out;
     }
@@ -131,6 +132,10 @@ bool d3d_load()
 
 
 
+
+
+
+
 IDirect3D9* context;
 IDirect3DDevice9* device;
 
@@ -158,6 +163,74 @@ void d3d_compile_shaders()
     }
     device->CreatePixelShader((DWORD*)code->GetBufferPointer(), &ps);
 }
+
+
+// struct textured_quad
+// {
+//     IDirect3DVertexBuffer9 *vb;
+//     IDirect3DTexture9 *tex;
+//     IDirect3DVertexDeclaration9 *vertexDecl;
+
+//     void create(u8 *mem, int w, int h, RECT dest = {0})
+//     {
+//         float verts[] = {
+//         //   x   y  z   u  v
+//             -1, -1, 0,  0, 0,
+//              1, -1, 0,  1, 0,
+//             -1,  1, 0,  0, 1,
+//              1,  1, 0,  1, 1
+//         };
+
+//         HRESULT res = device->CreateVertexBuffer(5*4*sizeof(float), D3DUSAGE_DYNAMIC|D3DUSAGE_WRITEONLY, 0, D3DPOOL_DEFAULT, &vb, 0);
+//         // HRESULT res = device->CreateVertexBuffer(5*4*sizeof(float), 0, 0, D3DPOOL_MANAGED, &vb, 0); // which to use?
+//         if (res != D3D_OK) MessageBox(0,"error creating vb", 0, 0);
+
+//         void *where_to_copy_to;
+//         vb->Lock(0, 0, &where_to_copy_to, 0);
+//         memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
+//         vb->Unlock();
+
+
+//         D3DVERTEXELEMENT9 decl[] =
+//         {
+//             {
+//                 0, 0,
+//                 D3DDECLTYPE_FLOAT3,
+//                 D3DDECLMETHOD_DEFAULT,
+//                 D3DDECLUSAGE_POSITION, 0
+//             },
+//             {
+//                 0, 0,
+//                 D3DDECLTYPE_FLOAT2,
+//                 D3DDECLMETHOD_DEFAULT,
+//                 D3DDECLUSAGE_TEXCOORD, 0
+//             },
+//             D3DDECL_END()
+//         };
+//         res = device->CreateVertexDeclaration(decl, &vertexDecl);
+//         if (res != D3D_OK) OutputDebugString("CreateVertexDeclaration error!\n");
+
+
+//         res = device->CreateTexture(w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
+//         if (res != D3D_OK) MessageBox(0,"error CreateTexture", 0, 0);
+//         d3d_render_pattern_to_texture(tex, 0);
+
+
+//         device->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+//         device->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+//         // device->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);  // this is the default value
+
+//         // without this, linear filtering will give us a bad pixel row on top/left
+//         // does this actually fix the issue or is our whole image off a pixel and this just covers it up?
+//         device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP); // doesn't seem to help our
+//         device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP); // top/left bad pixel edge
+//     }
+
+//     void update_texture()
+//     {
+
+//     }
+// }
 
 
 IDirect3DVertexBuffer9 *vb;
@@ -203,17 +276,20 @@ void d3d_create_quad(int w, int h)
 {
     float verts[] = {
     //   x   y  z   u  v
-        -1, -1, 0,  0, 0,
-         1, -1, 0,  1, 0,
-        -1,  1, 0,  0, 1,
-         1,  1, 0,  1, 1
+        -1, -1, 0,  0, 1,
+        -1,  1, 0,  0, 0,
+         1, -1, 0,  1, 1,
+         1,  1, 0,  1, 0
     };
-    HRESULT res = device->CreateVertexBuffer(5 * 4 * sizeof(float), 0, 0, D3DPOOL_DEFAULT, &vb, 0);
+
+    HRESULT res = device->CreateVertexBuffer(5*4*sizeof(float),
+                                             D3DUSAGE_DYNAMIC & D3DUSAGE_WRITEONLY, 0,
+                                             D3DPOOL_DEFAULT, &vb, 0);
     if (res != D3D_OK) MessageBox(0,"error creating vb", 0, 0);
 
     void *where_to_copy_to;
-    vb->Lock(0, 0, &where_to_copy_to, 0);
-    memcpy(where_to_copy_to, verts, 5 * 4 * sizeof(float));
+    vb->Lock(0, 0, &where_to_copy_to, D3DLOCK_DISCARD);
+    memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
     vb->Unlock();
 
 
@@ -226,7 +302,7 @@ void d3d_create_quad(int w, int h)
             D3DDECLUSAGE_POSITION, 0
         },
         {
-            0, 0,
+            0, 3*sizeof(float),
             D3DDECLTYPE_FLOAT2,
             D3DDECLMETHOD_DEFAULT,
             D3DDECLUSAGE_TEXCOORD, 0
@@ -237,6 +313,8 @@ void d3d_create_quad(int w, int h)
     if (res != D3D_OK) OutputDebugString("CreateVertexDeclaration error!\n");
 
 
+    // todo: or D3DPOOL_DEFAULT + D3DUSAGE_DYNAMIC & D3DUSAGE_WRITEONLY
+    // apparently D3DPOOL_MANAGED is needed to lock the texture?
     res = device->CreateTexture(w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
     if (res != D3D_OK) MessageBox(0,"error CreateTexture", 0, 0);
     d3d_render_pattern_to_texture(tex, 0);
@@ -250,8 +328,36 @@ void d3d_create_quad(int w, int h)
     // does this actually fix the issue or is our whole image off a pixel and this just covers it up?
     device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP); // doesn't seem to help our
     device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP); // top/left bad pixel edge
+
+
+    // device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+
+    // device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
+    // device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
 }
 
+void d3d_update_quad(float l, float t, float r, float b, float z = 0)
+{
+    float verts[] = {
+    //  x  y  z   u  v
+        l, t, z,  0, 1,
+        l, b, z,  0, 0,
+        r, t, z,  1, 1,
+        r, b, z,  1, 0
+    };
+
+    void *where_to_copy_to;
+    vb->Lock(0, 0, &where_to_copy_to, D3DLOCK_DISCARD);
+    memcpy(where_to_copy_to, verts, 5 * 4 * sizeof(float));
+}
+
+
+void d3d_update_texture(IDirect3DTexture9 *t, int w, int h)
+{
+    if (tex) tex->Release();
+    HRESULT res = device->CreateTexture(w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
+    if (res != D3D_OK) OutputDebugString("error CreateTexture");
+}
 
 
 bool d3d_init(HWND win, int w, int h)
@@ -283,6 +389,9 @@ bool d3d_init(HWND win, int w, int h)
         &params,
         &device);
 
+
+    // for not just put these here...
+
     d3d_compile_shaders();
 
     d3d_create_quad(w, h);
@@ -291,10 +400,46 @@ bool d3d_init(HWND win, int w, int h)
 }
 
 
+// void d3d_viewport(RECT rect)
+// {
+//     if (!device) return;
+
+//     D3DVIEWPORT9 vp;
+//     vp.X      = rect.left;
+//     vp.Y      = rect.top;
+//     vp.Width  = rect.right-rect.left;
+//     vp.Height = rect.bottom-rect.top;
+//     vp.MinZ   = 0.0f;
+//     vp.MaxZ   = 1.0f;
+//     device->SetViewport(&vp);
+// }
+
+void d3d_clear(int r = 0, int g = 0, int b = 0, int a = 255)
+{
+    if (device) device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_RGBA(r,g,b,a), 1.0f, 0);
+}
+
+// flicker, hmm
+// void d3d_clear_rect(int r, int g, int b, int a, RECT dest)
+// {
+//     if (device) device->Clear(1, (D3DRECT*)&dest, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_RGBA(r,g,b,a), 1.0f, 0);
+
+//     // if (!device) return;
+
+//     // // cache
+//     // D3DVIEWPORT9 orig;
+//     // device->GetViewport(&orig);
+
+//     // d3d_viewport(dest);
+//     // d3d_clear(r, g, b, alpha);
+
+//     // // restore
+//     // device->SetViewport(&orig);
+// }
 
 void d3d_render()
 {
-    device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0,150,200), 1.0f, 0);
+    // device->Clear(0, 0, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER, D3DCOLOR_XRGB(0,150,200), 1.0f, 0);
     device->BeginScene();
 
     device->SetVertexDeclaration(vertexDecl);
@@ -305,6 +450,40 @@ void d3d_render()
     device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
     device->EndScene();
-    device->Present(0, 0, 0, 0);
+    // device->Present(0, 0, 0, 0);
 }
 
+// void d3d_render_quad(u8* qmem, int qw, int qh, double dx, double dy, double dw, double dh)
+// {
+
+// }
+
+void d3d_swap()
+{
+    if (device) device->Present(0, 0, 0, 0);
+}
+
+// void d3d_viewport(RECT rect)
+// {
+//     if (!device) return;
+
+//     D3DVIEWPORT9 vp;
+//     vp.X      = rect.left;
+//     vp.Y      = rect.top;
+//     vp.Width  = rect.right-rect.left;
+//     vp.Height = rect.bottom-rect.top;
+//     vp.MinZ   = 0.0f;
+//     vp.MaxZ   = 1.0f;
+//     device->SetViewport(&vp);
+// }
+
+void d3d_cleanup()
+{
+    if (device) device->Release();
+    if (context) context->Release();
+    if (vs) vs->Release();
+    if (ps) ps->Release();
+    if (tex) tex->Release();
+    if (vertexDecl) vertexDecl->Release();
+    if (vb) vb->Release();
+}

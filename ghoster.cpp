@@ -362,8 +362,8 @@ struct AppMessages
 
 #pragma comment(lib, "gdi32.lib")
 
-#include "opengl.cpp"
-// #include "directx.cpp"
+#include "renderer.cpp"
+
 
 
 // todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
@@ -1135,65 +1135,7 @@ struct GhosterWindow
 
 
 
-        gl_StartFrame(destWin);
-
-        static float t = 0;
-        if (state.bufferingOrLoading)
-        {
-            t += temp_dt;
-            // float col = sin(t*M_PI*2 / 100);
-            // col = (col + 1) / 2; // 0-1
-            // col = 0.9*col + 0.4*(1-col); //lerp
-
-            // e^sin(x) very interesting shape, via
-            // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
-            float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
-            float min = 1/M_E;
-            float max = M_E;
-            col = (col-min) / (max-min); // 0-1
-            col = 0.75*col + 0.2*(1-col); //lerp
-
-            gl_Clear(col, col, col, 1);  // r g b a
-        }
-        else
-        {
-            gl_Clear();
-
-            RECT subRect = {0}; // code for fill to entire window
-            if (state.lock_aspect && system.fullscreen)
-            {
-                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-                // certainly seems easier to change viewport
-                subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
-            }
-
-            // movie frame
-            gl_RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
-
-            if (drawProgressBar)
-            {
-                int pos = (int)(percent * (double)system.winWID);
-                // progress bar (grey)
-                RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-                u32 gray = 0xaaaaaaaa;
-                gl_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
-                // progress bar (red)
-                destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-                u32 red = 0xffff0000;
-                gl_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
-            }
-        }
-
-        // todo: improve the args needed for these calls?
-        gl_RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-        gl_RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
-
-        gl_Swap();
-
-
-
-
-        // RendererStartFrame(destWin);
+        // gl_StartFrame(destWin);
 
         // static float t = 0;
         // if (state.bufferingOrLoading)
@@ -1211,11 +1153,11 @@ struct GhosterWindow
         //     col = (col-min) / (max-min); // 0-1
         //     col = 0.75*col + 0.2*(1-col); //lerp
 
-        //     RendererClear(col, col, col, 1);  // r g b a
+        //     gl_Clear(col, col, col, 1);  // r g b a
         // }
         // else
         // {
-        //     RendererClear();
+        //     gl_Clear();
 
         //     RECT subRect = {0}; // code for fill to entire window
         //     if (state.lock_aspect && system.fullscreen)
@@ -1226,7 +1168,7 @@ struct GhosterWindow
         //     }
 
         //     // movie frame
-        //     RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
+        //     gl_RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
 
         //     if (drawProgressBar)
         //     {
@@ -1234,19 +1176,80 @@ struct GhosterWindow
         //         // progress bar (grey)
         //         RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
         //         u32 gray = 0xaaaaaaaa;
-        //         RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+        //         gl_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
         //         // progress bar (red)
         //         destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
         //         u32 red = 0xffff0000;
-        //         RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+        //         gl_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
         //     }
         // }
 
         // // todo: improve the args needed for these calls?
-        // RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-        // RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
+        // gl_RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        // gl_RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
-        // RendererSwap(destWin);
+        // gl_Swap();
+
+
+
+        static float t = 0;
+        if (state.bufferingOrLoading)
+        {
+            t += temp_dt;
+            // float col = sin(t*M_PI*2 / 100);
+            // col = (col + 1) / 2; // 0-1
+            // col = 0.9*col + 0.4*(1-col); //lerp
+
+            // e^sin(x) very interesting shape, via
+            // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+            float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
+            float min = 1/M_E;
+            float max = M_E;
+            col = (col-min) / (max-min); // 0-1
+            col = 0.75*col + 0.2*(1-col); //lerp
+
+            r_clear(col, col, col, 1);  // r g b a
+        }
+        else
+        {
+            r_clear();
+
+            RECT subRect = {0}; // code for fill to entire window
+            if (state.lock_aspect && system.fullscreen)
+            {
+                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+                // certainly seems easier to change viewport
+                subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
+            }
+            // movie frame
+            r_render_quad(rolling_movie.vid_buffer, 960, 720);//, 1, subRect);
+
+            // if (drawProgressBar)
+            // {
+            //     int pos = (int)(percent * (double)system.winWID);
+
+            //     // d3d_clear(0, 0, 0, 0);
+
+            //     r_color_quad(0xaaaaaaaa, 1.0, 0.1);
+
+            //     // // progress bar (grey)
+            //     // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+            //     // // u32 gray = 0xaaaaaaaa;
+            //     // r_clear_rect(0.66, 0.66, 0.66, 0.4, destSubRect);
+            //     // // r_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+
+            //     // // // progress bar (red)
+            //     // // destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
+            //     // // u32 red = 0xffff0000;
+            //     // // r_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+            // }
+        }
+
+        // // todo: improve the args needed for these calls?
+        // r_render_msg(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        // r_render_msg(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
+
+        r_swap();
 
 
         // REPEAT
@@ -1900,8 +1903,9 @@ bool CreateNewMovieFromPath(char *path)
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
-    gl_Init(global_ghoster.system.window);
+    // gl_Init(global_ghoster.system.window);
     // d3d_init(global_ghoster.system.window, 960, 720);
+    r_init(global_ghoster.system.window, 960, 720);
 
 
     // LOAD FILE
@@ -2763,7 +2767,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            // gl_Swap();
+            r_swap();
             return 0;
         }
 
@@ -3349,6 +3353,8 @@ int CALLBACK WinMain(
     // if (global_workerw) CloseWindow(global_workerw);
     RemoveSysTrayIcon(global_ghoster.system.window);
     UnhookWindowsHookEx(mouseHook);
+
+    r_cleanup();
 
     // show this again if we happen to be in wallpaper mode on exit
     // if not, the next time user changes wallpaper it won't transition gradually
