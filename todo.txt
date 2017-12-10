@@ -1,5 +1,7 @@
 
 
+[ ] drag drop onto sys tray icon?
+
 
 [ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
     [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
@@ -171,6 +173,9 @@ and should it set our opacity much lower too? i guess not
 
 
 possible for youtube-dl to not clsoe if process forced close at the wrong time?
+
+in wallpaper mode check for clicks on our rect and open menu?
+check for file drags somehow even?
 
 
 ---instructions-------

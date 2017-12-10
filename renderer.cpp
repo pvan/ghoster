@@ -65,9 +65,9 @@ RECT r_CalcLetterBoxRect(int dWID, int dHEI, double aspect_ratio)
     return {posX, posY, posX+calcWID, posY+calcHEI};
 }
 
-double r_PixelToNDC(int pixel, int size)
+float r_PixelToNDC(int pixel, int size)
 {
-    return ((double)pixel / (double)size)*2.0f - 1.0f;
+    return ((float)pixel / (float)size)*2.0f - 1.0f;
 }
 
 void r_cleanup()

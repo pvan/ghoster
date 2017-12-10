@@ -258,6 +258,13 @@ struct d3d_textured_quad
         memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
         vb->Unlock();
     }
+    void update_custom_verts(float *verts)
+    {
+        void *where_to_copy_to;
+        vb->Lock(0, 0, &where_to_copy_to, 0);
+        memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
+        vb->Unlock();
+    }
 
     void create(u8 *qmem, int qw, int qh, float dl, float dt, float dr, float db, float z)
     {

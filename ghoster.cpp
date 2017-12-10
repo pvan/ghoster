@@ -1255,7 +1255,8 @@ struct GhosterWindow
             }
         }
 
-        fontquad.render();
+        // fontquad.render();
+        tt_print(0, 100, "HELLOWORLD", system.winWID, system.winHEI);
 
         // // todo: improve the args needed for these calls?
         // r_render_msg(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);

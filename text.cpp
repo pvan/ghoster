@@ -43,9 +43,38 @@ void tt_initfont(void)
     // // can free temp_bitmap at this point
     // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 }
-void tt_print(float x, float y, char *text)
+void tt_print(float x, float y, char *text, int sw, int sh)
 {
+    // textured_quad quad;
+    while (*text) {
+        if (*text >= 32 && *text < 128) {
+            stbtt_aligned_quad q;
+            stbtt_GetBakedQuad(cdata, 512,512, *text-32, &x,&y,&q,0);//1=opengl & d3d10+,0=d3d9
 
+            float verts[] = {
+            //  x                      y                      z   u     v
+                r_PixelToNDC(q.x0,sw), r_PixelToNDC(q.y0,sh), 0,  q.s0, q.t1,
+                r_PixelToNDC(q.x0,sw), r_PixelToNDC(q.y1,sh), 0,  q.s0, q.t0,
+                r_PixelToNDC(q.x1,sw), r_PixelToNDC(q.y0,sh), 0,  q.s1, q.t1,
+                r_PixelToNDC(q.x1,sw), r_PixelToNDC(q.y1,sh), 0,  q.s1, q.t0,
+            };
+            // float verts[] = {
+            // //   x   y   z   u     v
+            //      -.1f, -.1f, 0,  q.s0, q.t1,
+            //      -.1f,  .1f, 0,  q.s0, q.t0,
+            //       .1f, -.1f, 0,  q.s1, q.t1,
+            //       .1f,  .1f, 0,  q.s1, q.t0,
+            // };
+            fontquad.update_custom_verts(verts);
+            fontquad.render();  // super inefficient, should be batching at least this text together
+
+            // glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y0);
+            // glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y0);
+            // glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y1);
+            // glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y1);
+        }
+        ++text;
+    }
 
     // // assume orthographic projection with units = screen pixels, origin at top left
     // glEnable(GL_TEXTURE_2D);
