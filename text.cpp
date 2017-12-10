@@ -3,11 +3,13 @@
 #define STB_TRUETYPE_IMPLEMENTATION  // force following include to generate implementation
 #include "lib/stb_truetype.h"
 
-unsigned char gray_temp_bitmap[512*512];
+const int TTW = 1024;
+const int TTH = 1024;
+const float TTSIZE = 128.0;
+unsigned char gray_temp_bitmap[TTW*TTH];
 u8 *color_temp_bitmap;
 
 stbtt_bakedchar cdata[96]; // ASCII 32..126 is 95 glyphs
-// GLuint ftex;
 
 textured_quad fontquad;
 
@@ -15,33 +17,26 @@ void tt_initfont(void)
 {
     u8 *ttfile_buffer = (u8*)malloc(1<<20);
     fread(ttfile_buffer, 1, 1<<20, fopen("c:/windows/fonts/segoeui.ttf", "rb"));
-    stbtt_BakeFontBitmap(ttfile_buffer,0, 64.0, gray_temp_bitmap,512,512, 32,96, cdata); // no guarantee this fits!
+    stbtt_BakeFontBitmap(ttfile_buffer,0, TTSIZE, gray_temp_bitmap,TTW,TTH, 32,96, cdata);
     free(ttfile_buffer);
 
-
-    color_temp_bitmap = (u8*)malloc(512 * 512 * 4);
-    for (int x = 0; x < 512; x++)
+    color_temp_bitmap = (u8*)malloc(TTW * TTH * 4);
+    for (int x = 0; x < TTW; x++)
     {
-        for (int y = 0; y < 512; y++)
+        for (int y = 0; y < TTH; y++)
         {
-            u8 *r = color_temp_bitmap + ((y*512)+x)*4 + 0;
-            u8 *g = color_temp_bitmap + ((y*512)+x)*4 + 1;
-            u8 *b = color_temp_bitmap + ((y*512)+x)*4 + 2;
-            u8 *a = color_temp_bitmap + ((y*512)+x)*4 + 3;
-            *r = *(gray_temp_bitmap + ((y*512)+x));
-            *g = *(gray_temp_bitmap + ((y*512)+x));
-            *b = *(gray_temp_bitmap + ((y*512)+x));
-            *a = *(gray_temp_bitmap + ((y*512)+x));
+            u8 *r = color_temp_bitmap + ((y*TTW)+x)*4 + 0;
+            u8 *g = color_temp_bitmap + ((y*TTW)+x)*4 + 1;
+            u8 *b = color_temp_bitmap + ((y*TTW)+x)*4 + 2;
+            u8 *a = color_temp_bitmap + ((y*TTW)+x)*4 + 3;
+            *r = *(gray_temp_bitmap + ((y*TTW)+x));
+            *g = *(gray_temp_bitmap + ((y*TTW)+x));
+            *b = *(gray_temp_bitmap + ((y*TTW)+x));
+            *a = *(gray_temp_bitmap + ((y*TTW)+x));
         }
     }
 
-    fontquad.update(color_temp_bitmap, 512,512,  -0.5, -0.5, 0.5, 0.5);
-
-    // glGenTextures(1, &ftex);
-    // glBindTexture(GL_TEXTURE_2D, ftex);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, 512,512, 0, GL_ALPHA, GL_UNSIGNED_BYTE, temp_bitmap);
-    // // can free temp_bitmap at this point
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    fontquad.update(color_temp_bitmap, TTW,TTH,  -0.5, -0.5, 0.5, 0.5);
 }
 void tt_print(float x, float y, char *text, int sw, int sh)
 {
@@ -49,7 +44,7 @@ void tt_print(float x, float y, char *text, int sw, int sh)
     while (*text) {
         if (*text >= 32 && *text < 128) {
             stbtt_aligned_quad q;
-            stbtt_GetBakedQuad(cdata, 512,512, *text-32, &x,&y,&q,0);//1=opengl & d3d10+,0=d3d9
+            stbtt_GetBakedQuad(cdata, TTW,TTH, *text-32, &x,&y,&q,0);//1=opengl & d3d10+,0=d3d9
 
             float verts[] = {
             //  x                      y                      z   u     v
@@ -58,38 +53,9 @@ void tt_print(float x, float y, char *text, int sw, int sh)
                 r_PixelToNDC(q.x1,sw), r_PixelToNDC(q.y0,sh), 0,  q.s1, q.t1,
                 r_PixelToNDC(q.x1,sw), r_PixelToNDC(q.y1,sh), 0,  q.s1, q.t0,
             };
-            // float verts[] = {
-            // //   x   y   z   u     v
-            //      -.1f, -.1f, 0,  q.s0, q.t1,
-            //      -.1f,  .1f, 0,  q.s0, q.t0,
-            //       .1f, -.1f, 0,  q.s1, q.t1,
-            //       .1f,  .1f, 0,  q.s1, q.t0,
-            // };
             fontquad.update_custom_verts(verts);
             fontquad.render();  // super inefficient, should be batching at least this text together
-
-            // glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y0);
-            // glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y0);
-            // glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y1);
-            // glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y1);
         }
         ++text;
     }
-
-    // // assume orthographic projection with units = screen pixels, origin at top left
-    // glEnable(GL_TEXTURE_2D);
-    // glBindTexture(GL_TEXTURE_2D, ftex);
-    // glBegin(GL_QUADS);
-    // while (*text) {
-    //    if (*text >= 32 && *text < 128) {
-    //       stbtt_aligned_quad q;
-    //       stbtt_GetBakedQuad(cdata, 512,512, *text-32, &x,&y,&q,1);//1=opengl & d3d10+,0=d3d9
-    //       glTexCoord2f(q.s0,q.t1); glVertex2f(q.x0,q.y0);
-    //       glTexCoord2f(q.s1,q.t1); glVertex2f(q.x1,q.y0);
-    //       glTexCoord2f(q.s1,q.t0); glVertex2f(q.x1,q.y1);
-    //       glTexCoord2f(q.s0,q.t0); glVertex2f(q.x0,q.y1);
-    //    }
-    //    ++text;
-    // }
-    // glEnd();
 }
