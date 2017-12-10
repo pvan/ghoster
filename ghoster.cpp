@@ -496,6 +496,7 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 
 
 
+textured_quad movie_screen;
 
 
 const int MAX_MSGS = 20;
@@ -1222,7 +1223,19 @@ struct GhosterWindow
                 subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
             }
             // movie frame
-            r_render_quad(rolling_movie.vid_buffer, 960, 720);//, 1, subRect);
+            // r_render_quad(rolling_movie.vid_buffer, 960, 720);//, 1, subRect);
+
+            static float t = 0; t += temp_dt;
+            float xx = ((-cos(t*2*M_PI/2000)));
+
+            if (!movie_screen.vb)
+                movie_screen.create(rolling_movie.vid_buffer, 960, 720);
+            else
+                movie_screen.update(rolling_movie.vid_buffer, 960, 720, xx);
+
+            movie_screen.render();
+            // movie_screen.destroy();
+
 
             // if (drawProgressBar)
             // {
