@@ -1228,9 +1228,8 @@ struct GhosterWindow
             // {
             //     int pos = (int)(percent * (double)system.winWID);
 
-            //     // d3d_clear(0, 0, 0, 0);
 
-            //     r_color_quad(0xaaaaaaaa, 1.0, 0.1);
+                // r_color_quad(0xaaaaaaaa, 1.0, 0.1);
 
             //     // // progress bar (grey)
             //     // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};

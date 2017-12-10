@@ -115,6 +115,7 @@ char *pixel_shader = MULTILINE_STRING
         POUT Out;
         Out.Color = tex2D(Tex0, In.Texture);
         // Out.Color *= float4(0.9f, 0.8f, 0.4, 1);
+        Out.Color.a = 0.5;
         return Out;
     }
 );
@@ -234,6 +235,7 @@ void d3d_compile_shaders()
 
 
 IDirect3DVertexBuffer9 *vb;
+IDirect3DVertexBuffer9 *vb2;
 IDirect3DTexture9 *tex;
 IDirect3DVertexDeclaration9 *vertexDecl;
 
@@ -281,16 +283,32 @@ void d3d_create_quad(int w, int h)
          1, -1, 0,  1, 1,
          1,  1, 0,  1, 0
     };
+    float verts2[] = {
+    //   x   y  z   u  v
+        0, 0, 0,  0, 1,
+        0,  1, 0,  0, 0,
+         1, 0, 0,  1, 1,
+         1,  1, 0,  1, 0
+    };
 
     HRESULT res = device->CreateVertexBuffer(5*4*sizeof(float),
                                              D3DUSAGE_DYNAMIC & D3DUSAGE_WRITEONLY, 0,
                                              D3DPOOL_DEFAULT, &vb, 0);
     if (res != D3D_OK) MessageBox(0,"error creating vb", 0, 0);
+    res = device->CreateVertexBuffer(5*4*sizeof(float),
+                                             D3DUSAGE_DYNAMIC & D3DUSAGE_WRITEONLY, 0,
+                                             D3DPOOL_DEFAULT, &vb2, 0);
+    if (res != D3D_OK) MessageBox(0,"error creating vb2", 0, 0);
 
     void *where_to_copy_to;
     vb->Lock(0, 0, &where_to_copy_to, D3DLOCK_DISCARD);
     memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
     vb->Unlock();
+
+    void *where_to_copy_to2;
+    vb2->Lock(0, 0, &where_to_copy_to2, D3DLOCK_DISCARD);
+    memcpy(where_to_copy_to2, verts2, 5*4*sizeof(float));
+    vb2->Unlock();
 
 
     D3DVERTEXELEMENT9 decl[] =
@@ -330,10 +348,10 @@ void d3d_create_quad(int w, int h)
     device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP); // top/left bad pixel edge
 
 
-    // device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-
-    // device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
-    // device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+    device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+    device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); // default
+    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
+    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
 }
 
 void d3d_update_quad(float l, float t, float r, float b, float z = 0)
@@ -372,7 +390,7 @@ bool d3d_init(HWND win, int w, int h)
     params.BackBufferCount = 1;
     params.MultiSampleType = D3DMULTISAMPLE_NONE;
     params.MultiSampleQuality = 0;
-    params.SwapEffect = D3DSWAPEFFECT_DISCARD;
+    params.SwapEffect = D3DSWAPEFFECT_DISCARD; //D3DSWAPEFFECT_COPY ?
     params.hDeviceWindow = win;
     params.Windowed = true;
     params.EnableAutoDepthStencil = true;
@@ -449,6 +467,13 @@ void d3d_render()
     device->SetTexture(0, tex);
     device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 
+
+    // d3d_update_quad(0, 0, 1, 1, 0);
+    device->SetStreamSource(0, vb2, 0, 5*sizeof(float));
+    device->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
+
+                // d3d_clear(100, 0, 0, 100);
+
     device->EndScene();
     // device->Present(0, 0, 0, 0);
 }
@@ -486,4 +511,5 @@ void d3d_cleanup()
     if (tex) tex->Release();
     if (vertexDecl) vertexDecl->Release();
     if (vb) vb->Release();
+    if (vb2) vb2->Release();
 }
