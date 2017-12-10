@@ -1222,6 +1222,7 @@ struct GhosterWindow
             {
                 // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
                 // certainly seems easier to change viewport
+                // update: although now we're changing the verts
                 subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
             }
 
@@ -1232,14 +1233,20 @@ struct GhosterWindow
             {
                 // int pos = (int)(percent * (double)system.winWID);
                 // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+
+                // todo: treating _H as top here, not height
+                int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
+                double ndcB = ((double)PROGRESS_BAR_B / (double)system.winHEI)*2.0 - 1.0;
+                double ndcH = ((double)progress_bar_t / (double)system.winHEI)*2.0 - 1.0;
+
                 double neg1_to_1 = percent*2.0 - 1.0;
 
                 u32 gray = 0xffaaaaaa;
-                progress_gray.update((u8*)&gray, 1, 1,  neg1_to_1,-1,1,-0.93);
+                progress_gray.update((u8*)&gray, 1, 1,  neg1_to_1, ndcB, 1, ndcH);
                 progress_gray.render(0.4);
 
                 u32 red = 0xffff0000;
-                progress_red.update((u8*)&red, 1, 1,  -1,-1,neg1_to_1,-0.93);
+                progress_red.update((u8*)&red, 1, 1,  -1, ndcB, neg1_to_1, ndcH);
                 progress_red.render(0.6);
             }
         }
