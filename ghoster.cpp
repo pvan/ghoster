@@ -2765,10 +2765,37 @@ void onMouseDownL(int clientX, int clientY)
 static int sys_moving_anchor_x;
 static int sys_moving_anchor_y;
 
+static bool in_movesize_loop;
+static bool inhibit_movesize_loop;
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
+
+        // allow placement above top of monitor edge
+        // /*
+        // case WM_ENTERSIZEMOVE:
+        //     in_movesize_loop = true;
+        //     inhibit_movesize_loop = false;
+        //     break;
+        case WM_EXITSIZEMOVE:
+            in_movesize_loop = false;
+            inhibit_movesize_loop = false;
+            break;
+        case WM_CAPTURECHANGED:
+            inhibit_movesize_loop = in_movesize_loop;
+            break;
+        case WM_WINDOWPOSCHANGING:
+            if (inhibit_movesize_loop) {
+                WINDOWPOS* wp = reinterpret_cast<WINDOWPOS*>(lParam);
+                wp->flags |= SWP_NOMOVE;
+                return 0;
+            }
+        break;
+        // */
+
+
         case WM_CLOSE: {
             global_ghoster.state.appRunning = false;
         } break;
@@ -2883,6 +2910,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             RECT winRect; GetWindowRect(hwnd, &winRect);
             sys_moving_anchor_x = mPos.x - winRect.left;
             sys_moving_anchor_y = mPos.y - winRect.top;
+
+            in_movesize_loop = true;
+            inhibit_movesize_loop = false;
         } break;
         case WM_MOVING: {
             if (global_ghoster.state.enableSnapping)
