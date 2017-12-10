@@ -1,7 +1,6 @@
 
 #include <gl/gl.h>
 #pragma comment(lib, "opengl32.lib")
-#pragma comment(lib, "gdi32.lib")
 
 
 

@@ -360,7 +360,10 @@ struct AppMessages
 
 
 
-#include "opengl.cpp"
+#pragma comment(lib, "gdi32.lib")
+
+// #include "opengl.cpp"
+#include "directx.cpp"
 
 
 // todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
@@ -1124,62 +1127,66 @@ struct GhosterWindow
         }
 
 
-        RendererStartFrame(destWin);
 
+        if (rolling_movie.vid_buffer)
+            d3d_render_mem_to_texture(tex, rolling_movie.vid_buffer, 960, 720);
+        // d3d_render_pattern_to_texture(tex, temp_dt);
+        d3d_render();
 
-        static float t = 0;
-        if (state.bufferingOrLoading)
-        {
-            t += temp_dt;
-            // float col = sin(t*M_PI*2 / 100);
-            // col = (col + 1) / 2; // 0-1
-            // col = 0.9*col + 0.4*(1-col); //lerp
+        // RendererStartFrame(destWin);
 
-            // e^sin(x) very interesting shape, via
-            // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
-            float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
-            float min = 1/M_E;
-            float max = M_E;
-            col = (col-min) / (max-min); // 0-1
-            col = 0.75*col + 0.2*(1-col); //lerp
+        // static float t = 0;
+        // if (state.bufferingOrLoading)
+        // {
+        //     t += temp_dt;
+        //     // float col = sin(t*M_PI*2 / 100);
+        //     // col = (col + 1) / 2; // 0-1
+        //     // col = 0.9*col + 0.4*(1-col); //lerp
 
-            RendererClear(col, col, col, 1);  // r g b a
-        }
-        else
-        {
-            RendererClear();
+        //     // e^sin(x) very interesting shape, via
+        //     // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+        //     float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
+        //     float min = 1/M_E;
+        //     float max = M_E;
+        //     col = (col-min) / (max-min); // 0-1
+        //     col = 0.75*col + 0.2*(1-col); //lerp
 
-            RECT subRect = {0}; // code for fill to entire window
-            if (state.lock_aspect && system.fullscreen)
-            {
-                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-                // certainly seems easier to change viewport
-                subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
-            }
+        //     RendererClear(col, col, col, 1);  // r g b a
+        // }
+        // else
+        // {
+        //     RendererClear();
 
-            // movie frame
-            RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
+        //     RECT subRect = {0}; // code for fill to entire window
+        //     if (state.lock_aspect && system.fullscreen)
+        //     {
+        //         // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+        //         // certainly seems easier to change viewport
+        //         subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
+        //     }
 
-            if (drawProgressBar)
-            {
-                int pos = (int)(percent * (double)system.winWID);
-                // progress bar (grey)
-                RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-                u32 gray = 0xaaaaaaaa;
-                RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
-                // progress bar (red)
-                destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-                u32 red = 0xffff0000;
-                RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
-            }
-        }
+        //     // movie frame
+        //     RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
 
-        // todo: improve the args needed for these calls?
-        RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-        RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
+        //     if (drawProgressBar)
+        //     {
+        //         int pos = (int)(percent * (double)system.winWID);
+        //         // progress bar (grey)
+        //         RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+        //         u32 gray = 0xaaaaaaaa;
+        //         RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+        //         // progress bar (red)
+        //         destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
+        //         u32 red = 0xffff0000;
+        //         RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+        //     }
+        // }
 
-        RendererSwap(destWin);
+        // // todo: improve the args needed for these calls?
+        // RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        // RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
+        // RendererSwap(destWin);
 
 
         // REPEAT
@@ -1833,7 +1840,8 @@ bool CreateNewMovieFromPath(char *path)
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
-    InitOpenGL(global_ghoster.system.window);
+    // InitOpenGL(global_ghoster.system.window);
+    d3d_init(global_ghoster.system.window, 960, 720);
 
 
     // LOAD FILE
@@ -2695,68 +2703,68 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         //     return 1; // don't erase
         // } break;
 
-        case WM_MEASUREITEM: {
-            LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT) lParam;
-            lpmis->itemWidth = 200;
-            lpmis->itemHeight = 20;
-        } break;
-        case WM_DRAWITEM: {
-            LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT) lParam;
+        // case WM_MEASUREITEM: {
+        //     LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT) lParam;
+        //     lpmis->itemWidth = 200;
+        //     lpmis->itemHeight = 20;
+        // } break;
+        // case WM_DRAWITEM: {
+        //     LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT) lParam;
 
 
-            RECT container = lpdis->rcItem;
-            container.left += 20;
-            container.right -= 40;
-            container.top += 1;
-            container.bottom -= 1;
+        //     RECT container = lpdis->rcItem;
+        //     container.left += 20;
+        //     container.right -= 40;
+        //     container.top += 1;
+        //     container.bottom -= 1;
 
-            float percent = global_ghoster.state.opacity;
-            int width = container.right - container.left;
-            int sliderPos = container.left + nearestInt(width*percent);
+        //     float percent = global_ghoster.state.opacity;
+        //     int width = container.right - container.left;
+        //     int sliderPos = container.left + nearestInt(width*percent);
 
-            RECT blue;
-            blue.left   = container.left   + 1;  // +1 to leave pixel border on top left
-            blue.top    = container.top    + 1;
-            blue.right  = sliderPos        + 1;  // +1 to  cover up bottom right border
-            blue.bottom = container.bottom + 1;
+        //     RECT blue;
+        //     blue.left   = container.left   + 1;  // +1 to leave pixel border on top left
+        //     blue.top    = container.top    + 1;
+        //     blue.right  = sliderPos        + 1;  // +1 to  cover up bottom right border
+        //     blue.bottom = container.bottom + 1;
 
-            RECT empty;
-            empty.left   = sliderPos        + 1;  // +1 to  leave pixel border on top left
-            empty.top    = container.top    + 1;
-            empty.right  = container.right  + 1;  // +1 to  cover up bottom right border
-            empty.bottom = container.bottom + 1;
-
-
-            // HBRUSH bgbrush = (HBRUSH) ;
-            // // if (lpdis->itemState == ODS_SELECTED)
-            // bgbrush = CreateSolidBrush(0xE6D8AD);
-            // SetDCPenColor(lpdis->hDC, 0xE6D8AD);
-            // SetBkMode(lpdis->hDC, TRANSPARENT);
-
-            SetBkMode(lpdis->hDC, OPAQUE);
-
-            SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
-            SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
-            Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
-
-            SetBkMode(lpdis->hDC, TRANSPARENT);
-
-            SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
-            SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-            Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
-
-            SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
-            SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-            Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
-
-            char volbuf[123];
-            sprintf(volbuf, "Volume %i", nearestInt(global_ghoster.state.opacity*100.0));
-            container.left += 2;
-            container.top += 2;
-            DrawText(lpdis->hDC, volbuf, -1, &container, DT_CENTER);
+        //     RECT empty;
+        //     empty.left   = sliderPos        + 1;  // +1 to  leave pixel border on top left
+        //     empty.top    = container.top    + 1;
+        //     empty.right  = container.right  + 1;  // +1 to  cover up bottom right border
+        //     empty.bottom = container.bottom + 1;
 
 
-        } break;
+        //     // HBRUSH bgbrush = (HBRUSH) ;
+        //     // // if (lpdis->itemState == ODS_SELECTED)
+        //     // bgbrush = CreateSolidBrush(0xE6D8AD);
+        //     // SetDCPenColor(lpdis->hDC, 0xE6D8AD);
+        //     // SetBkMode(lpdis->hDC, TRANSPARENT);
+
+        //     SetBkMode(lpdis->hDC, OPAQUE);
+
+        //     SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
+        //     SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
+        //     Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
+
+        //     SetBkMode(lpdis->hDC, TRANSPARENT);
+
+        //     SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
+        //     SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+        //     Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
+
+        //     SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
+        //     SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
+        //     Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
+
+        //     char volbuf[123];
+        //     sprintf(volbuf, "Volume %i", nearestInt(global_ghoster.state.opacity*100.0));
+        //     container.left += 2;
+        //     container.top += 2;
+        //     DrawText(lpdis->hDC, volbuf, -1, &container, DT_CENTER);
+
+
+        // } break;
 
 
         // is this needed?
@@ -2903,17 +2911,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             {
                 PasteClipboard();
             }
-            // if (wParam == 0x56) // V
-            // {
-            //     if (global_ghoster.system.ctrlDown)
-            //     {
-            //         PasteClipboard();
-            //     }
-            // }
-            // if (wParam == 0x11) // ctrl
-            // {
-            //     global_ghoster.system.ctrlDown = true;
-            // }
             if (wParam == VK_RETURN) // enter
             {
                 if ((HIWORD(lParam) & KF_ALTDOWN)) // +alt
@@ -2924,10 +2921,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
         case WM_KEYUP: {
-            // if (wParam == 0x11) // ctrl
-            // {
-            //     global_ghoster.system.ctrlDown = false;
-            // }
             if (wParam >= 0x30 && wParam <= 0x39) // 0-9
             {
                 global_ghoster.message.QueueLoadMovie(TEST_FILES[wParam - 0x30]);
@@ -2942,97 +2935,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
 
-        // note this is NOT called via show desktop unless we are already able to be minimized, i think
-        // case WM_SYSCOMMAND: {
-        //     switch (wParam) {
-        //         case SC_MINIMIZE:
-        //             OutputDebugString("MINIMIZE!");
-        //             break;
-        //     }
-        // } break;
-
-        // case WM_COMMAND: {
-        //     OutputDebugString("COMMAD");
-        //     switch (wParam)
-        //     {
-        //         case ID_VOLUME:
-        //             return 0;
-        //             break;
-        //         case ID_EXIT:
-        //             global_ghoster.state.appRunning = false;
-        //             break;
-        //         case ID_PAUSE:
-        //             appTogglePause();
-        //             break;
-        //         case ID_ASPECT:
-        //             SetWindowToAspectRatio(global_ghoster.system.window, global_ghoster.rolling_movie.aspect_ratio);
-        //             global_ghoster.state.lock_aspect = !global_ghoster.state.lock_aspect;
-        //             break;
-        //         case ID_PASTE:
-        //             PasteClipboard();
-        //             break;
-        //         case ID_RESET_RES:
-        //             SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.rolling_movie);
-        //             break;
-        //         case ID_REPEAT:
-        //             global_ghoster.state.repeat = !global_ghoster.state.repeat;
-        //             break;
-        //         case ID_TRANSPARENCY:
-        //             global_ghoster.state.transparent = !global_ghoster.state.transparent;
-        //             if (global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 0.5);
-        //             if (!global_ghoster.state.transparent) setOpacity(global_ghoster.system.window, 1.0);
-        //             break;
-        //         case ID_CLICKTHRU:
-        //             setGhostMode(global_ghoster.system.window, !global_ghoster.state.clickThrough);
-        //             break;
-        //         case ID_RANDICON:
-        //             global_ghoster.system.icon = RandomIcon();
-        //             if (!global_ghoster.state.clickThrough) SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-        //             break;
-        //         case ID_TOPMOST:
-        //             setTopMost(global_ghoster.system.window, !global_ghoster.state.topMost);
-        //             break;
-        //         int color;
-        //         case ID_SET_C: color = 0;
-        //             global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*color);
-        //             if (!global_ghoster.state.clickThrough) SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-        //             break;
-        //         case ID_SET_P: color = 1;
-        //             global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*color);
-        //             if (!global_ghoster.state.clickThrough) SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-        //             break;
-        //         case ID_SET_R: color = 2;
-        //             global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*color);
-        //             if (!global_ghoster.state.clickThrough) SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-        //             break;
-        //         case ID_SET_Y: color = 3;
-        //             global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*color);
-        //             if (!global_ghoster.state.clickThrough) SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-        //             break;
-        //         case ID_FULLSCREEN:
-        //             toggleFullscreen();
-        //             break;
-        //         case ID_SNAPPING:
-        //             global_ghoster.state.enableSnapping = !global_ghoster.state.enableSnapping;
-        //             if (global_ghoster.state.enableSnapping)
-        //             {
-        //                 RECT winRect; GetWindowRect(global_ghoster.system.window, &winRect);
-
-        //                 SnapRectToMonitor(winRect, &winRect);
-
-        //                 SetWindowPos(global_ghoster.system.window, 0,
-        //                     winRect.left, winRect.top,
-        //                     winRect.right  - winRect.left,
-        //                     winRect.bottom - winRect.top,
-        //                     0);
-        //             }
-        //             break;
-        //         case ID_WALLPAPER:
-        //             setWallpaperMode(global_ghoster.system.window, !global_ghoster.state.wallpaperMode);
-        //             break;
-
-        //     }
-        // } break;
 
 
         // can also implement IDropTarget, but who wants to do that?
@@ -3125,6 +3027,8 @@ int CALLBACK WinMain(
 
     global_ghoster.Init();
 
+
+    d3d_load();
 
 
     // defaults
