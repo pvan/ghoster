@@ -1255,8 +1255,7 @@ struct GhosterWindow
             }
         }
 
-        // fontquad.render();
-        tt_print(0, 100, "HELLOWORLD", system.winWID, system.winHEI);
+        tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
 
         // // todo: improve the args needed for these calls?
         // r_render_msg(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
@@ -2809,7 +2808,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            r_swap();
+            r_swap(); // todo: consider drawing HUD here as well?
             return 0;
         }
 
