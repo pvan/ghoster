@@ -1229,10 +1229,10 @@ struct GhosterWindow
 
         // device->BeginScene();
 
-            if (!movie_screen.vb)
-                movie_screen.create(rolling_movie.vid_buffer, 960, 720);
-            else
-                movie_screen.update(rolling_movie.vid_buffer, 960, 720);
+            // if (!movie_screen.vb)
+            //     movie_screen.create(rolling_movie.vid_buffer, 960, 720);
+            // else
+            movie_screen.update(rolling_movie.vid_buffer, 960, 720);
 
             movie_screen.render();
 
@@ -1246,10 +1246,10 @@ struct GhosterWindow
                 u32 gray = 0xaaaaaaaa;
 
 
-                if (!progress_gray.vb)
-                    progress_gray.create((u8*)&gray, 1, 1);
-                else
-                    progress_gray.update((u8*)&gray, 1, 1, xx, -1, 1, 0);
+                // if (!progress_gray.vb)
+                //     progress_gray.create((u8*)&gray, 1, 1);
+                // else
+                progress_gray.update((u8*)&gray, 1, 1, xx, -1, 1, 0);
                 progress_gray.render();
 
 

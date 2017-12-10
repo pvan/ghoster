@@ -220,6 +220,7 @@ struct d3d_textured_quad
     IDirect3DVertexBuffer9 *vb;
     IDirect3DTexture9 *tex;
     IDirect3DVertexDeclaration9 *vertexDecl;
+    bool created;
 
     void destroy()
     {
@@ -229,6 +230,7 @@ struct d3d_textured_quad
         vb = 0;
         tex = 0;
         vertexDecl = 0;
+        created = false;
     }
 
     void fill_tex_with_mem(u8 *mem, int w, int h)
@@ -254,12 +256,6 @@ struct d3d_textured_quad
         vb->Lock(0, 0, &where_to_copy_to, 0);
         memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
         vb->Unlock();
-    }
-
-    void update(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
-    {
-        fill_tex_with_mem(qmem, qw, qh);
-        fill_vb_with_rect(dl, dt, dr, db);
     }
 
     void create(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
@@ -308,6 +304,16 @@ struct d3d_textured_quad
         // does this actually fix the issue or is our whole image off a pixel and this just covers it up?
         device->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP); // doesn't seem to help our
         device->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP); // top/left bad pixel edge
+
+        created = true;
+    }
+
+    void update(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
+    {
+        if (!created) create(qmem,qw,qh, dl,dt,dr,db);
+
+        fill_tex_with_mem(qmem, qw, qh);
+        fill_vb_with_rect(dl, dt, dr, db);
     }
 
     void render()
