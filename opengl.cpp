@@ -168,7 +168,7 @@ GLuint tex_location;
 
 // static HDC g_hdc;
 
-void InitOpenGL(HWND window)
+void gl_Init(HWND window)
 {
     HDC hdc = GetDC(window);
 
@@ -351,7 +351,7 @@ static HWND winCurrent; // need this for when we release hdc.. better way?
 static int currentWid;
 static int currentHei;
 
-void RendererStartFrame(HWND window)
+void gl_StartFrame(HWND window)
 {
     hdcCurrent = GetDC(window);
     winCurrent = window;
@@ -363,14 +363,14 @@ void RendererStartFrame(HWND window)
     currentHei = winRect.bottom-winRect.top;
 }
 
-void RendererClear(double r = 0, double g = 0, double b = 0, double a = 1)
+void gl_Clear(double r = 0, double g = 0, double b = 0, double a = 1)
 {
     // glViewport(0, 0, currentWid, currentHei); // not sure if needed or wanted
     glClear(GL_COLOR_BUFFER_BIT);
     glClearColor(r, g, b, a);
 }
 
-void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
+void gl_RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
 {
     if (dest.left == 0 && dest.top == 0 && dest.right == 0 && dest.bottom == 0)
         glViewport(0, 0, currentWid, currentHei);
@@ -393,13 +393,13 @@ void RenderQuadToRect(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, R
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
-void RendererSwap(HWND window)
+void gl_Swap()
 {
     SwapBuffers(hdcCurrent);
     ReleaseDC(winCurrent, hdcCurrent);
 }
 
-void RenderMsgOverlay(MessageOverlay overlay, int x, int y, int scale, int horizAlign, int vertAlign)
+void gl_RenderMsgOverlay(MessageOverlay overlay, int x, int y, int scale, int horizAlign, int vertAlign)
 {
     // todo: add option for dest rect here like quadToRect?
     glViewport(0, 0, currentWid, currentHei);

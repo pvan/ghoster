@@ -362,8 +362,8 @@ struct AppMessages
 
 #pragma comment(lib, "gdi32.lib")
 
-// #include "opengl.cpp"
-#include "directx.cpp"
+#include "opengl.cpp"
+// #include "directx.cpp"
 
 
 // todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
@@ -1128,10 +1128,70 @@ struct GhosterWindow
 
 
 
-        if (rolling_movie.vid_buffer)
-            d3d_render_mem_to_texture(tex, rolling_movie.vid_buffer, 960, 720);
-        // d3d_render_pattern_to_texture(tex, temp_dt);
-        d3d_render();
+        // if (rolling_movie.vid_buffer)
+        //     d3d_render_mem_to_texture(tex, rolling_movie.vid_buffer, 960, 720);
+        // // d3d_render_pattern_to_texture(tex, temp_dt);
+        // d3d_render();
+
+
+
+        gl_StartFrame(destWin);
+
+        static float t = 0;
+        if (state.bufferingOrLoading)
+        {
+            t += temp_dt;
+            // float col = sin(t*M_PI*2 / 100);
+            // col = (col + 1) / 2; // 0-1
+            // col = 0.9*col + 0.4*(1-col); //lerp
+
+            // e^sin(x) very interesting shape, via
+            // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+            float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
+            float min = 1/M_E;
+            float max = M_E;
+            col = (col-min) / (max-min); // 0-1
+            col = 0.75*col + 0.2*(1-col); //lerp
+
+            gl_Clear(col, col, col, 1);  // r g b a
+        }
+        else
+        {
+            gl_Clear();
+
+            RECT subRect = {0}; // code for fill to entire window
+            if (state.lock_aspect && system.fullscreen)
+            {
+                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+                // certainly seems easier to change viewport
+                subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
+            }
+
+            // movie frame
+            gl_RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
+
+            if (drawProgressBar)
+            {
+                int pos = (int)(percent * (double)system.winWID);
+                // progress bar (grey)
+                RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+                u32 gray = 0xaaaaaaaa;
+                gl_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+                // progress bar (red)
+                destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
+                u32 red = 0xffff0000;
+                gl_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+            }
+        }
+
+        // todo: improve the args needed for these calls?
+        gl_RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
+        gl_RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
+
+        gl_Swap();
+
+
+
 
         // RendererStartFrame(destWin);
 
@@ -1840,8 +1900,8 @@ bool CreateNewMovieFromPath(char *path)
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
-    // InitOpenGL(global_ghoster.system.window);
-    d3d_init(global_ghoster.system.window, 960, 720);
+    gl_Init(global_ghoster.system.window);
+    // d3d_init(global_ghoster.system.window, 960, 720);
 
 
     // LOAD FILE
@@ -2703,7 +2763,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-            if (device) device->Present(0, 0, 0, 0);
+            // gl_Swap();
             return 0;
         }
 
@@ -2954,7 +3014,7 @@ int CALLBACK WinMain(
     global_ghoster.Init();
 
 
-    d3d_load();
+    // d3d_load();
 
 
     // defaults
