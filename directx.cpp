@@ -99,6 +99,7 @@ char *vertex_shader = MULTILINE_STRING
 
 char *pixel_shader = MULTILINE_STRING
 (
+    float alpha : register(c0);
     struct PIN
     {
         float4 Position   : POSITION;
@@ -114,7 +115,7 @@ char *pixel_shader = MULTILINE_STRING
         POUT Out;
         Out.Color = tex2D(Tex0, In.Texture);
         // Out.Color *= float4(0.9f, 0.8f, 0.4, 1);
-        Out.Color.a = 0.5;
+        Out.Color.a = alpha * Out.Color.a;  // keep any alpha from texture?
         return Out;
     }
 );
@@ -162,9 +163,9 @@ void d3d_compile_shaders()
 void enable_alpha_blending()
 {
     device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
-    device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); // default
-    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
-    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+    // device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); // default
+    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
+    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
 }
 
 
@@ -242,14 +243,15 @@ struct d3d_textured_quad
         tex->UnlockRect(0);
     }
 
-    void fill_vb_with_rect(float dl, float dt, float dr, float db)
+    void fill_vb_with_rect(float dl, float dt, float dr, float db, float z)
     {
+        // i think z=0 is top, z=1 is bottom
         float verts[] = {
         //   x  y   z   u  v
-            dl, dt, 0,  0, 1,
-            dl, db, 0,  0, 0,
-            dr, dt, 0,  1, 1,
-            dr, db, 0,  1, 0
+            dl, dt, z,  0, 1,
+            dl, db, z,  0, 0,
+            dr, dt, z,  1, 1,
+            dr, db, z,  1, 0
         };
 
         void *where_to_copy_to;
@@ -258,7 +260,7 @@ struct d3d_textured_quad
         vb->Unlock();
     }
 
-    void create(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
+    void create(u8 *qmem, int qw, int qh, float dl, float dt, float dr, float db, float z)
     {
         if (!device) return;
 
@@ -268,7 +270,7 @@ struct d3d_textured_quad
                                                  0, D3DPOOL_DEFAULT, &vb, 0);
         if (res != D3D_OK) MessageBox(0,"error creating vb", 0, 0);
 
-        fill_vb_with_rect(dl, dt, dr, db);
+        fill_vb_with_rect(dl, dt, dr, db, z);
 
 
         D3DVERTEXELEMENT9 decl[] =
@@ -308,17 +310,19 @@ struct d3d_textured_quad
         created = true;
     }
 
-    void update(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
+    void update(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1, float z = 1)
     {
-        if (!created) create(qmem,qw,qh, dl,dt,dr,db);
+        if (!created) create(qmem,qw,qh, dl,dt,dr,db, z);
 
         fill_tex_with_mem(qmem, qw, qh);
-        fill_vb_with_rect(dl, dt, dr, db);
+        fill_vb_with_rect(dl, dt, dr, db, z);
     }
 
-    void render()
+    void render(float alpha)
     {
         device->BeginScene();
+
+        device->SetPixelShaderConstantF(0, &alpha, 1);
 
         device->SetVertexDeclaration(vertexDecl);
         device->SetVertexShader(vs);

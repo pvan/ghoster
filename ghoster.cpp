@@ -1226,34 +1226,21 @@ struct GhosterWindow
             }
 
             movie_screen.update(rolling_movie.vid_buffer, 960, 720);
-            movie_screen.render();
+            movie_screen.render(1);
 
             if (drawProgressBar)
             {
                 // int pos = (int)(percent * (double)system.winWID);
+                // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
                 double neg1_to_1 = percent*2.0 - 1.0;
 
-                u32 gray = 0xaaaaaaaa;
+                u32 gray = 0xffaaaaaa;
                 progress_gray.update((u8*)&gray, 1, 1,  neg1_to_1,-1,1,-0.93);
-                progress_gray.render();
+                progress_gray.render(0.4);
 
                 u32 red = 0xffff0000;
                 progress_red.update((u8*)&red, 1, 1,  -1,-1,neg1_to_1,-0.93);
-                progress_red.render();
-
-
-                // r_color_quad(0xaaaaaaaa, 1.0, 0.1);
-
-                // // progress bar (grey)
-                // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-                // // u32 gray = 0xaaaaaaaa;
-                // r_clear_rect(0.66, 0.66, 0.66, 0.4, destSubRect);
-                // // r_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
-
-                // // // progress bar (red)
-                // // destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-                // // u32 red = 0xffff0000;
-                // // r_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+                progress_red.render(0.6);
             }
         }
 
