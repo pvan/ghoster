@@ -495,8 +495,10 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 }
 
 
-
+// todo: what to do with these?
 textured_quad movie_screen;
+textured_quad progress_gray;
+textured_quad progress_red;
 
 
 const int MAX_MSGS = 20;
@@ -1225,36 +1227,45 @@ struct GhosterWindow
             // movie frame
             // r_render_quad(rolling_movie.vid_buffer, 960, 720);//, 1, subRect);
 
-            static float t = 0; t += temp_dt;
-            float xx = ((-cos(t*2*M_PI/2000)));
+        // device->BeginScene();
 
             if (!movie_screen.vb)
                 movie_screen.create(rolling_movie.vid_buffer, 960, 720);
             else
-                movie_screen.update(rolling_movie.vid_buffer, 960, 720, xx);
+                movie_screen.update(rolling_movie.vid_buffer, 960, 720);
 
             movie_screen.render();
-            // movie_screen.destroy();
+
+            static float t = 0; t += temp_dt;
+            float xx = ((-cos(t*2*M_PI/2000)));
+
+            if (drawProgressBar)
+            {
+                int pos = (int)(percent * (double)system.winWID);
+
+                u32 gray = 0xaaaaaaaa;
 
 
-            // if (drawProgressBar)
-            // {
-            //     int pos = (int)(percent * (double)system.winWID);
+                if (!progress_gray.vb)
+                    progress_gray.create((u8*)&gray, 1, 1);
+                else
+                    progress_gray.update((u8*)&gray, 1, 1, xx, -1, 1, 0);
+                progress_gray.render();
 
 
                 // r_color_quad(0xaaaaaaaa, 1.0, 0.1);
 
-            //     // // progress bar (grey)
-            //     // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-            //     // // u32 gray = 0xaaaaaaaa;
-            //     // r_clear_rect(0.66, 0.66, 0.66, 0.4, destSubRect);
-            //     // // r_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
+                // // progress bar (grey)
+                // RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
+                // // u32 gray = 0xaaaaaaaa;
+                // r_clear_rect(0.66, 0.66, 0.66, 0.4, destSubRect);
+                // // r_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
 
-            //     // // // progress bar (red)
-            //     // // destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-            //     // // u32 red = 0xffff0000;
-            //     // // r_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
-            // }
+                // // // progress bar (red)
+                // // destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
+                // // u32 red = 0xffff0000;
+                // // r_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
+            }
         }
 
         // // todo: improve the args needed for these calls?

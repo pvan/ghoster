@@ -159,6 +159,14 @@ void d3d_compile_shaders()
     device->CreatePixelShader((DWORD*)code->GetBufferPointer(), &ps);
 }
 
+void enable_alpha_blending()
+{
+    device->SetRenderState(D3DRS_ALPHABLENDENABLE, true);
+    device->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD); // default
+    device->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCCOLOR);
+    device->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCCOLOR);
+}
+
 
 bool d3d_init(HWND win, int w, int h)
 {
@@ -190,8 +198,12 @@ bool d3d_init(HWND win, int w, int h)
         &device);
 
 
-    // for now just put this here...
+    // for now just put these here...
+
     d3d_compile_shaders();
+
+    enable_alpha_blending();
+
 
     return true;
 }
@@ -228,7 +240,7 @@ struct d3d_textured_quad
         tex->UnlockRect(0);
     }
 
-    void fill_vb_will_rect(float dl, float dt, float dr, float db)
+    void fill_vb_with_rect(float dl, float dt, float dr, float db)
     {
         float verts[] = {
         //   x  y   z   u  v
@@ -247,7 +259,7 @@ struct d3d_textured_quad
     void update(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
     {
         fill_tex_with_mem(qmem, qw, qh);
-        fill_vb_will_rect(dl, dt, dr, db);
+        fill_vb_with_rect(dl, dt, dr, db);
     }
 
     void create(u8 *qmem, int qw, int qh, float dl = -1, float dt = -1, float dr = 1, float db = 1)
@@ -260,7 +272,7 @@ struct d3d_textured_quad
                                                  0, D3DPOOL_DEFAULT, &vb, 0);
         if (res != D3D_OK) MessageBox(0,"error creating vb", 0, 0);
 
-        fill_vb_will_rect(dl, dt, dr, db);
+        fill_vb_with_rect(dl, dt, dr, db);
 
 
         D3DVERTEXELEMENT9 decl[] =
