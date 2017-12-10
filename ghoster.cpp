@@ -2697,87 +2697,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
     {
-
-        // doesn't help with flicker
-        // case WM_ERASEBKGND: {
-        //     return 1; // don't erase
-        // } break;
-
-        // case WM_MEASUREITEM: {
-        //     LPMEASUREITEMSTRUCT lpmis = (LPMEASUREITEMSTRUCT) lParam;
-        //     lpmis->itemWidth = 200;
-        //     lpmis->itemHeight = 20;
-        // } break;
-        // case WM_DRAWITEM: {
-        //     LPDRAWITEMSTRUCT lpdis = (LPDRAWITEMSTRUCT) lParam;
-
-
-        //     RECT container = lpdis->rcItem;
-        //     container.left += 20;
-        //     container.right -= 40;
-        //     container.top += 1;
-        //     container.bottom -= 1;
-
-        //     float percent = global_ghoster.state.opacity;
-        //     int width = container.right - container.left;
-        //     int sliderPos = container.left + nearestInt(width*percent);
-
-        //     RECT blue;
-        //     blue.left   = container.left   + 1;  // +1 to leave pixel border on top left
-        //     blue.top    = container.top    + 1;
-        //     blue.right  = sliderPos        + 1;  // +1 to  cover up bottom right border
-        //     blue.bottom = container.bottom + 1;
-
-        //     RECT empty;
-        //     empty.left   = sliderPos        + 1;  // +1 to  leave pixel border on top left
-        //     empty.top    = container.top    + 1;
-        //     empty.right  = container.right  + 1;  // +1 to  cover up bottom right border
-        //     empty.bottom = container.bottom + 1;
-
-
-        //     // HBRUSH bgbrush = (HBRUSH) ;
-        //     // // if (lpdis->itemState == ODS_SELECTED)
-        //     // bgbrush = CreateSolidBrush(0xE6D8AD);
-        //     // SetDCPenColor(lpdis->hDC, 0xE6D8AD);
-        //     // SetBkMode(lpdis->hDC, TRANSPARENT);
-
-        //     SetBkMode(lpdis->hDC, OPAQUE);
-
-        //     SelectObject(lpdis->hDC, CreatePen(PS_SOLID, 1, 0x888888));
-        //     SelectObject(lpdis->hDC, GetStockObject(HOLLOW_BRUSH));
-        //     Rectangle(lpdis->hDC, container.left, container.top, container.right, container.bottom);
-
-        //     SetBkMode(lpdis->hDC, TRANSPARENT);
-
-        //     SelectObject(lpdis->hDC, CreateSolidBrush(0xE6D8AD));
-        //     SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-        //     Rectangle(lpdis->hDC, blue.left, blue.top, blue.right, blue.bottom);
-
-        //     SelectObject(lpdis->hDC,  CreateSolidBrush(0xe0e0e0));
-        //     SelectObject(lpdis->hDC, GetStockObject(NULL_PEN));
-        //     Rectangle(lpdis->hDC, empty.left, empty.top, empty.right, empty.bottom);
-
-        //     char volbuf[123];
-        //     sprintf(volbuf, "Volume %i", nearestInt(global_ghoster.state.opacity*100.0));
-        //     container.left += 2;
-        //     container.top += 2;
-        //     DrawText(lpdis->hDC, volbuf, -1, &container, DT_CENTER);
-
-
-        // } break;
-
-
-        // is this needed?
-        // case WM_DESTROY: {
-        //     RemoveSysTrayIcon(hwnd);
-        // } break;
-
         case WM_CLOSE: {
             global_ghoster.state.appRunning = false;
         } break;
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            if (device) device->Present(0, 0, 0, 0);
             return 0;
         }
 
