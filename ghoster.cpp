@@ -1224,33 +1224,22 @@ struct GhosterWindow
                 // certainly seems easier to change viewport
                 subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
             }
-            // movie frame
-            // r_render_quad(rolling_movie.vid_buffer, 960, 720);//, 1, subRect);
 
-        // device->BeginScene();
-
-            // if (!movie_screen.vb)
-            //     movie_screen.create(rolling_movie.vid_buffer, 960, 720);
-            // else
             movie_screen.update(rolling_movie.vid_buffer, 960, 720);
-
             movie_screen.render();
-
-            static float t = 0; t += temp_dt;
-            float xx = ((-cos(t*2*M_PI/2000)));
 
             if (drawProgressBar)
             {
-                int pos = (int)(percent * (double)system.winWID);
+                // int pos = (int)(percent * (double)system.winWID);
+                double neg1_to_1 = percent*2.0 - 1.0;
 
                 u32 gray = 0xaaaaaaaa;
-
-
-                // if (!progress_gray.vb)
-                //     progress_gray.create((u8*)&gray, 1, 1);
-                // else
-                progress_gray.update((u8*)&gray, 1, 1, xx, -1, 1, 0);
+                progress_gray.update((u8*)&gray, 1, 1,  neg1_to_1,-1,1,-0.93);
                 progress_gray.render();
+
+                u32 red = 0xffff0000;
+                progress_red.update((u8*)&red, 1, 1,  -1,-1,neg1_to_1,-0.93);
+                progress_red.render();
 
 
                 // r_color_quad(0xaaaaaaaa, 1.0, 0.1);
