@@ -364,6 +364,8 @@ struct AppMessages
 
 #include "renderer.cpp"
 
+#include "text.cpp"
+
 
 
 // todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
@@ -1233,7 +1235,7 @@ struct GhosterWindow
             {
                 movie_screen.update(rolling_movie.vid_buffer, 960,720);
             }
-            movie_screen.render(1);
+            movie_screen.render();
 
             if (drawProgressBar)
             {
@@ -1252,6 +1254,8 @@ struct GhosterWindow
                 progress_red.render(0.6);
             }
         }
+
+        fontquad.render();
 
         // // todo: improve the args needed for these calls?
         // r_render_msg(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
@@ -1914,6 +1918,8 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     // gl_Init(global_ghoster.system.window);
     // d3d_init(global_ghoster.system.window, 960, 720);
     r_init(global_ghoster.system.window, 960, 720);
+
+    tt_initfont();
 
 
     // LOAD FILE

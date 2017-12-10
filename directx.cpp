@@ -317,7 +317,7 @@ struct d3d_textured_quad
         fill_vb_with_rect(dl, dt, dr, db, z);
     }
 
-    void render(float alpha)
+    void render(float alpha = 1)
     {
         device->BeginScene();
 
