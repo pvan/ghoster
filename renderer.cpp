@@ -10,6 +10,9 @@
 #include "directx.cpp"
 
 
+#define textured_quad d3d_textured_quad
+
+
 void r_init(HWND win, int w, int h)
 {
     d3d_load();  // or sep function?
@@ -19,57 +22,8 @@ void r_init(HWND win, int w, int h)
 
 void r_clear(double r = 0, double g = 0, double b = 0, double a = 1)
 {
-    d3d_clear(r*256.0, g*256.0, b*256.0, a*256.0); // 256 since we're truncating
+    d3d_clear(r*256.0, g*256.0, b*256.0, a*256.0); // 256 since we're truncating?
 }
-
-// void r_clear_rect(double r, double g, double b, double a, RECT dest)
-// {
-//     d3d_clear_rect(r*256.0, g*256.0, b*256.0, a*256.0, dest); // 256 since we're truncating
-// }
-
-// void r_color_quad(u32 col, double wScale, double hScale)
-// {
-//     d3d_update_quad(0, 0, 0.5, 0.5, 0.5);
-//     // // d3d_update_texture(tex, 1, 1);
-//     // d3d_update_texture(tex, 1, 1);
-//     // d3d_render_mem_to_texture(tex, (u8*)&col, 1, 1);
-
-//     d3d_render();
-// }
-
-
-// void r_StartFrame(HWND window)
-// {
-//     hdcCurrent = GetDC(window);
-//     winCurrent = window;
-//     wglMakeCurrent(hdcCurrent, rendering_context); // map future gl calls to our hdc
-
-//     RECT winRect;
-//     GetWindowRect(window, &winRect);
-//     currentWid = winRect.right-winRect.left;
-//     currentHei = winRect.bottom-winRect.top;
-// }
-
-// void r_render_quad(u8 *quadMem, int quadWid, int quadHei, double quadAlpha, RECT dest = {0})
-// {
-//     if (quadMem)
-//         d3d_render_mem_to_texture(tex, quadMem, quadWid, quadHei);
-
-//     d3d_viewport(dest);
-
-//     d3d_render();
-// }
-
-// void r_render_quad(u8 *quadMem, int quadWid, int quadHei)//, double quadAlpha, RECT dest = {0})
-// {
-//     if (quadMem) {
-//         d3d_update_quad(-1, -1, 1, 1, 0);
-//         d3d_update_texture(tex, 960, 720);
-//         d3d_render_mem_to_texture(tex, quadMem, quadWid, quadHei);
-//     }
-//     // d3d_render_pattern_to_texture(tex, temp_dt);
-//     d3d_render();
-// }
 
 void r_swap()
 {
