@@ -234,6 +234,8 @@ preview random frame when loading while paused
 
 filters!
 pixel shaders, eg splash on click
+-switch on
+-degauss
 
 random a/v mashup
 
