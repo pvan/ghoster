@@ -326,7 +326,7 @@ struct AppMessages
     // not sure why we're splitting these off from state
     // maybe just to keep things somewhat organized
 
-    bool resizeWindowBuffers = false;
+    // bool resizeWindowBuffers = false;
 
     bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
     bool next_mup_was_closing_menu;
@@ -743,11 +743,11 @@ struct GhosterWindow
     }
 
 
-    void ResizeWindow(int wid, int hei)
+    void UpdateWindowSize(int wid, int hei)
     {
         system.winWID = wid;
         system.winHEI = hei;
-        message.resizeWindowBuffers = true;
+        // message.resizeWindowBuffers = true;
     }
 
     void Init()
@@ -829,12 +829,16 @@ struct GhosterWindow
 
 
 
-        // if (message.resizeWindowBuffers ||
-        //     system.winWID != debug_overlay.bitmap.width ||
-        //     system.winHEI != debug_overlay.bitmap.height
-        //     )
+        // if (message.resizeWindowBuffers)
+        //     // ||
+        //     // system.winWID != debug_overlay.bitmap.width ||
+        //     // system.winHEI != debug_overlay.bitmap.height
+        //     // )
         // {
         //     message.resizeWindowBuffers = false;
+
+        //     r_resize(system.winWID, system.winHEI);
+
         //     // debug_overlay.Resize(system.winWID, system.winHEI);
         //     // splash_overlay.Resize(system.winWID, system.winHEI);
         // }
@@ -1493,7 +1497,7 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 void SetWindowSize(HWND hwnd, int wid, int hei)
 {
-    global_ghoster.ResizeWindow(wid, hei);
+    global_ghoster.UpdateWindowSize(wid, hei);
 
     RECT winRect;
     GetWindowRect(hwnd, &winRect);
@@ -1502,7 +1506,6 @@ void SetWindowSize(HWND hwnd, int wid, int hei)
 
 void SetWindowToNativeRes(HWND hwnd, RollingMovie movie)
 {
-
     char hwbuf[123];
     sprintf(hwbuf, "wid: %i  hei: %i\n",
         global_ghoster.rolling_movie.reel.video.codecContext->width,
@@ -2847,7 +2850,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // // OPTION 1 / 2
             // // if we don't do this, and resize each loop,
             // // we can get flicker-free resizing but we'll have resize black bars
-            r_swap();
+            r_swap(); // draw hud here too? it depends on window size so with low fps we can see it jitter
 
             return 0;
         }
@@ -3355,7 +3358,8 @@ int CALLBACK WinMain(
     if (!global_ghoster.system.window) { MsgBox("Couldn't open window."); }
 
 
-    global_ghoster.ResizeWindow(neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
+    // todo: move to ghoster init?
+    global_ghoster.UpdateWindowSize(neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
 
 
     // /*
