@@ -306,6 +306,9 @@ struct d3d_textured_quad
     IDirect3DVertexDeclaration9 *vertexDecl;
     bool created;
 
+    int texW;
+    int texH;
+
     void destroy()
     {
         vb->Release();
@@ -317,8 +320,20 @@ struct d3d_textured_quad
         created = false;
     }
 
+    void create_tex(int w, int h)
+    {
+        HRESULT res = device->CreateTexture(w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
+        if (res != D3D_OK) MessageBox(0,"error CreateTexture", 0, 0);
+        texW = w;
+        texH = h;
+    }
+
     void fill_tex_with_mem(u8 *mem, int w, int h)
     {
+        if (w != texW || h != texH)
+        {
+            create_tex(w, h);
+        }
         D3DLOCKED_RECT rect;
         HRESULT res = tex->LockRect(0, &rect, 0, 0);
         if (res != D3D_OK) MessageBox(0,"error LockRect", 0, 0);
@@ -383,8 +398,7 @@ struct d3d_textured_quad
         if (res != D3D_OK) OutputDebugString("CreateVertexDeclaration error!\n");
 
 
-        res = device->CreateTexture(qw, qh, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
-        if (res != D3D_OK) MessageBox(0,"error CreateTexture", 0, 0);
+        create_tex(qw, qh);
         fill_tex_with_mem(qmem, qw, qh);
 
 

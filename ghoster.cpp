@@ -1190,7 +1190,7 @@ struct GhosterWindow
         //     }
         // }
 
-        // // todo: improve the args needed for these calls?
+        // todo: improve the args needed for these calls
         // gl_RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
         // gl_RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
 
@@ -1263,11 +1263,11 @@ struct GhosterWindow
             }
         }
 
-        tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
+        // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
 
         // // todo: improve the args needed for these calls?
-        // r_render_msg(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-        // r_render_msg(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
+        r_render_msg(debug_overlay, 0,0, system.winWID,system.winHEI, false, false);
+        r_render_msg(splash_overlay, system.winWID/2,system.winHEI/2, system.winWID,system.winHEI);
 
         r_swap();
 

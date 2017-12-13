@@ -29,7 +29,7 @@ void tt_init_nobake()
     // free(ttfile_buffer);  // looks like we need to keep this around?
 }
 
-void tt_print_nobake(float tx, float ty, char *text, int sw, int sh)
+void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, bool centerH, bool centerV)
 {
     int bitmapW = 0;
     int bitmapH = 0;
@@ -98,8 +98,8 @@ void tt_print_nobake(float tx, float ty, char *text, int sw, int sh)
     fontquad.update(color_temp_bitmap, bitmapW,bitmapH);
 
     // center text on input
-    tx -= bitmapW/2.0; // since we calc these they should be decent way to center the text
-    ty -= bitmapH/2.0;
+    if (centerH) tx -= bitmapW/2.0; // since we calc these they should be decent way to center the text
+    if (centerV) ty -= bitmapH/2.0;
 
     float verts[] = {
     //  x                            y                            z   u   v
@@ -147,9 +147,9 @@ void tt_initfont()
 
     fontquad.update(color_temp_bitmap, TTW,TTH,  -0.5, -0.5, 0.5, 0.5);
 }
-void tt_print(float x, float y, char *text, int sw, int sh)
+void tt_print(float x, float y, char *text, int sw, int sh, bool centerH, bool centerV)
 {
-    tt_print_nobake(x, y, text, sw, sh);
+    tt_print_nobake(x, y, text, sw, sh, centerH, centerV);
     return;
 
     // textured_quad quad;
