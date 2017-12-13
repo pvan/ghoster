@@ -1,5 +1,6 @@
 
 
+
 [ ] drag drop onto sys tray icon?
 
 
@@ -132,6 +133,37 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
     [ ] check if there is any data or it's just the flag is set
     [ ] use the remaining data if there
     [ ] or replace with new send/receive api which i don't think needs a special case for this
+
+
+
+
+
+---notes on window resize----
+
+updating the size of the backbuffer
+fixes our distorted text on long windows
+but I don't see a complete solution yet
+basically we have a few options
+
+first is do we r_swap every wm_size call?
+if we do, we'll flicker if we try to update the bb frequently
+(maybe there is a solution to this?)
+if not, we'll get resize black bars in the new space
+
+second is do we update the bb as much as we can?
+if we do, we can do it in the app loop or every wm_size call
+  either way, we flicker if we also swap from the system thread (called OPTION 1)
+  if we don't swap from system, we'll get black bars as prev mentioned
+if we don't update the bb as much as we can, we'll get distortion
+best way I've found to minimize the distortion is resize the bb on sizemoveexit
+and to prevent extreme distortion when scaling up a small bb, set the bb huge when we sizemoveenter
+we call this OPTION 2 in the comments
+
+OPTION 3 is don't swap every wm_size call, and resize the bb every app loop
+this has no distortion and no flicker, but we get resize black bars and it's pretty slow
+
+we'll go with OPTION 2 for now until something better comes up
+
 
 
 

@@ -37,6 +37,9 @@
 #define i64 int64_t
 
 
+int tempW;
+int tempH;
+
 const bool DEBUG_MCLICK_MSGS = false;
 
 const bool FORCE_NON_ZERO_OPACITY = false;  // not sure if we want this or not
@@ -1195,6 +1198,14 @@ struct GhosterWindow
 
         // gl_Swap();
 
+
+        // // OPTION 1b
+        // // flicker if we try resizing here as well
+        // RECT wr; GetWindowRect(system.window, &wr);
+        // d3d_resize(wr.right-wr.left, wr.bottom-wr.top);
+
+        // // OPTION 3
+        // d3d_resize(tempW, tempH); // for updating while resizing, we need to save the size from WM_SIZE
 
         static float t = 0;
         if (state.bufferingOrLoading)
@@ -2822,8 +2833,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+
+            // OPTION 1a
             // d3d_resize(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // flicker if we try this
-            r_swap(); // todo: consider drawing HUD here as well?
+
+            // // OPTION 3
+            // // update these for our app loop to use for setting the backbuffer
+            // tempW = GET_X_LPARAM(lParam);
+            // tempH = GET_Y_LPARAM(lParam);
+
+            // // OPTION 1 / 2
+            // // if we don't do this, and resize each loop,
+            // // we can get flicker-free resizing but we'll have resize black bars
+            r_swap();
+
             return 0;
         }
 
@@ -2862,7 +2885,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 *(RECT*)lParam = rc;
             }
+
+            // OPTION 1a (same as if done in WM_SIZE)
             // d3d_resize(w, h); // flicker if we try this
+
         } break;
 
 
