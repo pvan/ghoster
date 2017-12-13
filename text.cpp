@@ -36,17 +36,28 @@ void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, 
     int fontH = fsize;
     float scale = stbtt_ScaleForPixelHeight(&ttfont, fontH);
 
+    int ascent, descent, lineGap;
+    stbtt_GetFontVMetrics(&ttfont, &ascent,&descent,&lineGap);
+    ascent*=scale; descent*=scale; lineGap*=scale;
+
+    int widthThisLine = 0;
+    bitmapH = fontH; // should be same as ascent-descent because of our scale factor
     for (int i = 0; i < strlen(text); i++)
     {
-        // int x0,y0,x1,y1; stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &x0,&y0,&x1,&y1);
-        int advance;    stbtt_GetCodepointHMetrics(&ttfont, text[i], &advance, 0);
-        int kerning =   stbtt_GetCodepointKernAdvance(&ttfont, text[i], text[i+1]);
-        bitmapW += ((float)advance*scale + (float)kerning*scale) + 1; // +1 so we don't get truncated
-
-        // int ascent, descent;  stbtt_GetFontVMetrics(&ttfont, &ascent, &descent, 0);
-        // bitmapH = max(bitmapH, ascent+descent);
+        if (text[i] == '\n')
+        {
+            widthThisLine = 0;
+            bitmapH += (fontH+lineGap);
+        }
+        else
+        {
+            // int x0,y0,x1,y1; stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &x0,&y0,&x1,&y1);
+            int advance;    stbtt_GetCodepointHMetrics(&ttfont, text[i], &advance, 0);
+            int kerning =   stbtt_GetCodepointKernAdvance(&ttfont, text[i], text[i+1]);
+            widthThisLine += ((float)advance*scale + (float)kerning*scale) + 1; // +1 so we don't get truncated
+            if (widthThisLine > bitmapW) bitmapW = widthThisLine;
+        }
     }
-    bitmapH = fontH; // our scale factor basically makes this true i think
 
     // bitmapW += 2; // need a little extra if we start inset a bit below?
     // bitmapH += 1; // little extra this way?
@@ -55,27 +66,32 @@ void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, 
     ZeroMemory(gray_bitmap, bitmapW * bitmapH);
 
 
-    int ascent;
-    stbtt_GetFontVMetrics(&ttfont, &ascent,0,0);
-    int baseline = (int)(ascent*scale);
-
     // TODO: the docs recommend we go char by char on a temp bitmap and alpha blend into the final
     // as the method we're using could cutoff chars that ovelap e.g. lj in arialbd
 
     int xpos = 2; // "leave a little padding in case the character extends left"
+    int ypos = ascent; // not sure why we start at ascent actually..
     for (int i = 0; i < strlen(text); i++)
     {
-        // int L,R,T,B;     stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &L,&T,&R,&B);
-        int x0,y0,x1,y1; stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &x0,&y0,&x1,&y1);
-        int advance;     stbtt_GetCodepointHMetrics(&ttfont, text[i], &advance, 0);
-        int kerning =    stbtt_GetCodepointKernAdvance(&ttfont, text[i], text[i+1]);
+        if (text[i] == '\n')
+        {
+            xpos = 0;
+            ypos += (fontH+lineGap);
+        }
+        else
+        {
+            // int L,R,T,B;     stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &L,&T,&R,&B);
+            int x0,y0,x1,y1; stbtt_GetCodepointBitmapBox(&ttfont, text[i], scale,scale, &x0,&y0,&x1,&y1);
+            int advance;     stbtt_GetCodepointHMetrics(&ttfont, text[i], &advance, 0);
+            int kerning =    stbtt_GetCodepointKernAdvance(&ttfont, text[i], text[i+1]);
 
-        float x_shift = xpos - (float)floor(xpos);
-        int offset = ((baseline+y0)*bitmapW) + (int)xpos+x0;
-        if (text[i] != ' ' && text[i] != NBSP)
-            stbtt_MakeCodepointBitmapSubpixel(&ttfont, gray_bitmap+offset, x1-x0, y1-y0, bitmapW, scale,scale,x_shift,0, text[i]);
+            float x_shift = xpos - (float)floor(xpos);
+            int offset = ((ypos+y0)*bitmapW) + (int)xpos+x0;
+            if (text[i] != ' ' && text[i] != NBSP)
+                stbtt_MakeCodepointBitmapSubpixel(&ttfont, gray_bitmap+offset, x1-x0, y1-y0, bitmapW, scale,scale,x_shift,0, text[i]);
 
-        xpos += ((float)advance*scale + (float)kerning*scale);
+            xpos += ((float)advance*scale + (float)kerning*scale);
+        }
     }
 
 
@@ -92,7 +108,7 @@ void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, 
             *g = *(gray_bitmap + ((py*bitmapW)+px));
             *b = *(gray_bitmap + ((py*bitmapW)+px));
             *a = *(gray_bitmap + ((py*bitmapW)+px));
-            // *a = 255;
+            *a = 128;
         }
     }
 
