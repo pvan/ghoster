@@ -14,7 +14,7 @@
 
 
 // todo: derp, might want actually header files at some point
-void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV);
+void tt_print(float x, float y, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV);
 
 
 void r_init(HWND win, int w, int h)
@@ -39,13 +39,13 @@ void r_resize(int w, int h)
     d3d_resize(w, h);
 }
 
-void r_render_msg(MessageOverlay overlay, int x, int y, int sw, int sh, bool centerH = true, bool centerV = true)
+void r_render_msg(MessageOverlay overlay, int fsize, int x, int y, int sw, int sh, bool centerH = true, bool centerV = true)
 {
 
     if (overlay.msLeftOfDisplay > 0)
     {
         // todo: improve the tt api
-        tt_print(x, y, overlay.text.memory, sw, sh, overlay.alpha, centerH, centerV);
+        tt_print(x, y, overlay.text.memory, fsize, sw, sh, overlay.alpha, centerH, centerV);
     }
 
     // // todo: add option for dest rect here like quadToRect?

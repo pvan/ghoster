@@ -1266,8 +1266,8 @@ struct GhosterWindow
         // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
 
         // // todo: improve the args needed for these calls?
-        r_render_msg(debug_overlay, 0,0, system.winWID,system.winHEI, false, false);
-        r_render_msg(splash_overlay, system.winWID/2,system.winHEI/2, system.winWID,system.winHEI);
+        r_render_msg(debug_overlay, 32, 0,0, system.winWID,system.winHEI, false, false);
+        r_render_msg(splash_overlay, 64, system.winWID/2,system.winHEI/2, system.winWID,system.winHEI);
 
         r_swap();
 

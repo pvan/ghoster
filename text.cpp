@@ -29,11 +29,11 @@ void tt_init_nobake()
     // free(ttfile_buffer);  // looks like we need to keep this around?
 }
 
-void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
+void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV)
 {
     int bitmapW = 0;
     int bitmapH = 0;
-    int fontH = 64;
+    int fontH = fsize;
     float scale = stbtt_ScaleForPixelHeight(&ttfont, fontH);
 
     for (int i = 0; i < strlen(text); i++)
@@ -179,8 +179,8 @@ void tt_initfont()
 }
 
 
-void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
+void tt_print(float x, float y, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV)
 {
-    tt_print_nobake(x, y, text, sw, sh, alpha, centerH, centerV);
+    tt_print_nobake(x, y, text, fsize, sw, sh, alpha, centerH, centerV);
     return;
 }
