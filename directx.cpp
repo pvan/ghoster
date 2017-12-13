@@ -210,16 +210,13 @@ void d3d_create_swapchain_and_depthbuffer(int w, int h)
         // if (res == D3D_OK) MsgBox("D3D_OK");
         our_sc->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &our_bb);
 
-
         device->SetRenderTarget(0, our_bb);
         device->SetDepthStencilSurface(our_db);
-
 
         // D3DVIEWPORT9 vp = {0};
         // vp.Width = w;
         // vp.Height = h;
         // device->SetViewport(&vp);
-
     }
 }
 void d3d_destroy_swapchain_and_depthbuffer()

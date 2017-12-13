@@ -30,6 +30,11 @@ void r_swap()
     d3d_swap();
 }
 
+void r_resize(int w, int h)
+{
+    d3d_resize(w, h);
+}
+
 // void r_render_msg(MessageOverlay overlay, int x, int y, int scale, int horizAlign, int vertAlign)
 // {
 //     // todo: add option for dest rect here like quadToRect?

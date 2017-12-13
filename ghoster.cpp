@@ -1136,12 +1136,6 @@ struct GhosterWindow
 
 
 
-        // if (rolling_movie.vid_buffer)
-        //     d3d_render_mem_to_texture(tex, rolling_movie.vid_buffer, 960, 720);
-        // // d3d_render_pattern_to_texture(tex, temp_dt);
-        // d3d_render();
-
-
 
         // gl_StartFrame(destWin);
 
@@ -1202,10 +1196,10 @@ struct GhosterWindow
         // // OPTION 1b
         // // flicker if we try resizing here as well
         // RECT wr; GetWindowRect(system.window, &wr);
-        // d3d_resize(wr.right-wr.left, wr.bottom-wr.top);
+        // r_resize(wr.right-wr.left, wr.bottom-wr.top);
 
         // // OPTION 3
-        // d3d_resize(tempW, tempH); // for updating while resizing, we need to save the size from WM_SIZE
+        // r_resize(tempW, tempH); // for updating while resizing, we need to save the size from WM_SIZE
 
         static float t = 0;
         if (state.bufferingOrLoading)
@@ -1924,9 +1918,6 @@ bool CreateNewMovieFromPath(char *path)
 // todo: pass in ghoster app to run here?
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
-
-    // gl_Init(global_ghoster.system.window);
-    // d3d_init(global_ghoster.system.window, 960, 720);
     r_init(global_ghoster.system.window, 960, 720);
 
     tt_initfont();
@@ -1937,7 +1928,6 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     {
         global_ghoster.message.QueuePlayRandom();
     }
-
 
 
     // global_ghoster.state.app_timer.Start();  // now started in ghoster.init
@@ -2162,11 +2152,17 @@ void setFullscreen(bool enable)
                 SWP_NOOWNERZORDER | SWP_FRAMECHANGED
                 );
             global_ghoster.system.fullscreen = true;
-        }
 
-        // move to top so we're above taskbar
-        // todo: only works if we set as topmost.. setting it temporarily for now
-        SetWindowPos(global_ghoster.system.window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+            // move to top so we're above taskbar
+            // todo: only works if we set as topmost.. setting it temporarily for now
+            SetWindowPos(global_ghoster.system.window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+
+
+            // resize backbuffer to new size
+            RECT winRect; GetWindowRect(global_ghoster.system.window, &winRect);
+            r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
+        }
     }
     else
     {
@@ -2194,6 +2190,12 @@ void setFullscreen(bool enable)
         {
             SetWindowPos(global_ghoster.system.window, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         }
+
+
+        // resize backbuffer to new size
+        RECT winRect; GetWindowRect(global_ghoster.system.window, &winRect);
+        r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
+
 
         // make this an option... (we might want to keep it in the corner eg)
         // int mouseX = GET_X_LPARAM(lParam);
@@ -2800,7 +2802,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             MONITORINFO mi = { sizeof(mi) };
             if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
             {
-                d3d_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
+                r_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
             }
 
             in_movesize_loop = true;
@@ -2811,7 +2813,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             inhibit_movesize_loop = false;
 
             RECT winRect; GetWindowRect(hwnd, &winRect);
-            d3d_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
+            r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
 
         } break;
         case WM_CAPTURECHANGED: {
@@ -2835,7 +2837,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
 
             // OPTION 1a
-            // d3d_resize(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // flicker if we try this
+            // r_resize(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // flicker if we try this
 
             // // OPTION 3
             // // update these for our app loop to use for setting the backbuffer
@@ -2887,7 +2889,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
 
             // OPTION 1a (same as if done in WM_SIZE)
-            // d3d_resize(w, h); // flicker if we try this
+            // r_resize(w, h); // flicker if we try this
 
         } break;
 
@@ -3093,8 +3095,6 @@ int CALLBACK WinMain(
 
     global_ghoster.Init();
 
-
-    // d3d_load();
 
 
     // defaults
