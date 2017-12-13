@@ -1196,7 +1196,6 @@ struct GhosterWindow
         // gl_Swap();
 
 
-
         static float t = 0;
         if (state.bufferingOrLoading)
         {
@@ -2779,26 +2778,41 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
     switch(message)
     {
 
-        // allow placement above top of monitor edge
+        // allow placement above top of monitor edge (just the in_movesize_loop/inhibit stuff)
         // /*
-        // case WM_ENTERSIZEMOVE:
-        //     in_movesize_loop = true;
-        //     inhibit_movesize_loop = false;
-        //     break;
-        case WM_EXITSIZEMOVE:
+        case WM_ENTERSIZEMOVE: {
+            POINT mPos;   GetCursorPos(&mPos);
+            RECT winRect; GetWindowRect(hwnd, &winRect);
+            sys_moving_anchor_x = mPos.x - winRect.left;
+            sys_moving_anchor_y = mPos.y - winRect.top;
+
+            MONITORINFO mi = { sizeof(mi) };
+            if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
+            {
+                d3d_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
+            }
+
+            in_movesize_loop = true;
+            inhibit_movesize_loop = false;
+        } break;
+        case WM_EXITSIZEMOVE: {
             in_movesize_loop = false;
             inhibit_movesize_loop = false;
-            break;
-        case WM_CAPTURECHANGED:
+
+            RECT winRect; GetWindowRect(hwnd, &winRect);
+            d3d_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
+
+        } break;
+        case WM_CAPTURECHANGED: {
             inhibit_movesize_loop = in_movesize_loop;
-            break;
-        case WM_WINDOWPOSCHANGING:
+        } break;
+        case WM_WINDOWPOSCHANGING: {
             if (inhibit_movesize_loop) {
                 WINDOWPOS* wp = reinterpret_cast<WINDOWPOS*>(lParam);
                 wp->flags |= SWP_NOMOVE;
                 return 0;
             }
-        break;
+        } break;
         // */
 
 
@@ -2808,19 +2822,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 
         case WM_SIZE: {
             SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            // d3d_resize(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // flicker if we try this
             r_swap(); // todo: consider drawing HUD here as well?
             return 0;
         }
 
         case WM_SIZING: {  // when dragging border
+            RECT rc = *(RECT*)lParam;
+            int w = rc.right - rc.left;
+            int h = rc.bottom - rc.top;
+
             if (global_ghoster.state.lock_aspect)
             {
-                RECT rc = *(RECT*)lParam;
-                int w = rc.right - rc.left;
-                int h = rc.bottom - rc.top;
-
                 double aspect_ratio = global_ghoster.rolling_movie.aspect_ratio;
-
                 switch (wParam)
                 {
                     case WMSZ_LEFT:
@@ -2848,6 +2862,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
                 }
                 *(RECT*)lParam = rc;
             }
+            // d3d_resize(w, h); // flicker if we try this
         } break;
 
 
@@ -2911,15 +2926,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
         } break;
 
 
-        case WM_ENTERSIZEMOVE: {
-            POINT mPos;   GetCursorPos(&mPos);
-            RECT winRect; GetWindowRect(hwnd, &winRect);
-            sys_moving_anchor_x = mPos.x - winRect.left;
-            sys_moving_anchor_y = mPos.y - winRect.top;
-
-            in_movesize_loop = true;
-            inhibit_movesize_loop = false;
-        } break;
         case WM_MOVING: {
             if (global_ghoster.state.enableSnapping)
             {

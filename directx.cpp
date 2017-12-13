@@ -168,14 +168,98 @@ void enable_alpha_blending()
 }
 
 
+
+IDirect3DSurface9   *cached_bb;
+IDirect3DSurface9   *cached_db;
+// IDirect3DSwapChain9 *cached_sc;
+IDirect3DSurface9   *our_bb;
+IDirect3DSurface9   *our_db;
+IDirect3DSwapChain9 *our_sc;
+void d3d_create_swapchain_and_depthbuffer(int w, int h)
+{
+    if (device)
+    {
+        // store our defaults
+        device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &cached_bb);
+        device->GetDepthStencilSurface(&cached_db);
+
+        // get our current pp (better way?)
+        D3DPRESENT_PARAMETERS pp;
+        IDirect3DSwapChain9 *temp_sc;
+        device->GetSwapChain(0, &temp_sc);
+        temp_sc->GetPresentParameters(&pp);
+        pp.BackBufferWidth = w;
+        pp.BackBufferHeight = h;
+        temp_sc->Release();
+
+        // create new ones of the right size
+        device->CreateDepthStencilSurface(
+            w, h,
+            pp.BackBufferFormat,
+            pp.MultiSampleType,
+            pp.MultiSampleQuality,
+            pp.Flags & D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL,
+            &our_db, 0);
+        HRESULT res = device->CreateAdditionalSwapChain(&pp, &our_sc);
+        // if (res == D3DERR_NOTAVAILABLE) MsgBox("D3DERR_NOTAVAILABLE");
+        // if (res == D3DERR_DEVICELOST) MsgBox("D3DERR_DEVICELOST");
+        // if (res == D3DERR_INVALIDCALL) MsgBox("D3DERR_INVALIDCALL");
+        // if (res == D3DERR_OUTOFVIDEOMEMORY) MsgBox("D3DERR_OUTOFVIDEOMEMORY");
+        // if (res == E_OUTOFMEMORY) MsgBox("E_OUTOFMEMORY");
+        // if (res == E_INVALIDARG) MsgBox("E_INVALIDARG");
+        // if (res == D3D_OK) MsgBox("D3D_OK");
+        our_sc->GetBackBuffer(0, D3DBACKBUFFER_TYPE_MONO, &our_bb);
+
+
+        device->SetRenderTarget(0, our_bb);
+        device->SetDepthStencilSurface(our_db);
+
+
+        // D3DVIEWPORT9 vp = {0};
+        // vp.Width = w;
+        // vp.Height = h;
+        // device->SetViewport(&vp);
+
+    }
+}
+void d3d_destroy_swapchain_and_depthbuffer()
+{
+    if (device)
+    {
+        // swap back to our cached buffers
+        device->SetRenderTarget(0, cached_bb);
+        device->SetDepthStencilSurface(cached_db);
+
+        // now we can release these handles
+        if (cached_bb) cached_bb->Release();
+        if (cached_db) cached_db->Release();
+
+        // release our current buffers
+        if (our_bb) our_bb->Release();
+        if (our_db) our_db->Release();
+
+        // now our device should be in its initial state and we can re-create our buffers
+    }
+}
+void d3d_resize(int w, int h)
+{
+    if (device)
+    {
+        d3d_destroy_swapchain_and_depthbuffer();
+        d3d_create_swapchain_and_depthbuffer(w, h);
+    }
+}
+
+
+
 bool d3d_init(HWND win, int w, int h)
 {
     context = Direct3DCreate9(D3D_SDK_VERSION);
     if (!context) { MessageBox(0, "Error creating direct3D context", 0, 0); return false; }
 
     D3DPRESENT_PARAMETERS params = {0};
-    params.BackBufferWidth = w;
-    params.BackBufferWidth = h;
+    params.BackBufferWidth = 10;  // we never use this buffer for rendering so we can keep it small
+    params.BackBufferHeight = 10; // instead we swap in our own bb so we can more easily change the size
     params.BackBufferFormat = D3DFMT_A8R8G8B8;
     params.BackBufferCount = 1;
     params.MultiSampleType = D3DMULTISAMPLE_NONE;
@@ -203,6 +287,9 @@ bool d3d_init(HWND win, int w, int h)
     d3d_compile_shaders();
 
     enable_alpha_blending();
+
+
+    d3d_create_swapchain_and_depthbuffer(w, h);
 
 
     return true;
@@ -344,7 +431,8 @@ struct d3d_textured_quad
 
 void d3d_swap()
 {
-    if (device) device->Present(0, 0, 0, 0);
+    if (our_sc) our_sc->Present(0, 0, 0, 0, 0);
+    // if (device) device->Present(0, 0, 0, 0);
 }
 
 
