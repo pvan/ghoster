@@ -1518,6 +1518,8 @@ void SetWindowToNativeRes(HWND hwnd, RollingMovie movie)
 
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
 {
+    // todo: intermittent window resize failure on video load.. something failing in here?
+
     RECT winRect;
     GetWindowRect(hwnd, &winRect);
     int w = winRect.right - winRect.left;
@@ -1531,7 +1533,14 @@ void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
     // else
     //     MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
     // now always adjusting width
-    MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+
+    // char buf[256];
+    // sprintf(buf, "ratio: %f  w: %i  h: %i  nw: %i  nh: %i\n", aspect_ratio, w, h, nw, nh);
+    // OutputDebugString(buf);
+
+    // MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+    SetWindowSize(hwnd, nw, h);
+    r_resize(nw, h);
 }
 
 
@@ -1938,6 +1947,10 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
     while (global_ghoster.state.appRunning)
     {
+        // why is this outside of update?
+        // maybe have message_check function or something eventually?
+        // i guess it's out here because it's not really about playing a movie?
+        // the whole layout of ghoster / loading / system needs to be re-worked
         if (global_ghoster.message.load_new_file)
         {
             // global_ghoster.state.buffering = true;

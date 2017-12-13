@@ -1,4 +1,6 @@
 
+[ ] add option to overflow screen edges instead of just letterbox
+    -maybe allow letterbox/overflow in windowed mode too?
 
 
 [ ] drag drop onto sys tray icon?
