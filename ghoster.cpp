@@ -308,6 +308,8 @@ struct MessageOverlay
     AppTextBuffer text;
     float alpha;
 
+    int bgAlpha = 0;
+
     double msLeftOfDisplay = 0;
 
     int maxLines = 1;
@@ -760,6 +762,8 @@ struct GhosterWindow
         debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
         splash_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
 
+        debug_overlay.bgAlpha = 125;
+        splash_overlay.bgAlpha = 0;
 
         // todo: move this to ghoster app
         // space we can re-use for title strings

@@ -14,7 +14,8 @@
 
 
 // todo: derp, might want actually header files at some point
-void tt_print(float x, float y, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV);
+void tt_print(float x, float y, char *text, int fsize, int sw, int sh,
+              float alpha, bool centerH, bool centerV, int bgA);
 
 
 void r_init(HWND win, int w, int h)
@@ -45,7 +46,7 @@ void r_render_msg(MessageOverlay overlay, int fsize, int x, int y, int sw, int s
     if (overlay.msLeftOfDisplay > 0)
     {
         // todo: improve the tt api
-        tt_print(x, y, overlay.text.memory, fsize, sw, sh, overlay.alpha, centerH, centerV);
+        tt_print(x, y, overlay.text.memory, fsize, sw, sh, overlay.alpha, centerH, centerV, overlay.bgAlpha);
     }
 
     // // todo: add option for dest rect here like quadToRect?

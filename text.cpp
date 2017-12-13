@@ -29,7 +29,8 @@ void tt_init_nobake()
     // free(ttfile_buffer);  // looks like we need to keep this around?
 }
 
-void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV)
+void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh,
+                     float alpha, bool centerH, bool centerV, int bgA)
 {
     int bitmapW = 0;
     int bitmapH = 0;
@@ -108,7 +109,7 @@ void tt_print_nobake(float tx, float ty, char *text, int fsize, int sw, int sh, 
             *g = *(gray_bitmap + ((py*bitmapW)+px));
             *b = *(gray_bitmap + ((py*bitmapW)+px));
             *a = *(gray_bitmap + ((py*bitmapW)+px));
-            *a = 128;
+            if (bgA != 0) *a = bgA;
         }
     }
 
@@ -195,8 +196,9 @@ void tt_initfont()
 }
 
 
-void tt_print(float x, float y, char *text, int fsize, int sw, int sh, float alpha, bool centerH, bool centerV)
+void tt_print(float x, float y, char *text, int fsize, int sw, int sh,
+              float alpha, bool centerH, bool centerV, int bgA)
 {
-    tt_print_nobake(x, y, text, fsize, sw, sh, alpha, centerH, centerV);
+    tt_print_nobake(x, y, text, fsize, sw, sh, alpha, centerH, centerV, bgA);
     return;
 }
