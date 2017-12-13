@@ -29,7 +29,7 @@ void tt_init_nobake()
     // free(ttfile_buffer);  // looks like we need to keep this around?
 }
 
-void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, bool centerH, bool centerV)
+void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
 {
     int bitmapW = 0;
     int bitmapH = 0;
@@ -109,7 +109,7 @@ void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, bool center
         r_PixelToNDC(bitmapW+tx,sw), r_PixelToNDC(bitmapH+ty,sh), 0,  1,  0,
     };
     fontquad.update_custom_verts(verts);
-    fontquad.render();
+    fontquad.render(alpha);
 
 
     free(color_temp_bitmap);
@@ -147,9 +147,9 @@ void tt_initfont()
 
     fontquad.update(color_temp_bitmap, TTW,TTH,  -0.5, -0.5, 0.5, 0.5);
 }
-void tt_print(float x, float y, char *text, int sw, int sh, bool centerH, bool centerV)
+void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
 {
-    tt_print_nobake(x, y, text, sw, sh, centerH, centerV);
+    tt_print_nobake(x, y, text, sw, sh, alpha, centerH, centerV);
     return;
 
     // textured_quad quad;
