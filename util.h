@@ -97,6 +97,7 @@ bool StringIsUrl(const char *path)
     return false;
 }
 
+#define NBSP '\u00A0'
 
 void TransmogrifyText(char *src, char *dest)
 {
@@ -105,7 +106,7 @@ void TransmogrifyText(char *src, char *dest)
         *dest = toupper(*src);
         dest++;
         // *dest = ' ';
-        *dest = '\u00A0';  // nbsp
+        *dest = NBSP;  // '\u00A0' nbsp
         dest++;
 
         src++;

@@ -72,7 +72,8 @@ void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, float alpha
 
         float x_shift = xpos - (float)floor(xpos);
         int offset = ((baseline+y0)*bitmapW) + (int)xpos+x0;
-        stbtt_MakeCodepointBitmapSubpixel(&ttfont, gray_bitmap+offset, x1-x0, y1-y0, bitmapW, scale,scale,x_shift,0, text[i]);
+        if (text[i] != ' ' && text[i] != NBSP)
+            stbtt_MakeCodepointBitmapSubpixel(&ttfont, gray_bitmap+offset, x1-x0, y1-y0, bitmapW, scale,scale,x_shift,0, text[i]);
 
         xpos += ((float)advance*scale + (float)kerning*scale);
     }
@@ -119,10 +120,9 @@ void tt_print_nobake(float tx, float ty, char *text, int sw, int sh, float alpha
 
 
 
-void tt_initfont()
+
+void tt_init_bake()
 {
-    tt_init_nobake();
-    return;
 
     u8 *ttfile_buffer = (u8*)malloc(1<<20);
     fread(ttfile_buffer, 1, 1<<20, fopen("c:/windows/fonts/segoeui.ttf", "rb"));
@@ -147,11 +147,9 @@ void tt_initfont()
 
     fontquad.update(color_temp_bitmap, TTW,TTH,  -0.5, -0.5, 0.5, 0.5);
 }
-void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
+// todo: outdated, args are for nobake I think
+void tt_print_bake(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
 {
-    tt_print_nobake(x, y, text, sw, sh, alpha, centerH, centerV);
-    return;
-
     // textured_quad quad;
     while (*text) {
         if (*text >= 32 && *text < 128) {
@@ -170,4 +168,19 @@ void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool ce
         }
         ++text;
     }
+}
+
+
+
+void tt_initfont()
+{
+    tt_init_nobake();
+    return;
+}
+
+
+void tt_print(float x, float y, char *text, int sw, int sh, float alpha, bool centerH, bool centerV)
+{
+    tt_print_nobake(x, y, text, sw, sh, alpha, centerH, centerV);
+    return;
 }
