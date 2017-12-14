@@ -1192,8 +1192,23 @@ struct GhosterWindow
 static GhosterWindow global_ghoster;
 
 double last_render_time;
+int cachedW;
+int cachedH;
 void the_one_render_call_to_rule_them_all(GhosterWindow app)
 {
+    if (!app.state.appRunning) return;  // kinda smells
+
+    RECT wr; GetWindowRect(app.system.window, &wr);
+    int sw = wr.right-wr.left;
+    int sh = wr.bottom-wr.top;
+
+    if (sw!=cachedW || sh!=cachedH)
+    {
+        cachedW = sw;
+        cachedH = sh;
+        r_resize(sw, sh);
+    }
+
     // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
     double temp_dt = app.state.app_timer.MsSinceStart() - last_render_time;
     last_render_time = app.state.app_timer.MsSinceStart();
@@ -1908,10 +1923,6 @@ bool CreateNewMovieFromPath(char *path)
 // todo: pass in ghoster app to run here?
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
-    r_init(global_ghoster.system.window, 960, 720);
-
-    tt_initfont();
-
 
     // LOAD FILE
     if (!global_ghoster.message.load_new_file)
@@ -2780,6 +2791,8 @@ static int sys_moving_anchor_y;
 static bool in_movesize_loop;
 static bool inhibit_movesize_loop;
 
+UINT backdoor_render_timer;
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch(message)
@@ -2793,22 +2806,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             sys_moving_anchor_x = mPos.x - winRect.left;
             sys_moving_anchor_y = mPos.y - winRect.top;
 
-            MONITORINFO mi = { sizeof(mi) };
-            if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
-            {
-                r_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
-            }
+            // MONITORINFO mi = { sizeof(mi) };
+            // if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
+            // {
+            //     r_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
+            // }
 
             in_movesize_loop = true;
             inhibit_movesize_loop = false;
+
+            SetTimer(hwnd, backdoor_render_timer, 16, 0); // 0 to get WM_TIMER msgs
         } break;
         case WM_EXITSIZEMOVE: {
             in_movesize_loop = false;
             inhibit_movesize_loop = false;
 
-            RECT winRect; GetWindowRect(hwnd, &winRect);
-            r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
+            // RECT winRect; GetWindowRect(hwnd, &winRect);
+            // r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
 
+            KillTimer(hwnd, backdoor_render_timer);
         } break;
         case WM_CAPTURECHANGED: {
             inhibit_movesize_loop = in_movesize_loop;
@@ -2821,6 +2837,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             }
         } break;
         // */
+
+        case WM_TIMER: {
+            the_one_render_call_to_rule_them_all(global_ghoster);
+        } break;
 
 
         case WM_CLOSE: {
@@ -2841,7 +2861,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // // OPTION 1 / 2
             // // if we don't do this, and resize each loop,
             // // we can get flicker-free resizing but we'll have resize black bars
-            r_swap(); // draw hud here too? it depends on window size so with low fps we can see it jitter
+            // r_swap(); // draw hud here too? it depends on window size so with low fps we can see it jitter
             // the_one_render_call_to_rule_them_all(global_ghoster);
 
             return 0;
@@ -3386,6 +3406,13 @@ int CALLBACK WinMain(
 
     // ENABLE DRAG DROP
     DragAcceptFiles(global_ghoster.system.window, true);
+
+
+
+    r_init(global_ghoster.system.window, neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
+
+    tt_initfont();
+
 
 
     // MAIN APP LOOP
