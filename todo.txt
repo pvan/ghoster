@@ -1,4 +1,7 @@
 
+
+[ ] add a background "screen" with color/alpha to text overlay
+
 [ ] add option to overflow screen edges instead of just letterbox
     -maybe allow letterbox/overflow in windowed mode too?
 
