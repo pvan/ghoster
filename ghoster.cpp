@@ -1191,6 +1191,12 @@ struct GhosterWindow
 
 static GhosterWindow global_ghoster;
 
+
+// char last_splash[1024];
+
+textured_quad splash_quad;
+textured_quad debug_quad;
+
 double last_render_time;
 int cachedW;
 int cachedH;
@@ -1300,8 +1306,26 @@ void the_one_render_call_to_rule_them_all(GhosterWindow app)
     // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
 
     // // todo: improve the args needed for these calls?
-    r_render_msg(app.debug_overlay, 32, 0,0, app.system.winWID,app.system.winHEI, false, false);
-    r_render_msg(app.splash_overlay, 64, app.system.winWID/2,app.system.winHEI/2, app.system.winWID,app.system.winHEI);
+    // r_render_msg(app.debug_overlay, 32, 0,0, app.system.winWID,app.system.winHEI, false, false);
+    // r_render_msg(app.splash_overlay, 64, app.system.winWID/2,app.system.winHEI/2, app.system.winWID,app.system.winHEI);
+
+    // if (strcmp(app.splash_overlay.text.memory, last_splash) != 0)
+    // {
+
+        // debug_quad.destroy();
+        splash_quad.destroy();
+
+        // debug_quad = r_create_msg(app.debug_overlay, 32, false, false);
+        splash_quad = r_create_msg(app.splash_overlay, 64);
+
+        // strcpy(last_splash, app.splash_overlay.text.memory);
+    // }
+
+    // debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
+    splash_quad.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+
+    // debug_quad.render(app.debug_overlay.alpha);
+    splash_quad.render(app.splash_overlay.alpha);
 
     r_swap();
 }
@@ -3411,7 +3435,7 @@ int CALLBACK WinMain(
 
     r_init(global_ghoster.system.window, neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
 
-    tt_initfont();
+    ttf_init();
 
 
 

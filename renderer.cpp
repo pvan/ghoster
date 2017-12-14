@@ -14,8 +14,7 @@
 
 
 // todo: derp, might want actually header files at some point
-void tt_print(float x, float y, char *text, int fsize, int sw, int sh,
-              float alpha, bool centerH, bool centerV, int bgA);
+textured_quad ttf_create(char *text, int fsize, bool centerH, bool centerV, int bgA);
 
 
 void r_init(HWND win, int w, int h)
@@ -40,29 +39,33 @@ void r_resize(int w, int h)
     d3d_resize(w, h);
 }
 
-void r_render_msg(MessageOverlay overlay, int fsize, int x, int y, int sw, int sh, bool centerH = true, bool centerV = true)
+textured_quad r_create_msg(MessageOverlay overlay, int fsize, bool centerH = true, bool centerV = true)
 {
-
-    if (overlay.msLeftOfDisplay > 0)
-    {
-        // todo: improve the tt api
-        tt_print(x, y, overlay.text.memory, fsize, sw, sh, overlay.alpha, centerH, centerV, overlay.bgAlpha);
-    }
-
-    // // todo: add option for dest rect here like quadToRect?
-    // glViewport(0, 0, currentWid, currentHei);
-
-    // if (overlay.msLeftOfDisplay > 0)
-    // {
-    //     GLTtext *text = gltCreateText();
-    //     gltSetText(text, overlay.text.memory);
-
-    //     gltColor(1.0f, 1.0f, 1.0f, overlay.alpha);
-    //     gltDrawText2DAligned(text, x, y, scale, horizAlign, vertAlign);
-
-    //     gltDeleteText(text);
-    // }
+    return ttf_create(overlay.text.memory, fsize, centerH, centerV, overlay.bgAlpha);
 }
+// void r_render_msg(MessageOverlay overlay, int fsize, int x, int y, int sw, int sh, bool centerH = true, bool centerV = true)
+// {
+
+//     if (overlay.msLeftOfDisplay > 0)
+//     {
+//         // todo: improve the tt api
+//         tt_print(x, y, overlay.text.memory, fsize, sw, sh, overlay.alpha, centerH, centerV, overlay.bgAlpha);
+//     }
+
+//     // // todo: add option for dest rect here like quadToRect?
+//     // glViewport(0, 0, currentWid, currentHei);
+
+//     // if (overlay.msLeftOfDisplay > 0)
+//     // {
+//     //     GLTtext *text = gltCreateText();
+//     //     gltSetText(text, overlay.text.memory);
+
+//     //     gltColor(1.0f, 1.0f, 1.0f, overlay.alpha);
+//     //     gltDrawText2DAligned(text, x, y, scale, horizAlign, vertAlign);
+
+//     //     gltDeleteText(text);
+//     // }
+// }
 
 
 
