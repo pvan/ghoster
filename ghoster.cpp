@@ -1312,19 +1312,19 @@ void the_one_render_call_to_rule_them_all(GhosterWindow app)
     // if (strcmp(app.splash_overlay.text.memory, last_splash) != 0)
     // {
 
-        // debug_quad.destroy();
+        debug_quad.destroy();
         splash_quad.destroy();
 
-        // debug_quad = r_create_msg(app.debug_overlay, 32, false, false);
+        debug_quad = r_create_msg(app.debug_overlay, 32, false, false);
         splash_quad = r_create_msg(app.splash_overlay, 64);
 
         // strcpy(last_splash, app.splash_overlay.text.memory);
     // }
 
-    // debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
+    debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
     splash_quad.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
 
-    // debug_quad.render(app.debug_overlay.alpha);
+    debug_quad.render(app.debug_overlay.alpha);
     splash_quad.render(app.splash_overlay.alpha);
 
     r_swap();

@@ -328,6 +328,7 @@ struct d3d_textured_quad
 
     void create_tex(int w, int h)
     {
+        if (tex) tex->Release();
         HRESULT res = device->CreateTexture(w, h, 1, 0, D3DFMT_A8R8G8B8, D3DPOOL_MANAGED, &tex, 0);
         if (res != D3D_OK) MessageBox(0,"error CreateTexture", 0, 0);
         texW = w;

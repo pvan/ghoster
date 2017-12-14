@@ -19,7 +19,7 @@ void ttf_init()
 
 textured_quad ttf_create(char *text, int fsize, bool centerH, bool centerV, int bgA)
 {
-    d3d_textured_quad fontquad;
+    d3d_textured_quad fontquad = {0};
 
     int bitmapW = 0;
     int bitmapH = 0;
