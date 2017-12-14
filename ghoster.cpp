@@ -3397,6 +3397,7 @@ int CALLBACK WinMain(
     // todo: move to ghoster init?
     global_ghoster.UpdateWindowSize(neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
 
+    global_ghoster.rolling_movie.targetMsPerFrame = 16; // just some seed for before movie loads
 
     // /*
     // setup starting options based on command args / defaults (defaults are set in struct)....
