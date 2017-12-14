@@ -99,7 +99,7 @@ bool StringIsUrl(const char *path)
 
 #define NBSP '\u00A0'
 
-void TransmogrifyText(char *src, char *dest)
+void TransmogrifyTextInto(char *dest, char *src)
 {
     while (*src)
     {

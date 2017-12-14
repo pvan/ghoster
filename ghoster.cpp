@@ -690,7 +690,7 @@ struct GhosterWindow
 
     void QueueNewSplash(char *msg, u32 col = 0xff888888)
     {
-        TransmogrifyText(msg, splash_overlay.text.memory); // todo: check length somehow hmm...
+        TransmogrifyTextInto(splash_overlay.text.memory, msg); // todo: check length somehow hmm...
 
         splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
         // message.splashBackgroundCol.hex = col;
@@ -1643,9 +1643,10 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
     }
     else
     {
-        char buf[123];
-        sprintf(buf, "invalid path or url\n%s", path);
-        SplashMessage(buf);
+        // char buf[123];
+        // sprintf(buf, "invalid url\n%s", path);
+        // SplashMessage(buf);
+        SplashMessage("invalid url");
         return false;
     }
 
