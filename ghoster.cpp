@@ -855,23 +855,14 @@ struct GhosterWindow
         }
 
 
-        bool drawProgressBar;
-        if (state.app_timer.MsSinceStart() - system.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT
-            && !system.clickingOnProgressBar)
-        {
-            drawProgressBar = false;
-        }
-        else
-        {
-            drawProgressBar = true;
-        }
+
 
         POINT mPos;   GetCursorPos(&mPos);
         RECT winRect; GetWindowRect(system.window, &winRect);
         if (!PtInRect(&winRect, mPos))
         {
-            // OutputDebugString("mouse outside window\n");
-            drawProgressBar = false;
+            // // OutputDebugString("mouse outside window\n");
+            // drawProgressBar = false;
 
             // if we mouse up while not on window all our mdown etc flags will be wrong
             // so we just force an "end of click" when we leave the window
@@ -879,6 +870,8 @@ struct GhosterWindow
             system.mouseHasMovedSinceDownL = false;
             system.clickingOnProgressBar = false;
         }
+
+
 
         // awkward way to detect if mouse leaves the menu (and hide highlighting)
         GetWindowRect(global_icon_menu_window, &winRect);
@@ -893,7 +886,8 @@ struct GhosterWindow
         }
 
 
-        double percent;
+        double percent; // make into method?
+
 
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
@@ -1144,136 +1138,8 @@ struct GhosterWindow
 
 
 
+        // rendering was here
 
-        // gl_StartFrame(destWin);
-
-        // static float t = 0;
-        // if (state.bufferingOrLoading)
-        // {
-        //     t += temp_dt;
-        //     // float col = sin(t*M_PI*2 / 100);
-        //     // col = (col + 1) / 2; // 0-1
-        //     // col = 0.9*col + 0.4*(1-col); //lerp
-
-        //     // e^sin(x) very interesting shape, via
-        //     // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
-        //     float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
-        //     float min = 1/M_E;
-        //     float max = M_E;
-        //     col = (col-min) / (max-min); // 0-1
-        //     col = 0.75*col + 0.2*(1-col); //lerp
-
-        //     gl_Clear(col, col, col, 1);  // r g b a
-        // }
-        // else
-        // {
-        //     gl_Clear();
-
-        //     RECT subRect = {0}; // code for fill to entire window
-        //     if (state.lock_aspect && system.fullscreen)
-        //     {
-        //         // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-        //         // certainly seems easier to change viewport
-        //         subRect = RendererCalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
-        //     }
-
-        //     // movie frame
-        //     gl_RenderQuadToRect(rolling_movie.vid_buffer, 960, 720, 1, subRect);
-
-        //     if (drawProgressBar)
-        //     {
-        //         int pos = (int)(percent * (double)system.winWID);
-        //         // progress bar (grey)
-        //         RECT destSubRect = {pos, PROGRESS_BAR_B, system.winWID, PROGRESS_BAR_H};
-        //         u32 gray = 0xaaaaaaaa;
-        //         gl_RenderQuadToRect((u8*)&gray, 1, 1, 0.4, destSubRect);
-        //         // progress bar (red)
-        //         destSubRect = {0, PROGRESS_BAR_B, pos, PROGRESS_BAR_H};
-        //         u32 red = 0xffff0000;
-        //         gl_RenderQuadToRect((u8*)&red, 1, 1, 0.6, destSubRect);
-        //     }
-        // }
-
-        // todo: improve the args needed for these calls
-        // gl_RenderMsgOverlay(debug_overlay, 0, 0, 2, GLT_LEFT, GLT_TOP);
-        // gl_RenderMsgOverlay(splash_overlay, system.winWID/2, system.winHEI/2, 4, GLT_CENTER, GLT_CENTER);
-
-        // gl_Swap();
-
-
-        // // OPTION 1b
-        // // flicker if we try resizing here as well
-        // RECT wr; GetWindowRect(system.window, &wr);
-        // r_resize(wr.right-wr.left, wr.bottom-wr.top);
-
-        // // OPTION 3
-        // r_resize(tempW, tempH); // for updating while resizing, we need to save the size from WM_SIZE
-
-        static float t = 0;
-        if (state.bufferingOrLoading)
-        {
-            t += temp_dt;
-            // float col = sin(t*M_PI*2 / 100);
-            // col = (col + 1) / 2; // 0-1
-            // col = 0.9*col + 0.4*(1-col); //lerp
-
-            // e^sin(x) very interesting shape, via
-            // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
-            float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
-            float min = 1/M_E;
-            float max = M_E;
-            col = (col-min) / (max-min); // 0-1
-            col = 0.75*col + 0.2*(1-col); //lerp
-
-            r_clear(col, col, col, 1);  // r g b a
-        }
-        else
-        {
-            r_clear();
-
-            if (state.lock_aspect && system.fullscreen)
-            {
-                // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-                // certainly seems easier to change viewport
-                // update: now we're changing the verts
-                RECT subRect = r_CalcLetterBoxRect(system.winWID, system.winHEI, rolling_movie.aspect_ratio);
-                float ndcL = r_PixelToNDC(subRect.left,   system.winWID);
-                float ndcR = r_PixelToNDC(subRect.right,  system.winWID);
-                float ndcT = r_PixelToNDC(subRect.top,    system.winHEI);
-                float ndcB = r_PixelToNDC(subRect.bottom, system.winHEI);
-                movie_screen.update(rolling_movie.vid_buffer, 960,720,  ndcL, ndcT, ndcR, ndcB);
-            }
-            else
-            {
-                movie_screen.update(rolling_movie.vid_buffer, 960,720);
-            }
-            movie_screen.render();
-
-            if (drawProgressBar)
-            {
-                int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
-                double ndcB = r_PixelToNDC(PROGRESS_BAR_B, system.winHEI);
-                double ndcH = r_PixelToNDC(progress_bar_t, system.winHEI);
-
-                double neg1_to_1 = percent*2.0 - 1.0;
-
-                u32 gray = 0xffaaaaaa;
-                progress_gray.update((u8*)&gray, 1,1,  neg1_to_1, ndcB, 1, ndcH);
-                progress_gray.render(0.4);
-
-                u32 red = 0xffff0000;
-                progress_red.update((u8*)&red, 1,1,  -1, ndcB, neg1_to_1, ndcH);
-                progress_red.render(0.6);
-            }
-        }
-
-        // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
-
-        // // todo: improve the args needed for these calls?
-        r_render_msg(debug_overlay, 32, 0,0, system.winWID,system.winHEI, false, false);
-        r_render_msg(splash_overlay, 64, system.winWID/2,system.winHEI/2, system.winWID,system.winHEI);
-
-        r_swap();
 
 
         // REPEAT
@@ -1325,6 +1191,105 @@ struct GhosterWindow
 
 static GhosterWindow global_ghoster;
 
+double last_render_time;
+void the_one_render_call_to_rule_them_all(GhosterWindow app)
+{
+    // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
+    double temp_dt = app.state.app_timer.MsSinceStart() - last_render_time;
+    last_render_time = app.state.app_timer.MsSinceStart();
+
+
+    // use ts audio to get track bar position
+    // app.rolling_movie.elapsed = ts_audio.seconds();
+    double percent = app.rolling_movie.elapsed/app.rolling_movie.duration;
+
+
+    bool drawProgressBar;
+    if (app.state.app_timer.MsSinceStart() - app.system.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT
+        && !app.system.clickingOnProgressBar)
+    {
+        drawProgressBar = false;
+    }
+    else
+    {
+        drawProgressBar = true;
+    }
+
+    POINT mPos;   GetCursorPos(&mPos);
+    RECT winRect; GetWindowRect(app.system.window, &winRect);
+    if (!PtInRect(&winRect, mPos))
+    {
+        // OutputDebugString("mouse outside window\n");
+        drawProgressBar = false;
+    }
+
+
+    static float t = 0;
+    if (app.state.bufferingOrLoading)
+    {
+        t += temp_dt;
+        // float col = sin(t*M_PI*2 / 100);
+        // col = (col + 1) / 2; // 0-1
+        // col = 0.9*col + 0.4*(1-col); //lerp
+
+        // e^sin(x) very interesting shape, via
+        // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+        float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
+        float min = 1/M_E;
+        float max = M_E;
+        col = (col-min) / (max-min); // 0-1
+        col = 0.75*col + 0.2*(1-col); //lerp
+
+        r_clear(col, col, col, 1);  // r g b a
+    }
+    else
+    {
+        r_clear();
+
+        if (app.state.lock_aspect && app.system.fullscreen)
+        {
+            // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+            // certainly seems easier to change viewport
+            // update: now we're changing the verts
+            RECT subRect = r_CalcLetterBoxRect(app.system.winWID, app.system.winHEI, app.rolling_movie.aspect_ratio);
+            float ndcL = r_PixelToNDC(subRect.left,   app.system.winWID);
+            float ndcR = r_PixelToNDC(subRect.right,  app.system.winWID);
+            float ndcT = r_PixelToNDC(subRect.top,    app.system.winHEI);
+            float ndcB = r_PixelToNDC(subRect.bottom, app.system.winHEI);
+            movie_screen.update(app.rolling_movie.vid_buffer, 960,720,  ndcL, ndcT, ndcR, ndcB);
+        }
+        else
+        {
+            movie_screen.update(app.rolling_movie.vid_buffer, 960,720);
+        }
+        movie_screen.render();
+
+        if (drawProgressBar)
+        {
+            int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
+            double ndcB = r_PixelToNDC(PROGRESS_BAR_B, app.system.winHEI);
+            double ndcH = r_PixelToNDC(progress_bar_t, app.system.winHEI);
+
+            double neg1_to_1 = percent*2.0 - 1.0;
+
+            u32 gray = 0xffaaaaaa;
+            progress_gray.update((u8*)&gray, 1,1,  neg1_to_1, ndcB, 1, ndcH);
+            progress_gray.render(0.4);
+
+            u32 red = 0xffff0000;
+            progress_red.update((u8*)&red, 1,1,  -1, ndcB, neg1_to_1, ndcH);
+            progress_red.render(0.6);
+        }
+    }
+
+    // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
+
+    // // todo: improve the args needed for these calls?
+    r_render_msg(app.debug_overlay, 32, 0,0, app.system.winWID,app.system.winHEI, false, false);
+    r_render_msg(app.splash_overlay, 64, app.system.winWID/2,app.system.winHEI/2, app.system.winWID,app.system.winHEI);
+
+    r_swap();
+}
 
 
 // todo: consider a LogWarning as well?
@@ -2877,6 +2842,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
             // // if we don't do this, and resize each loop,
             // // we can get flicker-free resizing but we'll have resize black bars
             r_swap(); // draw hud here too? it depends on window size so with low fps we can see it jitter
+            // the_one_render_call_to_rule_them_all(global_ghoster);
 
             return 0;
         }
@@ -3430,30 +3396,15 @@ int CALLBACK WinMain(
     while (global_ghoster.state.appRunning)
     {
         MSG Message;
-        // while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-        // {
-        //     // char msgbuf[123];
-        //     // sprintf(msgbuf, "msg: %i\n", Message.message);
-        //     // OutputDebugString(msgbuf);
-
-        //     TranslateMessage(&Message);
-        //     DispatchMessage(&Message);
-        // }
-        // Sleep(1);
-
-        BOOL ret;
-        while (ret = GetMessage(&Message, 0, 0, 0) && global_ghoster.state.appRunning)
+        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
-            if (ret == -1)
-            {
-               global_ghoster.state.appRunning = false;
-            }
-            else
-            {
-                TranslateMessage(&Message);
-                DispatchMessage(&Message);
-            }
+            TranslateMessage(&Message);
+            DispatchMessage(&Message);
         }
+
+        the_one_render_call_to_rule_them_all(global_ghoster);
+
+        Sleep(16);
     }
 
     // if (global_workerw) CloseWindow(global_workerw);
