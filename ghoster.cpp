@@ -1900,6 +1900,14 @@ bool CreateNewMovieFromPath(char *path)
         global_ghoster.message.startAtSeconds = 0; // so we don't inherit start time of prev video
     }
 
+    // todo: we should check for certain fails here
+    // so we don't cancel the loading thread if we don't have to
+    // e.g. we could know right away if this is a text file,
+    // we don't need to wait for youtube-dl for that at least
+    // ideally we wouldn't cancel the loading thread for ANY bad input
+    // maybe we start a new thread for every load attempt
+    // and timestamp them or something so the most recent valid one is loaded?
+
     // stop previous thread if already loading
     // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
     // maybe better would be to finish each thread but not use the movie it retrieves

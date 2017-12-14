@@ -18,8 +18,8 @@
 
 [ ] encapsulate submenu / menu [instance in ghoster class?]
 
-[ ] proper render layer / api, eg drawTexturedQuad
-    [ ] try swapping in directx to avoid opengl/nvidia/windows bug
+[x] proper render layer / api, eg drawTexturedQuad
+    [x] try swapping in directx to avoid opengl/nvidia/windows bug
 
 
 bugs: 
@@ -41,10 +41,13 @@ bugs:
 
 [ ] intermittent progress bar not hiding when mouse is still
 
+[ ] don't let failed load attempt cancel a previous but good load attempt
+
 
 todo:
 
 [ ] handle fps, timing etc correctly when no video loaded
+    [ ] always draw at 60+ fps and just update image at video fps?
 
 
 [ ] narrow down what dlls we actually need?
@@ -61,6 +64,7 @@ todo:
 
 [ ] improve video resize quality (compare to vlc eg)
     [ ] start with variable-size ffmpeg to screen buffer?
+    [ ] sharpen filter?
 
 
 
@@ -120,10 +124,11 @@ todo:
     [ ] just get a big collection of different videos to test at some point
 
 
-[/] window controls are laggy on second ghoster window
+[x] window controls are laggy on second ghoster window
+    -switching to directx fixed this
     this is starting to feel like an nvidia driver bug
     [x] .bat file workaround
-    [ ] "launcher" exe workaround?
+    [-] "launcher" exe workaround?
 
 
 [/] seems like mem leak on loading files
@@ -168,6 +173,18 @@ OPTION 3 is don't swap every wm_size call, and resize the bb every app loop
 this has no distortion and no flicker, but we get resize black bars and it's pretty slow
 
 we'll go with OPTION 2 for now until something better comes up
+
+
+how about this for an idea,
+do all rendering in system loop at some fast fps
+including hud rendering
+we just prep what to render in our app loop
+and change the source based on the video fps?
+do we need another thread for ui though? so it's updated faster than video?
+anything blocking the msg loop will block our rendering which is a problem
+so we just have to keep the msg loop clear
+or, eg with mouse captures, add use the timer trick at some fast fps to keep rendering
+we could even adjust the fps to match video source once one is loadeded?
 
 
 
