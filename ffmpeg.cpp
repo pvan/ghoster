@@ -59,9 +59,18 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 }
 
 
+struct ffmpeg_outframe
+{
+    struct SwsContext *sws_context;
+    AVFrame *avframe;
+    u8 *memory;
+    int width;
+    int height;
+};
+
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
-struct MovieReel
+struct ffmpeg_source
 {
     AVFormatContext *vfc = 0;
     AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
@@ -85,7 +94,7 @@ struct MovieReel
     }
 
     // destroys the reel passed in (we basically take the source and point our reel to it)
-    void TransferFromReel(MovieReel *other)
+    void TransferFromReel(ffmpeg_source *other)
     {
         FreeEverything();
 
@@ -208,19 +217,6 @@ struct MovieReel
 
 
 };
-
-// //avoid this for now until we get the mem leaks cleaned up
-// MovieReel DeepCopyMovieReel(MovieReel source)
-// {
-//     MovieReel dest;
-//     dest.vfc = source.vfc;
-//     dest.afc = source.afc;
-//     dest.video.index = source.video.index;
-//     dest.video.codecContext = source.video.codecContext;
-//     dest.audio.index = source.audio.index;
-//     dest.audio.codecContext = source.audio.codecContext;
-//     return dest;
-// }
 
 
 

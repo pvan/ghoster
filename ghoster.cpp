@@ -50,9 +50,8 @@ const double MS_TO_DISPLAY_MSG = 3000;
 struct RollingMovie
 {
 
-    MovieReel reel;
+    ffmpeg_source reel;
 
-    // better place for these?
     struct SwsContext *sws_context;
     AVFrame *frame_output;
 
@@ -271,7 +270,7 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 
 
 
-bool SwapInNewReel(MovieReel *movie, RollingMovie *outMovie);
+bool SwapInNewReel(ffmpeg_source *movie, RollingMovie *outMovie);
 
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio);
 
@@ -289,7 +288,7 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
 
     RollingMovie rolling_movie;
-    MovieReel next_reel;
+    ffmpeg_source next_reel;
 
     double msLastFrame; // todo: replace this with app timer? make timer usage more obvious
 
@@ -1180,7 +1179,7 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
+bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
@@ -1250,7 +1249,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
 // done and done, but maybe another pass over both
 
 // make into a moveifile / staticmovie method?
-bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
+bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 {
 
     // swap reels
@@ -1258,7 +1257,7 @@ bool SwapInNewReel(MovieReel *newMovie, RollingMovie *outMovie)
 
 
     // temp pointer for the rest of this function
-    MovieReel *movie = &outMovie->reel;
+    ffmpeg_source *movie = &outMovie->reel;
 
 
     // set window size on video source resolution
