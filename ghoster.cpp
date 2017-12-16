@@ -38,36 +38,26 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 
 
-struct decoded_frames
-{
-
-};
-
-
 // basically a movie source with a time component
 struct RollingMovie
 {
-
     ffmpeg_source reel;
     // ffmpeg_source lowq; //something like this?
     // ffmpeg_source medq;
     // ffmpeg_source highq;
 
-    // ffmpeg_frame frame;
-    // ffmpeg_frame frame2;
-    // ffmpeg_frame *display
-
     double elapsed;
 
     i64 ptsOfLastVideo;
     i64 ptsOfLastAudio;
-
-    bool is_paused = false;  // needed here or.. hmm
-    bool was_paused = false;
 };
 
 
-struct AppState {
+struct AppState
+{
+    Timer app_timer;
+    char *exe_directory;
+
 
     bool lock_aspect = true;
     bool repeat = true;
@@ -76,10 +66,9 @@ struct AppState {
 
     bool bufferingOrLoading = true;
 
-    Timer app_timer;
 
-    char *exe_directory;
-
+    bool is_paused = false;  // needed here or.. hmm
+    bool was_paused = false;
 
     double targetMsPerFrame;
 };
@@ -135,9 +124,6 @@ double secondsFromAudioPTS(RollingMovie movie)
 
 
 
-void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio);
-
-
 
 struct GhosterWindow
 {
@@ -165,46 +151,31 @@ struct GhosterWindow
     // MessageOverlay splash_overlay;
 
 
-    void appPlay(bool userRequest = true)
+    void appPlay()
     {
-        if (userRequest)
-        {
-            // QueueNewSplash("Play", 0x7cec7aff);
-        }
-        // rolling_movie.audio_stopwatch.Start();
         if (rolling_movie.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
-        rolling_movie.is_paused = false;
+        state.is_paused = false;
     }
 
-    void appPause(bool userRequest = true)
+    void appPause()
     {
-        if (userRequest)
-        {
-            // QueueNewSplash("Pause", 0xfa8686ff);
-        }
-        // rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
-        rolling_movie.is_paused = true;
+        state.is_paused = true;
     }
 
-    void appTogglePause(bool userRequest = true)
+    void appTogglePause()
     {
-        rolling_movie.is_paused = !rolling_movie.is_paused;
-
-        if (rolling_movie.is_paused && !rolling_movie.was_paused)
+        state.is_paused = !state.is_paused;
+        if (state.is_paused && !state.was_paused)
         {
-            appPause(userRequest);
+            appPause();
         }
-        if (!rolling_movie.is_paused)
+        if (!state.is_paused && state.was_paused)
         {
-            if (rolling_movie.was_paused)// || !rolling_movie.audio_stopwatch.timer.started)
-            {
-                appPlay(userRequest);
-            }
+            appPlay();
         }
-
-        rolling_movie.was_paused = rolling_movie.is_paused;
+        state.was_paused = state.is_paused;
     }
 
 
@@ -243,17 +214,6 @@ struct GhosterWindow
 
         state.targetMsPerFrame = 1000.0 / rolling_movie.reel.fps;
 
-        // if (system.fullscreen)
-        // {
-        //     // kind of hacky solution
-        //     setFullscreen(false);
-        //     SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
-        //     setFullscreen(true);  // we need to set this anyway in the case that we launch fullscreen
-        // }
-        // else
-        {
-            // SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
-        }
 
 
         rolling_movie.elapsed = message.startAtSeconds;
@@ -263,11 +223,7 @@ struct GhosterWindow
 
 
         state.bufferingOrLoading = false;
-        appPlay(false);
-
-        // // need to recreate wallpaper window basically
-        // if (state.wallpaperMode)
-        //     setWallpaperMode(system.window, state.wallpaperMode);
+        appPlay();
     }
 
 
@@ -313,7 +269,7 @@ struct GhosterWindow
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
-            appPause(false);
+            appPause();
         }
         else
         {
@@ -330,7 +286,7 @@ struct GhosterWindow
             }
 
 
-            if (!rolling_movie.is_paused)
+            if (!state.is_paused)
             {
 
                 // SOUND
