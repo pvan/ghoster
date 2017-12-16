@@ -49,6 +49,16 @@ void render()
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
 
+    u32 red = 0xffff0000;
+    if (dst == 0)
+    {
+        dst = (u8*)&red;
+        dw = 1;
+        dh = 1;
+        bmi.bmiHeader.biWidth = dw;
+        bmi.bmiHeader.biHeight = -dh;
+    }
+
     StretchDIBits(hdc,0,0,sw,sh, 0,0,dw,dh,dst, &bmi,DIB_RGB_COLORS,SRCCOPY);
 }
 
