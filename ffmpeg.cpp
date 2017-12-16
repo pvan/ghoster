@@ -929,6 +929,15 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
 
 
 
+double secondsFromPTS(i64 pts, AVFormatContext *fc, int streamIndex)
+{
+    i64 base_num = fc->streams[streamIndex]->time_base.num;
+    i64 base_den = fc->streams[streamIndex]->time_base.den;
+    return ((double)pts * (double)base_num) / (double)base_den;
+}
+
+
+
 void InitAV()
 {
     av_register_all();  // all formats and codecs

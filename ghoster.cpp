@@ -50,6 +50,16 @@ struct RollingMovie
 
     i64 ptsOfLastVideo;
     i64 ptsOfLastAudio;
+
+    double secondsFromVideoPTS()
+    {
+        return secondsFromPTS(ptsOfLastVideo, reel.vfc, reel.video.index);
+    }
+    double secondsFromAudioPTS()
+    {
+        return secondsFromPTS(ptsOfLastAudio, reel.afc, reel.audio.index);
+    }
+
 };
 
 
@@ -103,23 +113,6 @@ struct AppMessages
 };
 
 
-
-
-
-double secondsFromPTS(i64 pts, AVFormatContext *fc, int streamIndex)
-{
-    i64 base_num = fc->streams[streamIndex]->time_base.num;
-    i64 base_den = fc->streams[streamIndex]->time_base.den;
-    return ((double)pts * (double)base_num) / (double)base_den;
-}
-double secondsFromVideoPTS(RollingMovie movie)
-{
-    return secondsFromPTS(movie.ptsOfLastVideo, movie.reel.vfc, movie.reel.video.index);
-}
-double secondsFromAudioPTS(RollingMovie movie)
-{
-    return secondsFromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index);
-}
 
 
 
@@ -369,12 +362,12 @@ struct GhosterWindow
                     // sprintf(secquebuf, "seconds_left_in_queue: %.3f\n", seconds_left_in_queue);
                     // OutputDebugString(secquebuf);
 
-                double ts_audio = secondsFromAudioPTS(rolling_movie);
+                double ts_audio = rolling_movie.secondsFromAudioPTS();
 
                 // if no audio, use video pts (we should basically never skip or repeat in this case)
                 if (!rolling_movie.reel.IsAudioAvailable())
                 {
-                    ts_audio = secondsFromVideoPTS(rolling_movie);
+                    ts_audio = rolling_movie.secondsFromVideoPTS();
                 }
 
                 // use ts audio to get track bar position
@@ -393,7 +386,7 @@ struct GhosterWindow
                     // OutputDebugString(audbuf);
 
 
-                double ts_video = secondsFromVideoPTS(rolling_movie);
+                double ts_video = rolling_movie.secondsFromVideoPTS();
                 double vid_seconds = ts_video;
 
                 double estimatedVidPTS = vid_seconds + state.targetMsPerFrame/1000.0;
@@ -422,6 +415,9 @@ struct GhosterWindow
 
                 // todo: want to do any special handling here if no video?
 
+                static int repeatCount = 0;
+                static bool repeatedLastFrame = false;
+
                 // time for a new frame if audio is this far behind
                 if (aud_seconds > estimatedVidPTS - allowableAudioLag/1000.0
                     || !rolling_movie.reel.IsAudioAvailable()
@@ -445,15 +441,24 @@ struct GhosterWindow
                         sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
                         OutputDebugString(skipbuf);
                     }
-
+                    if (repeatedLastFrame)
+                    {
+                        char buf[123];
+                        sprintf(buf, "%i times\n", repeatCount);
+                        OutputDebugString(buf);
+                        repeatCount = 0;
+                    }
+                    repeatedLastFrame = false;
                 }
                 else
                 {
-                    OutputDebugString("repeating a frame\n");
+                    repeatCount++;
+                    repeatedLastFrame = true;
+                    OutputDebugString("repeating a frame... ");
                 }
 
 
-                ts_video = secondsFromVideoPTS(rolling_movie);
+                ts_video = rolling_movie.secondsFromVideoPTS();
                 vid_seconds = ts_video;
 
 
