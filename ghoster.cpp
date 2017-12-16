@@ -53,11 +53,11 @@ struct RollingMovie
 
     double secondsFromVideoPTS()
     {
-        return secondsFromPTS(ptsOfLastVideo, reel.vfc, reel.video.index);
+        return ffmpeg_seconds_from_pts(ptsOfLastVideo, reel.vfc, reel.video.index);
     }
     double secondsFromAudioPTS()
     {
-        return secondsFromPTS(ptsOfLastAudio, reel.afc, reel.audio.index);
+        return ffmpeg_seconds_from_pts(ptsOfLastAudio, reel.afc, reel.audio.index);
     }
 
 };
@@ -124,8 +124,8 @@ struct GhosterWindow
     AppState state;
     // AppSystemState system;
 
-    SoundBuffer ffmpeg_to_sdl_buffer;
-    SoundBuffer volume_adjusted_buffer;
+    ffmpeg_sound_buffer ffmpeg_to_sdl_buffer;
+    ffmpeg_sound_buffer volume_adjusted_buffer;
 
     SDLStuff sdl_stuff;
 
@@ -199,8 +199,8 @@ struct GhosterWindow
         if (rolling_movie.reel.audio.codecContext)
         {
             SetupSDLSoundFor(rolling_movie.reel.audio.codecContext, &sdl_stuff, rolling_movie.reel.fps);
-            SetupSoundBuffer(rolling_movie.reel.audio.codecContext, &ffmpeg_to_sdl_buffer);
-            SetupSoundBuffer(rolling_movie.reel.audio.codecContext, &volume_adjusted_buffer);
+            ffmpeg_to_sdl_buffer.setup(rolling_movie.reel.audio.codecContext);
+            volume_adjusted_buffer.setup(rolling_movie.reel.audio.codecContext);
         }
 
 
@@ -224,7 +224,7 @@ struct GhosterWindow
     void Init(char *exedir)
     {
 
-        InitAV();  // basically just registers all codecs..
+        ffmpeg_init();  // basically just registers all codecs..
 
         state.app_timer.Start();  // now started in ghoster.init
 

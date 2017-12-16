@@ -22,20 +22,40 @@ extern "C"
 
 
 // todo: fsomething like this?
-struct VideoBuffer
-{
-    AVFrame frame;  // this is setup to use raw_mem
-    void *raw_mem;
-};
+// struct VideoBuffer
+// {
+//     AVFrame frame;  // this is setup to use raw_mem
+//     void *raw_mem;
+// };
 
-struct SoundBuffer
+struct ffmpeg_sound_buffer
 {
     u8* data;
     int size_in_bytes;
+
+    void setup(AVCodecContext *acc, int buffer_seconds = 1)
+    {
+        int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
+
+        // how big of chunks do we want to decode and queue up at a time
+        // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
+        int samples_in_buffer = buffer_seconds * acc->sample_rate;
+        size_in_bytes = samples_in_buffer * bytes_per_sample;
+
+        if (data) free(data);
+        data = (u8*)malloc(size_in_bytes);
+
+    }
+
+    void destroy()
+    {
+        if (data) free(data);
+    }
+
 };
 
 
-struct StreamAV
+struct ffmpeg_stream
 {
     int index;
     AVCodecContext *codecContext;
@@ -44,7 +64,7 @@ struct StreamAV
 
 
 
-AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
+AVCodecContext *ffmpeg_open_codec(AVFormatContext *fc, int streamIndex)
 {
     AVCodecContext *orig = fc->streams[streamIndex]->codec;
     AVCodec *codec = avcodec_find_decoder(orig->codec_id);
@@ -60,68 +80,6 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 
 
 
-// struct ffmpeg_frame
-// {
-//     struct SwsContext *sws_context;
-//     AVFrame *avframe;
-//     u8 *memory;
-//     int width;
-//     int height;
-
-
-//     void SetupSwsContex()
-//     {
-//         if (sws_context) sws_freeContext(sws_context);
-
-//         sws_context = {0};
-
-//         if (video.codecContext)
-//         {
-//             sws_context = sws_getCachedContext(
-//                 sws_context,
-//                 video.codecContext->width,
-//                 video.codecContext->height,
-//                 video.codecContext->pix_fmt,
-//                 960,
-//                 720,
-//                 AV_PIX_FMT_RGB32,
-//                 SWS_BILINEAR,
-//                 0, 0, 0);
-//         }
-//     }
-
-//     void SetupFrameOutput()
-//     {
-//         if (frame_output) av_frame_free(&frame_output);
-//         frame_output = av_frame_alloc();  // just metadata
-
-//         if (!frame_output)
-//         {
-//             LogError("ffmpeg: Couldn't alloc frame");
-//             return;
-//         }
-
-//         // actual mem for frame
-//         int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720);
-//         if (vid_buffer) av_free(vid_buffer);
-//         vid_buffer = (u8*)av_malloc(numBytes);
-
-//         // set up frame to use buffer memory...
-//         av_image_fill_arrays(
-//             frame_output->data,
-//             frame_output->linesize,
-//             vid_buffer,
-//             AV_PIX_FMT_RGB32,
-//             960,
-//             720,
-//             1);
-//     }
-
-// };
-
-
-// todo: move into a system obj
-// static char *global_title_buffer;
 const int FFMPEG_TITLE_SIZE = 256;
 
 const int FFMEPG_PATH_SIZE = 1024;  // todo: what to use for this?
@@ -132,7 +90,7 @@ const int FFMEPG_PATH_SIZE = 1024;  // todo: what to use for this?
 
 
 // adapted from ffmpeg dump.c
-void logFormatContextDuration(AVFormatContext *fc)
+void ffmpeg_output_duration(AVFormatContext *fc)
 {
     int methodEnum = fc->duration_estimation_method;
     char buf[1024];
@@ -149,7 +107,7 @@ void logFormatContextDuration(AVFormatContext *fc)
     } else {
         sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
     }
-    LogMessage(buf);
+    OutputDebugString(buf);
 }
 
 
@@ -162,8 +120,8 @@ struct ffmpeg_source
 
     AVFormatContext *vfc = 0;
     AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
-    StreamAV video;
-    StreamAV audio;
+    ffmpeg_stream video;
+    ffmpeg_stream audio;
 
     // move here for now but i don't think this is the best final position (for frameout at least)
     struct SwsContext *sws_context;
@@ -211,12 +169,12 @@ struct ffmpeg_source
         vid_buffer = other->vid_buffer;
         strcpy(title, other->title);
         strcpy(path, other->path);
-        fps =             other->fps;
+        fps             = other->fps;
         durationSeconds = other->durationSeconds;
         totalFrameCount = other->totalFrameCount;
-        width =           other->width;
-        height =          other->height;
-        aspect_ratio =    other->aspect_ratio;
+        width           = other->width;
+        height          = other->height;
+        aspect_ratio    = other->aspect_ratio;
 
         // destroy other so we don't have two reels all pointing to the same source
         other->vfc = 0;
@@ -322,9 +280,9 @@ struct ffmpeg_source
         // todo: implement this function
 
         OutputDebugString("\nvideo format ctx:\n");
-        logFormatContextDuration(vfc);
+        ffmpeg_output_duration(vfc);
         OutputDebugString("\naudio format ctx:\n");
-        logFormatContextDuration(afc);
+        ffmpeg_output_duration(afc);
 
         char fpsbuf[123];
         if (video.codecContext)
@@ -354,14 +312,11 @@ struct ffmpeg_source
             return false;
         }
 
-        // MovieReel file;
-
         // free current video if exists
         FreeEverything();
 
         // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
         // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
-
         int open_result1 = avformat_open_input(&vfc, videopath, 0, 0);
         int open_result2 = avformat_open_input(&afc, audiopath, 0, 0);
         if (open_result1 != 0 || open_result2 != 0)
@@ -418,11 +373,11 @@ struct ffmpeg_source
         }
         if (video.index != -1)
         {
-            video.codecContext = OpenAndFindCodec(vfc, video.index);
+            video.codecContext = ffmpeg_open_codec(vfc, video.index);
         }
         if (audio.index != -1)
         {
-            audio.codecContext = OpenAndFindCodec(afc, audio.index);
+            audio.codecContext = ffmpeg_open_codec(afc, audio.index);
         }
         //todo: handle less than one or more than one of each properly
 
@@ -469,7 +424,7 @@ int GetNextAudioFrame(
     AVFormatContext *fc,
     AVCodecContext *cc,
     int streamIndex,
-    SoundBuffer outBuf,
+    ffmpeg_sound_buffer outBuf,
     int requestedBytes,
     double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
     i64 *outPTS)
@@ -911,7 +866,7 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
 
     // step through audio frames...
     // kinda awkward
-    SoundBuffer dummyBufferJunkData;
+    ffmpeg_sound_buffer dummyBufferJunkData;
     dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
     dummyBufferJunkData.size_in_bytes = 1024 * 10;
     int bytes_queued_up = GetNextAudioFrame(
@@ -929,7 +884,7 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
 
 
 
-double secondsFromPTS(i64 pts, AVFormatContext *fc, int streamIndex)
+double ffmpeg_seconds_from_pts(i64 pts, AVFormatContext *fc, int streamIndex)
 {
     i64 base_num = fc->streams[streamIndex]->time_base.num;
     i64 base_den = fc->streams[streamIndex]->time_base.den;
@@ -938,7 +893,7 @@ double secondsFromPTS(i64 pts, AVFormatContext *fc, int streamIndex)
 
 
 
-void InitAV()
+void ffmpeg_init()
 {
     av_register_all();  // all formats and codecs
 }
@@ -947,21 +902,5 @@ void InitAV()
 
 
 
-
-
-void SetupSoundBuffer(AVCodecContext *acc, SoundBuffer *sound)
-{
-    int bytes_per_sample = av_get_bytes_per_sample(acc->sample_fmt) * acc->channels;
-
-    // how big of chunks do we want to decode and queue up at a time
-    // int buffer_seconds = int(targetMsPerFrame * 1000 * 5); //10 frames ahead
-    int buffer_seconds = 1; // this is what limits how long we spend decoding audio each frame
-    int samples_in_buffer = buffer_seconds * acc->sample_rate;
-    sound->size_in_bytes = samples_in_buffer * bytes_per_sample;
-
-    if (sound->data) free(sound->data);
-    sound->data = (u8*)malloc(sound->size_in_bytes);
-
-}
 
 
