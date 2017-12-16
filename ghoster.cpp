@@ -77,9 +77,9 @@ struct RollingMovie
 
     char *cached_url;
 
-    u8 *vid_buffer;
-    int vidWID;
-    int vidHEI;
+    // u8 *vid_buffer;
+    // int vidWID;
+    // int vidHEI;
 };
 
 
@@ -1261,17 +1261,17 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
     ffmpeg_source *movie = &outMovie->reel;
 
 
-    // set window size on video source resolution
-    if (movie->video.codecContext)
-    {
-        outMovie->vidWID = movie->video.codecContext->width;
-        outMovie->vidHEI = movie->video.codecContext->height;
-    }
-    else
-    {
-        outMovie->vidWID = 400;
-        outMovie->vidHEI = 400;
-    }
+    // // set window size on video source resolution
+    // if (movie->video.codecContext)
+    // {
+    //     outMovie->vidWID = movie->video.codecContext->width;
+    //     outMovie->vidHEI = movie->video.codecContext->height;
+    // }
+    // else
+    // {
+    //     outMovie->vidWID = 400;
+    //     outMovie->vidHEI = 400;
+    // }
         // char hwbuf[123];
         // sprintf(hwbuf, "wid: %i  hei: %i\n", movie->video.codecContext->width, movie->video.codecContext->height);
         // OutputDebugString(hwbuf);
@@ -1281,7 +1281,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
     // //keep top left of window in same pos for now, change to keep center in same position?
     // MoveWindow(global_ghoster.system.window, winRect.left, winRect.top, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);  // ever non-zero opening position? launch option?
 
-    outMovie->aspect_ratio = (double)outMovie->vidWID / (double)outMovie->vidHEI;
+    // outMovie->aspect_ratio = (double)outMovie->vidWID / (double)outMovie->vidHEI;
 
 
 

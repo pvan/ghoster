@@ -35,35 +35,21 @@ void render()
     int sw = dispRect.right - dispRect.left;
     int sh = dispRect.bottom - dispRect.top;
 
-    // // dest setup
-    // void *dst = global_ghoster.rolling_movie.vid_buffer;
-
-    // // bmi setup
-    // BITMAPINFO bmi;
-    // bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
-    // bmi.bmiHeader.biWidth = 960;
-    // bmi.bmiHeader.biHeight = -720;
-    // bmi.bmiHeader.biPlanes = 1;
-    // bmi.bmiHeader.biBitCount = 32;
-    // bmi.bmiHeader.biCompression = BI_RGB;
-
     // dest setup
-    u32 red = 0xffff0000;
-    void *dst = (void*)&red;
+    void *dst = global_ghoster.rolling_movie.reel.vid_buffer;
+    int dw = 960;
+    int dh = 720;
 
     // bmi setup
     BITMAPINFO bmi;
     bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
-    bmi.bmiHeader.biWidth = 1;
-    bmi.bmiHeader.biHeight = 1;
+    bmi.bmiHeader.biWidth = dw;
+    bmi.bmiHeader.biHeight = -dh;
     bmi.bmiHeader.biPlanes = 1;
     bmi.bmiHeader.biBitCount = 32;
     bmi.bmiHeader.biCompression = BI_RGB;
 
-
-
-    StretchDIBits(hdc,0,0,sw,sh, 0,0,1,1,dst, &bmi,DIB_RGB_COLORS,SRCCOPY);
-
+    StretchDIBits(hdc,0,0,sw,sh, 0,0,dw,dh,dst, &bmi,DIB_RGB_COLORS,SRCCOPY);
 }
 
 
