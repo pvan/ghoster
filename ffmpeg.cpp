@@ -841,6 +841,97 @@ bool GetNextVideoFrame(
 
 
 
+// called "hard" because we flush the buffers and may have to grab a few frames to get the right one
+void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double msAudioLatencyEstimate)
+{
+    // todo: measure the time this function takes and debug output it
+
+    // not entirely sure if this flush usage is right
+    if (source->video.codecContext) avcodec_flush_buffers(source->video.codecContext);
+    if (source->audio.codecContext) avcodec_flush_buffers(source->audio.codecContext);
+
+    i64 seekPos = nearestI64((double)seconds * (double)AV_TIME_BASE);
+
+    // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
+    if (source->video.codecContext) av_seek_frame(source->vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+    if (source->audio.codecContext) av_seek_frame(source->afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+
+
+    // todo: special if at start of file?
+
+    // todo: what if we seek right to an I-frame? i think that would still work,
+    // we'd have to pull at least 1 frame to have something to display anyway
+
+    double realTimeMs = seconds * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
+    // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
+        // char msbuf[123];
+        // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
+        // OutputDebugString(msbuf);
+
+
+    // movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
+
+
+    // step through frames for both contexts until we reach our desired timestamp
+
+    int frames_skipped;
+    i64 pts;
+    GetNextVideoFrame(
+        source->vfc,
+        source->video.codecContext,
+        source->sws_context,
+        source->video.index,
+        source->frame_output,
+        seconds * 1000.0,// - msAudioLatencyEstimate,
+        0,
+        true,
+        &pts, //&movie->ptsOfLastVideo,
+        &frames_skipped);
+
+
+    // kinda awkward
+    SoundBuffer dummyBufferJunkData;
+    dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
+    dummyBufferJunkData.size_in_bytes = 1024 * 10;
+    int bytes_queued_up = GetNextAudioFrame(
+        source->afc,
+        source->audio.codecContext,
+        source->audio.index,
+        dummyBufferJunkData,
+        1024,
+        realTimeMs,
+        &pts); //&movie->ptsOfLastAudio);
+    free(dummyBufferJunkData.data);
+
+
+    // i64 streamIndex = source->video.index;
+    // i64 base_num = source->vfc->streams[streamIndex]->time_base.num;
+    // i64 base_den = source->vfc->streams[streamIndex]->time_base.den;
+    // timestamp currentTS = {movie->ptsOfLastVideo * base_num, base_den, source->fps};
+
+    double totalFrameCount = (source->vfc->duration / (double)AV_TIME_BASE) * (double)source->fps;
+    double durationSeconds = source->vfc->duration / (double)AV_TIME_BASE;
+
+        // char morebuf[123];
+        // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
+        // OutputDebugString(morebuf);
+
+        // char morebuf2[123];
+        // sprintf(morebuf2, "dur: %lli / in base: %i\n", source->vfc->duration, AV_TIME_BASE);
+        // OutputDebugString(morebuf2);
+
+        // char ptsbuf[123];
+        // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
+        //         nearestI64(currentTS.frame())+1,
+        //         nearestI64(ts.frame())+1,
+        //         nearestI64(totalFrameCount));
+        // OutputDebugString(ptsbuf);
+
+}
+
+
+
+
 
 void InitAV()
 {

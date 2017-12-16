@@ -24,11 +24,10 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 
 
-
-
 #include "util.h"
 
 #include "urls.h"
+
 
 
 #include "ffmpeg.cpp"
@@ -57,34 +56,17 @@ struct RollingMovie
     // ffmpeg_frame frame2;
     // ffmpeg_frame *display
 
-    // double duration;
     double elapsed;
-
-    // todo: not used anymore
-    // if we need another timer, could probably rename this and comment it back it
-    // but might want to set it each frame to the ts_audio that we use for syncing a/v
-    // Stopwatch audio_stopwatch;
-
-    // double aspect_ratio; // feels like it'd be better to store this as a rational
 
     i64 ptsOfLastVideo;
     i64 ptsOfLastAudio;
 
-    // lines between runnningmovie and appstate are blurring a bit to me right now
-    bool is_paused = false;
+    bool is_paused = false;  // needed here or.. hmm
     bool was_paused = false;
 
     double targetMsPerFrame;
-
-    // char *cached_url;
-
-    // u8 *vid_buffer;
-    // int vidWID;
-    // int vidHEI;
 };
 
-
-// todo: split into appstate and moviestate? rename RollingMovie to moviestate? rename state to app_state? or win_state?
 
 struct AppState {
 
@@ -105,8 +87,6 @@ struct AppState {
 
 struct AppMessages
 {
-
-
     bool setSeek = false;
     double seekProportion = 0;
 
@@ -131,7 +111,6 @@ struct AppMessages
 
 
 };
-
 
 
 
@@ -175,100 +154,6 @@ struct timestamp
         return timestamp::FromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index, movie);
     }
 };
-
-
-// called "hard" because we flush the buffers and may have to grab a few frames to get the right one
-void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAudioLatencyEstimate)
-{
-    // todo: measure the time this function takes and debug output it
-
-    // not entirely sure if this flush usage is right
-    if (movie->reel.video.codecContext) avcodec_flush_buffers(movie->reel.video.codecContext);
-    if (movie->reel.audio.codecContext) avcodec_flush_buffers(movie->reel.audio.codecContext);
-
-    i64 seekPos = ts.i64InUnits(AV_TIME_BASE);
-
-    // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
-    if (movie->reel.video.codecContext) av_seek_frame(movie->reel.vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-    if (movie->reel.audio.codecContext) av_seek_frame(movie->reel.afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-
-
-    // todo: special if at start of file?
-
-    // todo: what if we seek right to an I-frame? i think that would still work,
-    // we'd have to pull at least 1 frame to have something to display anyway
-
-    double realTimeMs = ts.seconds() * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
-    // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
-        // char msbuf[123];
-        // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
-        // OutputDebugString(msbuf);
-
-
-    // movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
-
-
-    // step through frames for both contexts until we reach our desired timestamp
-
-    int frames_skipped;
-    GetNextVideoFrame(
-        movie->reel.vfc,
-        movie->reel.video.codecContext,
-        movie->reel.sws_context,
-        movie->reel.video.index,
-        movie->reel.frame_output,
-        ts.seconds() * 1000.0,// - msAudioLatencyEstimate,
-        0,
-        true,
-        &movie->ptsOfLastVideo,
-        &frames_skipped);
-
-
-    // kinda awkward
-    SoundBuffer dummyBufferJunkData;
-    dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
-    dummyBufferJunkData.size_in_bytes = 1024 * 10;
-    int bytes_queued_up = GetNextAudioFrame(
-        movie->reel.afc,
-        movie->reel.audio.codecContext,
-        movie->reel.audio.index,
-        dummyBufferJunkData,
-        1024,
-        realTimeMs,
-        &movie->ptsOfLastAudio);
-    free(dummyBufferJunkData.data);
-
-
-    i64 streamIndex = movie->reel.video.index;
-    i64 base_num = movie->reel.vfc->streams[streamIndex]->time_base.num;
-    i64 base_den = movie->reel.vfc->streams[streamIndex]->time_base.den;
-    timestamp currentTS = {movie->ptsOfLastVideo * base_num, base_den, ts.framesPerSecond};
-
-    double totalFrameCount = (movie->reel.vfc->duration / (double)AV_TIME_BASE) * (double)ts.framesPerSecond;
-    double durationSeconds = movie->reel.vfc->duration / (double)AV_TIME_BASE;
-
-        // char morebuf[123];
-        // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
-        // OutputDebugString(morebuf);
-
-        // char morebuf2[123];
-        // sprintf(morebuf2, "dur: %lli / in base: %i\n", movie->reel.vfc->duration, AV_TIME_BASE);
-        // OutputDebugString(morebuf2);
-
-        // char ptsbuf[123];
-        // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
-        //         nearestI64(currentTS.frame())+1,
-        //         nearestI64(ts.frame())+1,
-        //         nearestI64(totalFrameCount));
-        // OutputDebugString(ptsbuf);
-
-}
-
-
-// // todo: what to do with these?
-// textured_quad movie_screen;
-// textured_quad progress_gray;
-// textured_quad progress_red;
 
 
 
@@ -445,9 +330,9 @@ struct GhosterWindow
 
         if (message.startAtSeconds != 0)
         {
-            double videoFPS = 1000.0 / rolling_movie.reel.fps;
-            timestamp ts = {message.startAtSeconds, 1, videoFPS};
-            HardSeekToFrameForTimestamp(&rolling_movie, ts, sdl_stuff.estimated_audio_latency_ms);
+            // double videoFPS = 1000.0 / rolling_movie.reel.fps;
+            // timestamp ts = {message.startAtSeconds, 1, videoFPS};
+            ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
         }
 
         state.bufferingOrLoading = false;
@@ -603,8 +488,9 @@ struct GhosterWindow
                     // OutputDebugString(fpsbuf);
 
                 timestamp ts = {nearestI64(message.seekProportion*rolling_movie.reel.vfc->duration), AV_TIME_BASE, videoFPS};
+                double seconds = message.seekProportion*rolling_movie.reel.vfc->duration;
 
-                HardSeekToFrameForTimestamp(&rolling_movie, ts, sdl_stuff.estimated_audio_latency_ms);
+                ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, seconds, sdl_stuff.estimated_audio_latency_ms);
 
             }
 
@@ -838,8 +724,8 @@ struct GhosterWindow
 
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
-            double targetFPS = 1000.0 / rolling_movie.targetMsPerFrame;
-            HardSeekToFrameForTimestamp(&rolling_movie, {0,1,targetFPS}, sdl_stuff.estimated_audio_latency_ms);
+            // double targetFPS = 1000.0 / rolling_movie.targetMsPerFrame;
+            ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, 0, sdl_stuff.estimated_audio_latency_ms);
         }
 
 
@@ -1342,7 +1228,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 
 
     // get first frame in case we are paused
-    HardSeekToFrameForTimestamp(outMovie, {0,1,movie->fps}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
+    ffmpeg_hard_seek_to_timestamp(&outMovie->reel, 0, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
 
 
     return true;
