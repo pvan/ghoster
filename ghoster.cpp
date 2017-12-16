@@ -115,45 +115,21 @@ struct AppMessages
 
 
 
-// todo: kind of a mess, hard to initialize with its dependence on timeBase and fps
-struct timestamp
+
+double secondsFromPTS(i64 pts, AVFormatContext *fc, int streamIndex)
 {
-    i64 secondsInTimeBase; // this/timeBase = seconsd.. eg when this = timeBase, it's 1 second
-    i64 timeBase;
-    double framesPerSecond;
-
-    double seconds()
-    {
-        return (double)secondsInTimeBase / (double)timeBase;
-    }
-    double ms()
-    {
-        return seconds() * 1000.0;
-    }
-    double frame()
-    {
-        return seconds() * framesPerSecond;
-    }
-    double i64InUnits(i64 base)
-    {
-        return nearestI64(((double)secondsInTimeBase / (double)timeBase) * (double)base);
-    }
-
-    static timestamp FromPTS(i64 pts, AVFormatContext *fc, int streamIndex, RollingMovie movie)
-    {
-        i64 base_num = fc->streams[streamIndex]->time_base.num;
-        i64 base_den = fc->streams[streamIndex]->time_base.den;
-        return {pts * base_num, base_den, movie.reel.fps};
-    }
-    static timestamp FromVideoPTS(RollingMovie movie)
-    {
-        return timestamp::FromPTS(movie.ptsOfLastVideo, movie.reel.vfc, movie.reel.video.index, movie);
-    }
-    static timestamp FromAudioPTS(RollingMovie movie)
-    {
-        return timestamp::FromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index, movie);
-    }
-};
+    i64 base_num = fc->streams[streamIndex]->time_base.num;
+    i64 base_den = fc->streams[streamIndex]->time_base.den;
+    return ((double)pts * (double)base_num) / (double)base_den;
+}
+double secondsFromVideoPTS(RollingMovie movie)
+{
+    return secondsFromPTS(movie.ptsOfLastVideo, movie.reel.vfc, movie.reel.video.index);
+}
+double secondsFromAudioPTS(RollingMovie movie)
+{
+    return secondsFromPTS(movie.ptsOfLastAudio, movie.reel.afc, movie.reel.audio.index);
+}
 
 
 
@@ -330,8 +306,6 @@ struct GhosterWindow
 
         if (message.startAtSeconds != 0)
         {
-            // double videoFPS = 1000.0 / rolling_movie.reel.fps;
-            // timestamp ts = {message.startAtSeconds, 1, videoFPS};
             ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
         }
 
@@ -481,17 +455,8 @@ struct GhosterWindow
                 message.setSeek = false;
                 int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
 
-
-                double videoFPS = 1000.0 / rolling_movie.targetMsPerFrame;
-                    // char fpsbuf[123];
-                    // sprintf(fpsbuf, "fps: %f\n", videoFPS);
-                    // OutputDebugString(fpsbuf);
-
-                timestamp ts = {nearestI64(message.seekProportion*rolling_movie.reel.vfc->duration), AV_TIME_BASE, videoFPS};
                 double seconds = message.seekProportion*rolling_movie.reel.vfc->duration;
-
                 ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, seconds, sdl_stuff.estimated_audio_latency_ms);
-
             }
 
 
@@ -578,16 +543,16 @@ struct GhosterWindow
                     // sprintf(secquebuf, "seconds_left_in_queue: %.3f\n", seconds_left_in_queue);
                     // OutputDebugString(secquebuf);
 
-                timestamp ts_audio = timestamp::FromAudioPTS(rolling_movie);
+                double ts_audio = secondsFromAudioPTS(rolling_movie);
 
                 // if no audio, use video pts (we should basically never skip or repeat in this case)
                 if (!rolling_movie.reel.IsAudioAvailable())
                 {
-                    ts_audio = timestamp::FromVideoPTS(rolling_movie);
+                    ts_audio = secondsFromVideoPTS(rolling_movie);
                 }
 
                 // use ts audio to get track bar position
-                rolling_movie.elapsed = ts_audio.seconds();
+                rolling_movie.elapsed = ts_audio;
                 percent = rolling_movie.elapsed/rolling_movie.reel.durationSeconds;
 
                 // assuming we've filled the sdl buffer, we are 1 second ahead
@@ -595,15 +560,15 @@ struct GhosterWindow
                 // and how consistently do we pull audio data? is it sometimes more than others?
                 // update: i think we always put everything we get from decoding into sdl queue,
                 // so sdl buffer should be a decent way to figure out how far our audio decoding is ahead of "now"
-                double aud_seconds = ts_audio.seconds() - seconds_left_in_queue;
+                double aud_seconds = ts_audio - seconds_left_in_queue;
                     // char audbuf[123];
                     // sprintf(audbuf, "raw: %.1f  aud_seconds: %.1f  seconds_left_in_queue: %.1f\n",
                     //         ts_audio.seconds(), aud_seconds, seconds_left_in_queue);
                     // OutputDebugString(audbuf);
 
 
-                timestamp ts_video = timestamp::FromVideoPTS(rolling_movie);
-                double vid_seconds = ts_video.seconds();
+                double ts_video = secondsFromVideoPTS(rolling_movie);
+                double vid_seconds = ts_video;
 
                 double estimatedVidPTS = vid_seconds + rolling_movie.targetMsPerFrame/1000.0;
 
@@ -662,8 +627,8 @@ struct GhosterWindow
                 }
 
 
-                ts_video = timestamp::FromVideoPTS(rolling_movie);
-                vid_seconds = ts_video.seconds();
+                ts_video = secondsFromVideoPTS(rolling_movie);
+                vid_seconds = ts_video;
 
 
                 // how far ahead is the sound?
@@ -724,7 +689,6 @@ struct GhosterWindow
 
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
-            // double targetFPS = 1000.0 / rolling_movie.targetMsPerFrame;
             ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, 0, sdl_stuff.estimated_audio_latency_ms);
         }
 
