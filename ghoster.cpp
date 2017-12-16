@@ -52,9 +52,6 @@ struct RollingMovie
 
     ffmpeg_source reel;
 
-    struct SwsContext *sws_context;
-    AVFrame *frame_output;
-
     double duration;
     double elapsed;
 
@@ -212,9 +209,9 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
     GetNextVideoFrame(
         movie->reel.vfc,
         movie->reel.video.codecContext,
-        movie->sws_context,
+        movie->reel.sws_context,
         movie->reel.video.index,
-        movie->frame_output,
+        movie->reel.frame_output,
         ts.seconds() * 1000.0,// - msAudioLatencyEstimate,
         0,
         true,
@@ -752,9 +749,9 @@ struct GhosterWindow
                     GetNextVideoFrame(
                         rolling_movie.reel.vfc,
                         rolling_movie.reel.video.codecContext,
-                        rolling_movie.sws_context,
+                        rolling_movie.reel.sws_context,
                         rolling_movie.reel.video.index,
-                        rolling_movie.frame_output,
+                        rolling_movie.reel.frame_output,
                         aud_seconds * 1000.0,  // rolling_movie.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
                         rolling_movie.reel.IsAudioAvailable(),
@@ -1353,76 +1350,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 
     // MORE FFMPEG
 
-    // AVFrame *
-    if (outMovie->frame_output) av_frame_free(&outMovie->frame_output);
-    outMovie->frame_output = av_frame_alloc();  // just metadata
 
-    if (!outMovie->frame_output)
-    {
-        LogError("ffmpeg: Couldn't alloc frame");
-        return false;
-    }
-
-
-    // actual mem for frame
-    int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720); // todo: extra bar bug qwer
-    // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, outMovie->vidWID, outMovie->vidHEI);
-    if (outMovie->vid_buffer) av_free(outMovie->vid_buffer);
-    outMovie->vid_buffer = (u8*)av_malloc(numBytes);
-
-
-
-    // set up frame to use buffer memory...
-    // avpicture_fill(  // deprecated
-    //     (AVPicture *)outMovie->frame_output,
-    //     outMovie->vid_buffer,
-    //     AV_PIX_FMT_RGB32,
-    //     // 540,
-    //     // 320);
-    //     outMovie->vidWID,
-    //     outMovie->vidHEI);
-    av_image_fill_arrays(
-         outMovie->frame_output->data,
-         outMovie->frame_output->linesize,
-         outMovie->vid_buffer,
-         AV_PIX_FMT_RGB32,
-        960,
-        720,
-        // outMovie->vidWID,
-        // outMovie->vidHEI,
-        1);
-
-    // for converting frame from file to a standard color format buffer (size doesn't matter so much)
-    if (outMovie->sws_context) sws_freeContext(outMovie->sws_context);
-    // outMovie->sws_context = sws_alloc_context(); // this instead of {0}? doesnt seem to be needed?
-    outMovie->sws_context = {0};
-    // outMovie->sws_context = sws_getContext(  // deprecated
-    //     movie->video.codecContext->width,
-    //     movie->video.codecContext->height,
-    //     movie->video.codecContext->pix_fmt,
-    //     // 540,
-    //     // 320,
-    //     outMovie->vidWID,
-    //     outMovie->vidHEI,
-    //     AV_PIX_FMT_RGB32,
-    //     SWS_BILINEAR,
-    //     0, 0, 0);
-    if (movie->video.codecContext)
-    {
-        // this seems to be no help in our extra bar issue
-        outMovie->sws_context = sws_getCachedContext(
-            outMovie->sws_context,
-            movie->video.codecContext->width,
-            movie->video.codecContext->height,
-            movie->video.codecContext->pix_fmt,
-            960,
-            720,
-            // outMovie->vidWID,
-            // outMovie->vidHEI,
-            AV_PIX_FMT_RGB32,
-            SWS_BILINEAR,
-            0, 0, 0);
-    }
 
 
     // char linbuf[123];

@@ -77,7 +77,60 @@ struct ffmpeg_source
     StreamAV video;
     StreamAV audio;
 
+    // move here for now but i don't think this is the best final position (for frameout at least)
+    struct SwsContext *sws_context;
+    AVFrame *frame_output;
+    u8 *vid_buffer;
+
     char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
+
+    void SetupSwsContex()
+    {
+        if (sws_context) sws_freeContext(sws_context);
+
+        sws_context = {0};
+
+        if (video.codecContext)
+        {
+            sws_context = sws_getCachedContext(
+                sws_context,
+                video.codecContext->width,
+                video.codecContext->height,
+                video.codecContext->pix_fmt,
+                960,
+                720,
+                AV_PIX_FMT_RGB32,
+                SWS_BILINEAR,
+                0, 0, 0);
+        }
+    }
+
+    void SetupFrameOutput()
+    {
+        if (frame_output) av_frame_free(&frame_output);
+        frame_output = av_frame_alloc();  // just metadata
+
+        if (!frame_output)
+        {
+            LogError("ffmpeg: Couldn't alloc frame");
+            return;
+        }
+
+        // actual mem for frame
+        int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720);
+        if (vid_buffer) av_free(vid_buffer);
+        vid_buffer = (u8*)av_malloc(numBytes);
+
+        // set up frame to use buffer memory...
+        av_image_fill_arrays(
+            frame_output->data,
+            frame_output->linesize,
+            vid_buffer,
+            AV_PIX_FMT_RGB32,
+            960,
+            720,
+            1);
+    }
 
     bool IsAudioAvailable()
     {
@@ -91,6 +144,9 @@ struct ffmpeg_source
         if (afc) avformat_close_input(&afc);
         if (video.codecContext) avcodec_free_context(&video.codecContext);
         if (audio.codecContext) avcodec_free_context(&audio.codecContext);
+        if (sws_context) sws_freeContext(sws_context);
+        if (frame_output) av_frame_free(&frame_output);
+        if (vid_buffer) av_free(vid_buffer);
     }
 
     // destroys the reel passed in (we basically take the source and point our reel to it)
@@ -102,6 +158,9 @@ struct ffmpeg_source
         afc = other->afc;
         video = other->video;
         audio = other->audio;
+        sws_context = other->sws_context;
+        frame_output = other->frame_output;
+        vid_buffer = other->vid_buffer;
         strcpy(title, other->title);
 
         // destroy other so we don't have two reels all pointing to the same source
@@ -109,6 +168,9 @@ struct ffmpeg_source
         other->afc = 0;
         other->video = {0,0};
         other->audio = {0,0};
+        other->sws_context = 0;
+        other->frame_output = 0;
+        other->vid_buffer = 0;
         strcpy(title, "[empty]");
     }
 
@@ -211,6 +273,9 @@ struct ffmpeg_source
             LogError("ffmpeg: No audio or video streams in file.");
             return false;
         }
+
+        SetupSwsContex();
+        SetupFrameOutput();
 
         return true;
     }
