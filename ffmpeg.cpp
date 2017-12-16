@@ -59,14 +59,65 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 }
 
 
-struct ffmpeg_outframe
-{
-    struct SwsContext *sws_context;
-    AVFrame *avframe;
-    u8 *memory;
-    int width;
-    int height;
-};
+
+// struct ffmpeg_frame
+// {
+//     struct SwsContext *sws_context;
+//     AVFrame *avframe;
+//     u8 *memory;
+//     int width;
+//     int height;
+
+
+//     void SetupSwsContex()
+//     {
+//         if (sws_context) sws_freeContext(sws_context);
+
+//         sws_context = {0};
+
+//         if (video.codecContext)
+//         {
+//             sws_context = sws_getCachedContext(
+//                 sws_context,
+//                 video.codecContext->width,
+//                 video.codecContext->height,
+//                 video.codecContext->pix_fmt,
+//                 960,
+//                 720,
+//                 AV_PIX_FMT_RGB32,
+//                 SWS_BILINEAR,
+//                 0, 0, 0);
+//         }
+//     }
+
+//     void SetupFrameOutput()
+//     {
+//         if (frame_output) av_frame_free(&frame_output);
+//         frame_output = av_frame_alloc();  // just metadata
+
+//         if (!frame_output)
+//         {
+//             LogError("ffmpeg: Couldn't alloc frame");
+//             return;
+//         }
+
+//         // actual mem for frame
+//         int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720);
+//         if (vid_buffer) av_free(vid_buffer);
+//         vid_buffer = (u8*)av_malloc(numBytes);
+
+//         // set up frame to use buffer memory...
+//         av_image_fill_arrays(
+//             frame_output->data,
+//             frame_output->linesize,
+//             vid_buffer,
+//             AV_PIX_FMT_RGB32,
+//             960,
+//             720,
+//             1);
+//     }
+
+// };
 
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?

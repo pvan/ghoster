@@ -52,6 +52,10 @@ struct RollingMovie
 
     ffmpeg_source reel;
 
+    // ffmpeg_frame frame;
+    // ffmpeg_frame frame2;
+    // ffmpeg_frame *display
+
     double duration;
     double elapsed;
 

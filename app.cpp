@@ -10,6 +10,10 @@
 #pragma comment(lib, "shell32.lib")
 
 
+#include <Wingdi.h> // StretchDIBits
+#pragma comment(lib, "Gdi32.lib")
+
+
 #include "types.h"
 
 void LogError(char *str) { MessageBox(0,str,0,0); }
@@ -17,12 +21,50 @@ void LogMessage(char *str) { OutputDebugString(str); }
 
 
 bool running = true;
+HWND g_hwnd;
 
 
 #include "ghoster.cpp"
 
 
+void render()
+{
+    // source setup
+    HDC hdc = GetDC(g_hwnd);
+    RECT dispRect; GetClientRect(g_hwnd, &dispRect);
+    int sw = dispRect.right - dispRect.left;
+    int sh = dispRect.bottom - dispRect.top;
 
+    // // dest setup
+    // void *dst = global_ghoster.rolling_movie.vid_buffer;
+
+    // // bmi setup
+    // BITMAPINFO bmi;
+    // bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
+    // bmi.bmiHeader.biWidth = 960;
+    // bmi.bmiHeader.biHeight = -720;
+    // bmi.bmiHeader.biPlanes = 1;
+    // bmi.bmiHeader.biBitCount = 32;
+    // bmi.bmiHeader.biCompression = BI_RGB;
+
+    // dest setup
+    u32 red = 0xffff0000;
+    void *dst = (void*)&red;
+
+    // bmi setup
+    BITMAPINFO bmi;
+    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
+    bmi.bmiHeader.biWidth = 1;
+    bmi.bmiHeader.biHeight = 1;
+    bmi.bmiHeader.biPlanes = 1;
+    bmi.bmiHeader.biBitCount = 32;
+    bmi.bmiHeader.biCompression = BI_RGB;
+
+
+
+    StretchDIBits(hdc,0,0,sw,sh, 0,0,1,1,dst, &bmi,DIB_RGB_COLORS,SRCCOPY);
+
+}
 
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -69,7 +111,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, 400, 400, 0, 0, hInstance, 0);
     if (!hwnd) { MessageBox(0, "CreateWindowEx failed", 0, 0); return 1; }
-
+    g_hwnd = hwnd;
 
 
     // should we have each module parse this themselves?
@@ -108,6 +150,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        render();
         Sleep(16);
     }
 
