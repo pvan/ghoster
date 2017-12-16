@@ -119,13 +119,6 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 
 // };
 
-struct ffmpeg_metadata
-{
-    double fps;
-    double duration;
-    double aspect_ratio;
-    char *source_path;
-};
 
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
@@ -140,6 +133,8 @@ struct ffmpeg_source
     struct SwsContext *sws_context;
     AVFrame *frame_output;
     u8 *vid_buffer;
+    int vid_width;   //todo: get from source (and make buffer this size?)
+    int vid_height;
 
     char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
 
@@ -340,6 +335,61 @@ struct ffmpeg_source
     }
 
 
+};
+
+
+
+struct ffmpeg_metadata
+{
+    double fps;
+    double durationSeconds;
+    double totalFrameCount;
+
+    int width;
+    int height;
+    double aspect_ratio;
+
+    // char *source_path;
+
+    // char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
+
+    void PopulateFromSource(ffmpeg_source source)
+    {
+        //fps
+        double targetFPS;
+        char fpsbuf[123];
+        if (source.video.codecContext)
+        {
+            fps = ((double)source.video.codecContext->time_base.den /
+                   (double)source.video.codecContext->time_base.num) /
+                   (double)source.video.codecContext->ticks_per_frame;
+
+            sprintf(fpsbuf, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+                source.video.codecContext->time_base.num,
+                source.video.codecContext->time_base.den,   targetFPS,
+                source.video.codecContext->ticks_per_frame
+            );
+        }
+        else
+        {
+            fps = 30;
+            sprintf(fpsbuf, "\nno video found, default to %.2f fps\n", targetFPS);
+        }
+        OutputDebugString(fpsbuf);
+
+
+        // duration
+        durationSeconds = source.vfc->duration / (double)AV_TIME_BASE;
+        totalFrameCount = durationSeconds * fps;
+
+
+        // w / h / aspect_ratio
+        width = source.video.codecContext->width;
+        height = source.video.codecContext->height;
+        aspect_ratio = (double)width / (double)height;
+
+
+    }
 };
 
 
