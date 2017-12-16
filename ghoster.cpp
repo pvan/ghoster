@@ -46,11 +46,19 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 
 
+struct decoded_frames
+{
+
+};
+
 
 struct RollingMovie
 {
 
     ffmpeg_source reel;
+    // ffmpeg_source lowq; //something like this?
+    // ffmpeg_source medq;
+    // ffmpeg_source highq;
 
     // ffmpeg_frame frame;
     // ffmpeg_frame frame2;

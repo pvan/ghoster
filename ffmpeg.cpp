@@ -119,6 +119,14 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 
 // };
 
+struct ffmpeg_metadata
+{
+    double fps;
+    double duration;
+    double aspect_ratio;
+    char *source_path;
+};
+
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
 struct ffmpeg_source
