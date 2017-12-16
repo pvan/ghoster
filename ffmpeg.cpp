@@ -120,10 +120,21 @@ AVCodecContext *OpenAndFindCodec(AVFormatContext *fc, int streamIndex)
 // };
 
 
+// todo: move into a system obj
+// static char *global_title_buffer;
+const int FFMPEG_TITLE_SIZE = 256;
+
+const int FFMEPG_PATH_SIZE = 1024;  // todo: what to use for this?
+
+
+
+
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
 struct ffmpeg_source
 {
+    bool loaded = false; // are our fields populated?
+
     AVFormatContext *vfc = 0;
     AVFormatContext *afc = 0;  // now seperate sources are allowed so this seems sort of ok
     StreamAV video;
@@ -136,7 +147,110 @@ struct ffmpeg_source
     int vid_width;   //todo: get from source (and make buffer this size?)
     int vid_height;
 
-    char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
+    char title[FFMPEG_TITLE_SIZE]; // todo: how big? todo: alloc this
+    char path[FFMEPG_PATH_SIZE]; // todo: how big? todo: alloc this
+
+
+    // metadata
+    double fps;
+    double durationSeconds;
+    double totalFrameCount;
+
+    int width;
+    int height;
+    double aspect_ratio;
+
+
+    void FreeEverything()
+    {
+        if (vfc) avformat_close_input(&vfc);
+        if (afc) avformat_close_input(&afc);
+        if (video.codecContext) avcodec_free_context(&video.codecContext);
+        if (audio.codecContext) avcodec_free_context(&audio.codecContext);
+        if (sws_context) sws_freeContext(sws_context);
+        if (frame_output) av_frame_free(&frame_output);
+        if (vid_buffer) av_free(vid_buffer);
+    }
+
+    // destroys the reel passed in (we basically take the source and point our reel to it)
+    void TransferFromReel(ffmpeg_source *other)
+    {
+        FreeEverything();
+
+        vfc = other->vfc;
+        afc = other->afc;
+        video = other->video;
+        audio = other->audio;
+        sws_context = other->sws_context;
+        frame_output = other->frame_output;
+        vid_buffer = other->vid_buffer;
+        strcpy(title, other->title);
+        strcpy(path, other->path);
+        fps =             other->fps;
+        durationSeconds = other->durationSeconds;
+        totalFrameCount = other->totalFrameCount;
+        width =           other->width;
+        height =          other->height;
+        aspect_ratio =    other->aspect_ratio;
+
+        // destroy other so we don't have two reels all pointing to the same source
+        other->vfc = 0;
+        other->afc = 0;
+        other->video = {0,0};
+        other->audio = {0,0};
+        other->sws_context = 0;
+        other->frame_output = 0;
+        other->vid_buffer = 0;
+        strcpy(other->title, "[empty]");
+        strcpy(other->path, "");
+        other->fps = 0;
+        other->durationSeconds = 0;
+        other->totalFrameCount = 0;
+        other->width = 0;
+        other->height = 0;
+        other->aspect_ratio = 0;
+    }
+
+
+    void PopulateMetadata()
+    {
+        assert(loaded);
+
+        //fps
+        double targetFPS;
+        char fpsbuf[123];
+        if (video.codecContext)
+        {
+            fps = ((double)video.codecContext->time_base.den /
+                   (double)video.codecContext->time_base.num) /
+                   (double)video.codecContext->ticks_per_frame;
+
+            sprintf(fpsbuf, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+                video.codecContext->time_base.num,
+                video.codecContext->time_base.den,   fps,
+                video.codecContext->ticks_per_frame
+            );
+        }
+        else
+        {
+            fps = 30;
+            sprintf(fpsbuf, "\nno video found, default to %.2f fps\n", fps);
+        }
+        OutputDebugString(fpsbuf);
+
+
+        // duration
+        durationSeconds = vfc->duration / (double)AV_TIME_BASE;
+        totalFrameCount = durationSeconds * fps;
+
+
+        // w / h / aspect_ratio
+        width = video.codecContext->width;
+        height = video.codecContext->height;
+        aspect_ratio = (double)width / (double)height;
+
+
+    }
 
     void SetupSwsContex()
     {
@@ -192,41 +306,6 @@ struct ffmpeg_source
         else return false;
     }
 
-    void FreeEverything()
-    {
-        if (vfc) avformat_close_input(&vfc);
-        if (afc) avformat_close_input(&afc);
-        if (video.codecContext) avcodec_free_context(&video.codecContext);
-        if (audio.codecContext) avcodec_free_context(&audio.codecContext);
-        if (sws_context) sws_freeContext(sws_context);
-        if (frame_output) av_frame_free(&frame_output);
-        if (vid_buffer) av_free(vid_buffer);
-    }
-
-    // destroys the reel passed in (we basically take the source and point our reel to it)
-    void TransferFromReel(ffmpeg_source *other)
-    {
-        FreeEverything();
-
-        vfc = other->vfc;
-        afc = other->afc;
-        video = other->video;
-        audio = other->audio;
-        sws_context = other->sws_context;
-        frame_output = other->frame_output;
-        vid_buffer = other->vid_buffer;
-        strcpy(title, other->title);
-
-        // destroy other so we don't have two reels all pointing to the same source
-        other->vfc = 0;
-        other->afc = 0;
-        other->video = {0,0};
-        other->audio = {0,0};
-        other->sws_context = 0;
-        other->frame_output = 0;
-        other->vid_buffer = 0;
-        strcpy(title, "[empty]");
-    }
 
     bool SetFromPaths(char *videopath, char *audiopath)
     {
@@ -331,66 +410,16 @@ struct ffmpeg_source
         SetupSwsContex();
         SetupFrameOutput();
 
+        loaded = true;
+
+        PopulateMetadata();
+
         return true;
     }
 
 
 };
 
-
-
-struct ffmpeg_metadata
-{
-    double fps;
-    double durationSeconds;
-    double totalFrameCount;
-
-    int width;
-    int height;
-    double aspect_ratio;
-
-    // char *source_path;
-
-    // char title[TITLE_BUFFER_SIZE]; // todo: how big? todo: alloc this
-
-    void PopulateFromSource(ffmpeg_source source)
-    {
-        //fps
-        double targetFPS;
-        char fpsbuf[123];
-        if (source.video.codecContext)
-        {
-            fps = ((double)source.video.codecContext->time_base.den /
-                   (double)source.video.codecContext->time_base.num) /
-                   (double)source.video.codecContext->ticks_per_frame;
-
-            sprintf(fpsbuf, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-                source.video.codecContext->time_base.num,
-                source.video.codecContext->time_base.den,   targetFPS,
-                source.video.codecContext->ticks_per_frame
-            );
-        }
-        else
-        {
-            fps = 30;
-            sprintf(fpsbuf, "\nno video found, default to %.2f fps\n", targetFPS);
-        }
-        OutputDebugString(fpsbuf);
-
-
-        // duration
-        durationSeconds = source.vfc->duration / (double)AV_TIME_BASE;
-        totalFrameCount = durationSeconds * fps;
-
-
-        // w / h / aspect_ratio
-        width = source.video.codecContext->width;
-        height = source.video.codecContext->height;
-        aspect_ratio = (double)width / (double)height;
-
-
-    }
-};
 
 
 

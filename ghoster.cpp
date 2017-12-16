@@ -7,13 +7,6 @@
 static HANDLE global_asyn_load_thread;
 
 
-// todo: move into a system obj
-// static char *global_title_buffer;
-const int TITLE_BUFFER_SIZE = 256;
-
-const int URL_BUFFER_SIZE = 1024;  // todo: what to use for this?
-
-
 
 
 
@@ -64,7 +57,7 @@ struct RollingMovie
     // ffmpeg_frame frame2;
     // ffmpeg_frame *display
 
-    double duration;
+    // double duration;
     double elapsed;
 
     // todo: not used anymore
@@ -72,7 +65,7 @@ struct RollingMovie
     // but might want to set it each frame to the ts_audio that we use for syncing a/v
     // Stopwatch audio_stopwatch;
 
-    double aspect_ratio; // feels like it'd be better to store this as a rational
+    // double aspect_ratio; // feels like it'd be better to store this as a rational
 
     i64 ptsOfLastVideo;
     i64 ptsOfLastAudio;
@@ -83,7 +76,7 @@ struct RollingMovie
 
     double targetMsPerFrame;
 
-    char *cached_url;
+    // char *cached_url;
 
     // u8 *vid_buffer;
     // int vidWID;
@@ -171,7 +164,7 @@ struct timestamp
     {
         i64 base_num = fc->streams[streamIndex]->time_base.num;
         i64 base_den = fc->streams[streamIndex]->time_base.den;
-        return {pts * base_num, base_den, movie.targetMsPerFrame};
+        return {pts * base_num, base_den, movie.reel.fps};
     }
     static timestamp FromVideoPTS(RollingMovie movie)
     {
@@ -452,7 +445,7 @@ struct GhosterWindow
 
         if (message.startAtSeconds != 0)
         {
-            double videoFPS = 1000.0 / rolling_movie.targetMsPerFrame;
+            double videoFPS = 1000.0 / rolling_movie.reel.fps;
             timestamp ts = {message.startAtSeconds, 1, videoFPS};
             HardSeekToFrameForTimestamp(&rolling_movie, ts, sdl_stuff.estimated_audio_latency_ms);
         }
@@ -497,7 +490,7 @@ struct GhosterWindow
         // global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
 
         // maybe alloc ghoster app all at once? is this really the only mem we need for it?
-        rolling_movie.cached_url = (char*)malloc(URL_BUFFER_SIZE);
+        // rolling_movie.cached_url = (char*)malloc(URL_BUFFER_SIZE);
     }
 
 
@@ -709,7 +702,7 @@ struct GhosterWindow
 
                 // use ts audio to get track bar position
                 rolling_movie.elapsed = ts_audio.seconds();
-                percent = rolling_movie.elapsed/rolling_movie.duration;
+                percent = rolling_movie.elapsed/rolling_movie.reel.durationSeconds;
 
                 // assuming we've filled the sdl buffer, we are 1 second ahead
                 // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
@@ -1151,16 +1144,16 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 
     int titleLen = strlen(segments[0]);  // note this doesn't include the \0
-    if (titleLen+1 > TITLE_BUFFER_SIZE-1) // note -1 since [size-1] is \0  and +1 since titleLen doesn't count \0
+    if (titleLen+1 > FFMPEG_TITLE_SIZE-1) // note -1 since [size-1] is \0  and +1 since titleLen doesn't count \0
     {
-        segments[0][TITLE_BUFFER_SIZE-1] = '\0';
-        segments[0][TITLE_BUFFER_SIZE-2] = '.';
-        segments[0][TITLE_BUFFER_SIZE-3] = '.';
-        segments[0][TITLE_BUFFER_SIZE-4] = '.';
+        segments[0][FFMPEG_TITLE_SIZE-1] = '\0';
+        segments[0][FFMPEG_TITLE_SIZE-2] = '.';
+        segments[0][FFMPEG_TITLE_SIZE-3] = '.';
+        segments[0][FFMPEG_TITLE_SIZE-4] = '.';
     }
 
 
-    strcpy_s(outTitle, TITLE_BUFFER_SIZE, segments[0]);
+    strcpy_s(outTitle, FFMPEG_TITLE_SIZE, segments[0]);
 
     strcpy_s(video, 1024*10, segments[1]);  // todo: pass in these string limits?
 
@@ -1196,7 +1189,7 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
 
     // todo: check limits on title before writing here and below
     char *outTitle = newMovie->title;
-    strcpy_s(outTitle, TITLE_BUFFER_SIZE, "[no title]");
+    strcpy_s(outTitle, FFMPEG_TITLE_SIZE, "[no title]");
 
     if (StringIsUrl(path))
     {
@@ -1239,7 +1232,7 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
         while (*fileNameOnly != '\\' && *fileNameOnly != '/')
             fileNameOnly--; // backup till we hit a directory
         fileNameOnly++; // drop the / tho
-        strcpy_s(outTitle, TITLE_BUFFER_SIZE, fileNameOnly); // todo: what length to use?
+        strcpy_s(outTitle, FFMPEG_TITLE_SIZE, fileNameOnly); // todo: what length to use?
     }
     else
     {
@@ -1308,7 +1301,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
     OutputDebugString("\naudio format ctx:\n");
     logFormatContextDuration(movie->afc);
 
-    outMovie->duration = (double)movie->vfc->duration / (double)AV_TIME_BASE;
+    // outMovie->duration = (double)movie->vfc->duration / (double)AV_TIME_BASE;
     outMovie->elapsed = 0;
 
     // outMovie->audio_stopwatch.ResetCompletely();
@@ -1316,31 +1309,8 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 
     // SET FPS BASED ON LOADED VIDEO
 
-    double targetFPS;
-    char vidfps[123];
-    if (movie->video.codecContext)
-    {
-        targetFPS = ((double)movie->video.codecContext->time_base.den /
-                    (double)movie->video.codecContext->time_base.num) /
-                    (double)movie->video.codecContext->ticks_per_frame;
 
-        sprintf(vidfps, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-            movie->video.codecContext->time_base.num,
-            movie->video.codecContext->time_base.den,
-            targetFPS,
-            movie->video.codecContext->ticks_per_frame
-        );
-    }
-    else
-    {
-        targetFPS = 30;
-        sprintf(vidfps, "\nno video found, default to %.2f fps\n", targetFPS);
-    }
-
-    OutputDebugString(vidfps);
-
-
-    outMovie->targetMsPerFrame = 1000.0 / targetFPS;
+    outMovie->targetMsPerFrame = 1000.0 / outMovie->reel.fps;
 
 
 
@@ -1351,7 +1321,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 
     if (movie->audio.codecContext)
     {
-        SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, targetFPS);
+        SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, movie->fps);
 
         SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
         SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
@@ -1372,7 +1342,7 @@ bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
 
 
     // get first frame in case we are paused
-    HardSeekToFrameForTimestamp(outMovie, {0,1,targetFPS}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
+    HardSeekToFrameForTimestamp(outMovie, {0,1,movie->fps}, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
 
 
     return true;
@@ -1460,9 +1430,9 @@ bool CreateNewMovieFromPath(char *path)
     if (timestamp != 0)
         timestamp[0] = '\0';
 
-    // save url for later (is rolling_movie the best place for cached_url?)
-    // is this the best place to set cached_url?
-    strcpy_s(global_ghoster.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
+    // // save url for later (is rolling_movie the best place for cached_url?)
+    // // is this the best place to set cached_url?
+    // strcpy_s(global_ghoster.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
 
 
     return true;
@@ -1534,9 +1504,9 @@ bool PasteClipboard()
 
 bool CopyUrlToClipboard(bool withTimestamp = false)
 {
-    char *url = global_ghoster.rolling_movie.cached_url;
+    char *url = global_ghoster.rolling_movie.reel.path;
 
-    char output[URL_BUFFER_SIZE]; // todo: stack alloc ok here?
+    char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
     if (StringIsUrl(url) && withTimestamp) {
         int secondsElapsed = global_ghoster.rolling_movie.elapsed;
         sprintf(output, "%s&t=%i", url, secondsElapsed);
