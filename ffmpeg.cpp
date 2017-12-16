@@ -409,117 +409,358 @@ struct ffmpeg_source
     }
 
 
-};
 
 
 
+    // todo: decode with newest api?
+    // avcodec_send_packet / avcodec_receive_frame
+    // (for video too)
+    // avcodec_decode_audio4 is deprecated
 
-// todo: decode with newest api?
-// avcodec_send_packet / avcodec_receive_frame
-// (for video too)
-// avcodec_decode_audio4 is deprecated
-
-// return bytes (not samples) written to outBuffer
-int GetNextAudioFrame(
-    AVFormatContext *fc,
-    AVCodecContext *cc,
-    int streamIndex,
-    ffmpeg_sound_buffer outBuf,
-    int requestedBytes,
-    double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
-    i64 *outPTS)
-{
-
-    if (!fc || !cc)
+    // return bytes (not samples) written to outBuffer
+    int GetNextAudioFrame(
+        ffmpeg_sound_buffer outBuf,
+        int requestedBytes,
+        double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
+        i64 *outPTS)
     {
-        *outPTS = 0;
-        return 0;
-    }
+        AVFormatContext *fc = afc;
+        AVCodecContext *cc = audio.codecContext;
+        int streamIndex = audio.index;
 
-
-    u8 *outBuffer = outBuf.data;
-
-    // if (!swr)
-    // {
-    //     // todo: free this when loading new video? any other time?
-    //     swr = swr_alloc_set_opts(NULL,         // we're allocating a new context
-    //                 FFMPEG_LAYOUT,             // out_ch_layout    AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
-    //                 FFMPEG_FORMAT,             // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
-    //                 FFMPEG_SAMPLES_PER_SECOND, // out_sample_rate
-    //                 cc->channel_layout,        // in_ch_layout
-    //                 cc->sample_fmt,            // in_sample_fmt
-    //                 cc->sample_rate,           // in_sample_rate
-    //                 0,                         // log_offset
-    //                 NULL);                     // log_ctx
-    //     swr_init(swr);
-    //     if (!swr_is_initialized(swr)) {
-    //         LogError("ffmpeg: Audio resampler has not been properly initialized\n");
-    //         return -1;
-    //     }
-    // }
-
-    // char tempy[123];
-    // sprintf(tempy, "%lli\n", cc->sample_fmt);
-    // LogMessage(tempy);
-
-    AVPacket readingPacket;
-    av_init_packet(&readingPacket);
-
-
-
-    AVFrame* frame = av_frame_alloc();
-    if (!frame)
-    {
-        LogError("ffmpeg: Error allocating the frame.\n");
-        return 1;
-    }
-
-    int bytes_written = 0;
-
-    // https://stackoverflow.com/questions/20545767/decode-audio-from-memory-c
-
-    // Read the packets in a loop
-    while (av_read_frame(fc, &readingPacket) == 0)
-    {
-        if (readingPacket.stream_index == streamIndex)
+        if (!fc || !cc)
         {
-            // if this is just a copy, if we free and unref readingP do we free decodingP?
-            AVPacket decodingPacket = readingPacket;
+            *outPTS = 0;
+            return 0;
+        }
 
-            // Audio packets can have multiple audio frames in a single packet
-            while (decodingPacket.size > 0)
+
+        u8 *outBuffer = outBuf.data;
+
+        // if (!swr)
+        // {
+        //     // todo: free this when loading new video? any other time?
+        //     swr = swr_alloc_set_opts(NULL,         // we're allocating a new context
+        //                 FFMPEG_LAYOUT,             // out_ch_layout    AV_CH_LAYOUT_STEREO  AV_CH_LAYOUT_MONO
+        //                 FFMPEG_FORMAT,             // out_sample_fmt   AV_SAMPLE_FMT_S16   AV_SAMPLE_FMT_FLT
+        //                 FFMPEG_SAMPLES_PER_SECOND, // out_sample_rate
+        //                 cc->channel_layout,        // in_ch_layout
+        //                 cc->sample_fmt,            // in_sample_fmt
+        //                 cc->sample_rate,           // in_sample_rate
+        //                 0,                         // log_offset
+        //                 NULL);                     // log_ctx
+        //     swr_init(swr);
+        //     if (!swr_is_initialized(swr)) {
+        //         LogError("ffmpeg: Audio resampler has not been properly initialized\n");
+        //         return -1;
+        //     }
+        // }
+
+        // char tempy[123];
+        // sprintf(tempy, "%lli\n", cc->sample_fmt);
+        // LogMessage(tempy);
+
+        AVPacket readingPacket;
+        av_init_packet(&readingPacket);
+
+
+
+        AVFrame* frame = av_frame_alloc();
+        if (!frame)
+        {
+            LogError("ffmpeg: Error allocating the frame.\n");
+            return 1;
+        }
+
+        int bytes_written = 0;
+
+        // https://stackoverflow.com/questions/20545767/decode-audio-from-memory-c
+
+        // Read the packets in a loop
+        while (av_read_frame(fc, &readingPacket) == 0)
+        {
+            if (readingPacket.stream_index == streamIndex)
             {
-                // Try to decode the packet into a frame
-                // Some frames rely on multiple packets,
-                // so we have to make sure the frame is finished before
-                // we can use it
-                int gotFrame = 0;
-                int packet_bytes_decoded = avcodec_decode_audio4(cc, frame, &gotFrame, &decodingPacket);
+                // if this is just a copy, if we free and unref readingP do we free decodingP?
+                AVPacket decodingPacket = readingPacket;
 
-                if (packet_bytes_decoded >= 0 && gotFrame)
+                // Audio packets can have multiple audio frames in a single packet
+                while (decodingPacket.size > 0)
+                {
+                    // Try to decode the packet into a frame
+                    // Some frames rely on multiple packets,
+                    // so we have to make sure the frame is finished before
+                    // we can use it
+                    int gotFrame = 0;
+                    int packet_bytes_decoded = avcodec_decode_audio4(cc, frame, &gotFrame, &decodingPacket);
+
+                    if (packet_bytes_decoded >= 0 && gotFrame)
+                    {
+
+                        // shift packet over to get next frame (if there is one)
+                        decodingPacket.size -= packet_bytes_decoded;
+                        decodingPacket.data += packet_bytes_decoded;
+
+
+                        int additional_bytes = frame->nb_samples *
+                                               cc->channels *
+                                               av_get_bytes_per_sample(cc->sample_fmt);
+
+
+
+                        double msToPlayThisFrame = 1000.0 *
+                            av_frame_get_best_effort_timestamp(frame) *
+                            fc->streams[streamIndex]->time_base.num /
+                            fc->streams[streamIndex]->time_base.den;
+
+
+                        if (msToPlayThisFrame < startAtThisMsTimestamp && startAtThisMsTimestamp>=0)
+                        {
+                            // LogMessage("skipped a frame\n");
+                            // frames_skipped++;
+
+                            // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
+
+                            // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
+                            // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
+                            //     char frambuf[123];
+                            //     sprintf(frambuf, "%lli ", frame_count+1);
+                            //     LogMessage(frambuf);
+
+                            // seems like we'd want this here right?
+                            // av_packet_unref(&packet);
+                            av_frame_unref(frame);
+
+                            // continue;
+                            goto next_frame;
+                        }
+                        // if (frames_skipped > 0) {
+                        //     char skipbuf[256];
+                        //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                        //     LogMessage(skipbuf);
+                        // }
+
+
+                        // little fail-safe check so we don't overflow outBuffer
+                        // (ie, in case we guessed when to quit wrong below)
+                        if (bytes_written+additional_bytes > outBuf.size_in_bytes)
+                        {
+                            assert(false); // for now we want to know if this ever happens
+                            return bytes_written;
+                        }
+
+
+                        // double msToPlayFrame = 1000 * frame->pts *
+                        //     fc->streams[streamIndex]->time_base.num /
+                        //     fc->streams[streamIndex]->time_base.den;
+
+                        // char zxcv[123];
+                        // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+                        //         msToPlayFrame,
+                        //         msSinceStart
+                        //         );
+                        // LogMessage(zxcv);
+
+                        // // todo: stretch or shrink this buffer
+                        // // to external clock? but tough w/ audio latency right?
+                        // double msDelayAllowed = 20;  // feels janky
+                        // // console yourself with the thought that this should only happen if
+                        // // our sound library or driver is playing audio out of sync w/ the system clock???
+                        // if (msToPlayFrame + msDelayAllowed < msSinceStart)
+                        // {
+                        //     LogMessage("skipping some audio bytes.. tempy\n");
+                        //     //continue;
+
+                        //     // todo: replace this with better
+                        //     int samples_to_skip = 10;
+                        //     additional_bytes -= samples_to_skip *
+                        //         av_get_bytes_per_sample(cc->sample_fmt);
+                        // }
+
+
+                        // see notes from http://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-February/013592.html
+                        // "It depends on sample format you set in swr_alloc_set_opts().
+                        // For planar sample formats out[x] have x channel
+                        // For interleaved sample formats there is out[0] only and it have
+                        // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
+
+                        bool planar = false;
+                        switch (cc->sample_fmt) {
+                            case AV_SAMPLE_FMT_U8P:
+                            case AV_SAMPLE_FMT_S16P:
+                            case AV_SAMPLE_FMT_S32P:
+                            case AV_SAMPLE_FMT_FLTP:
+                            case AV_SAMPLE_FMT_DBLP: planar = true;
+                        }
+
+                        if (!planar || cc->channels == 1)
+                        {
+                            memcpy(outBuffer, frame->data[0], additional_bytes);
+                            outBuffer += additional_bytes;
+                            bytes_written+=additional_bytes;
+                        }
+                        else
+                        {
+                            for (int sample = 0; sample < frame->nb_samples; sample++)
+                            {
+                                for (int channel = 0; channel < cc->channels; channel++)
+                                {
+                                    u8 *thisChannel = frame->data[channel];
+                                    u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
+                                    for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
+                                    {
+                                        *outBuffer = *thisSample;
+                                        outBuffer++;
+                                        thisSample++;
+                                        bytes_written++;
+                                    }
+                                }
+                            }
+                        }
+                        // note bytes_written is total this call, not just this frame
+                        // assert(bytes_written == additional_bytes); // only true on first loop
+
+
+
+                        // now try to guess when we're done based on the size of the last frame
+                        if (bytes_written+additional_bytes > requestedBytes)
+                        {
+                            *outPTS = av_frame_get_best_effort_timestamp(frame);
+
+                            // av_free_packet(&readingPacket);
+                            // av_free_packet(&decodingPacket);
+                            av_free_packet(&readingPacket);
+                            av_frame_free(&frame);
+                            return bytes_written;
+                        }
+
+                        // // just one frame;
+                        // return bytes_written;
+                    }
+                    else
+                    {
+                        decodingPacket.size = 0;
+                        decodingPacket.data = nullptr;
+                    }
+
+                    // grab pts from frame before unref, in case we exit via end of function
+                    *outPTS = av_frame_get_best_effort_timestamp(frame);
+
+                    av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
+
+                    // don't this right, because we may be pulling a second frame from it?
+                    // av_packet_unref(&decodingPacket);
+                }
+
+                // don't need because it's just a shallow copy of readingP??
+                // av_free_packet(&decodingPacket);
+                // av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
+            }
+
+            next_frame:
+
+            av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
+        }
+
+        // Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
+        // is set, there can be buffered up frames that need to be flushed, so we'll do that
+        if (cc->codec->capabilities & CODEC_CAP_DELAY)
+        {
+            av_init_packet(&readingPacket);
+            // Decode all the remaining frames in the buffer, until the end is reached
+            int gotFrame = 0;
+            while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
+            {
+                // todo: need to actually use these last frames of decoded audio
+                // todo: just replace this whole function with send_packet/receive_frame api?
+            }
+        }
+
+        av_free_packet(&readingPacket);
+        av_frame_free(&frame);
+        return bytes_written; // ever get here? yes, at the end of a file
+    }
+
+    bool GetNextVideoFrame(
+        double msOfDesiredFrame,
+        double msAllowableAudioLead,
+        bool skip_if_behind_audio,
+        i64 *outPTS,
+        int *frames_skipped)
+    {
+        AVFormatContext *fc = vfc;
+        AVCodecContext *cc = video.codecContext;
+        SwsContext *sws = sws_context;
+        int streamIndex = video.index;
+        AVFrame *outFrame = frame_output;
+
+        if (!fc || !cc)
+        {
+            *outPTS = 0;
+            *frames_skipped = 0;
+            return false;
+        }
+
+
+        AVPacket packet;
+
+        AVFrame *frame = av_frame_alloc();  // just metadata
+
+        if (!frame) { LogError("ffmpeg: Couldn't alloc frame."); return false; }
+
+                    // char temp2[123];
+                    // sprintf(temp2, "time_base %i / %i\n",
+                    //         fc->streams[streamIndex]->time_base.num,
+                    //         fc->streams[streamIndex]->time_base.den
+                    //         );
+                    // LogMessage(temp2);
+
+
+        // i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
+        //     char frambuf2[123];
+        //     sprintf(frambuf2, "want: %lli \n", frame_want+1);
+        //     LogMessage(frambuf2);
+        // bool displayedSkipMsg = false;
+
+        // int frames_skipped = 0;
+
+        while(av_read_frame(fc, &packet) >= 0)
+        {
+            if (packet.stream_index == streamIndex)
+            {
+                int frame_finished;
+                avcodec_decode_video2(cc, frame, &frame_finished, &packet);
+
+                if (frame_finished)
                 {
 
-                    // shift packet over to get next frame (if there is one)
-                    decodingPacket.size -= packet_bytes_decoded;
-                    decodingPacket.data += packet_bytes_decoded;
+                    // todo: is variable frame rate possible? (eg some frames shown twice?)
+                    // todo: is it possible to get these not in pts order? (doesn't seem like it)
 
-
-                    int additional_bytes = frame->nb_samples *
-                                           cc->channels *
-                                           av_get_bytes_per_sample(cc->sample_fmt);
-
-
+                    // char temp[123];
+                    // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
+                    // LogMessage(temp);
 
                     double msToPlayThisFrame = 1000.0 *
-                        av_frame_get_best_effort_timestamp(frame) *
+                        av_frame_get_best_effort_timestamp(frame) * //frame->pts *
                         fc->streams[streamIndex]->time_base.num /
                         fc->streams[streamIndex]->time_base.den;
 
 
-                    if (msToPlayThisFrame < startAtThisMsTimestamp && startAtThisMsTimestamp>=0)
+                    // char zxcv[123];
+                    // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
+                    //         msToPlayFrame,
+                    //         msSinceStart,
+                    //         msAudioLatencyEstimate + msDelayAllowed
+                    //         );
+                    // LogMessage(zxcv);
+
+
+                    if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
+                        && skip_if_behind_audio)
                     {
                         // LogMessage("skipped a frame\n");
-                        // frames_skipped++;
+                        *frames_skipped++;
 
                         // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
 
@@ -530,11 +771,10 @@ int GetNextAudioFrame(
                         //     LogMessage(frambuf);
 
                         // seems like we'd want this here right?
-                        // av_packet_unref(&packet);
+                        av_packet_unref(&packet);
                         av_frame_unref(frame);
 
-                        // continue;
-                        goto next_frame;
+                        continue;
                     }
                     // if (frames_skipped > 0) {
                     //     char skipbuf[256];
@@ -543,290 +783,57 @@ int GetNextAudioFrame(
                     // }
 
 
-                    // little fail-safe check so we don't overflow outBuffer
-                    // (ie, in case we guessed when to quit wrong below)
-                    if (bytes_written+additional_bytes > outBuf.size_in_bytes)
-                    {
-                        assert(false); // for now we want to know if this ever happens
-                        return bytes_written;
-                    }
+                    *outPTS = av_frame_get_best_effort_timestamp(frame);
 
 
-                    // double msToPlayFrame = 1000 * frame->pts *
-                    //     fc->streams[streamIndex]->time_base.num /
-                    //     fc->streams[streamIndex]->time_base.den;
-
-                    // char zxcv[123];
-                    // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
-                    //         msToPlayFrame,
-                    //         msSinceStart
+                    // char linebuf[123];
+                    // sprintf(linebuf, "frame->linesize[0]: %i outFrame->linesize[0]: %i \n",
+                    //         frame->linesize[0],
+                    //         outFrame->linesize[0]
                     //         );
-                    // LogMessage(zxcv);
-
-                    // // todo: stretch or shrink this buffer
-                    // // to external clock? but tough w/ audio latency right?
-                    // double msDelayAllowed = 20;  // feels janky
-                    // // console yourself with the thought that this should only happen if
-                    // // our sound library or driver is playing audio out of sync w/ the system clock???
-                    // if (msToPlayFrame + msDelayAllowed < msSinceStart)
-                    // {
-                    //     LogMessage("skipping some audio bytes.. tempy\n");
-                    //     //continue;
-
-                    //     // todo: replace this with better
-                    //     int samples_to_skip = 10;
-                    //     additional_bytes -= samples_to_skip *
-                    //         av_get_bytes_per_sample(cc->sample_fmt);
-                    // }
+                    // LogMessage(linebuf);
 
 
-                    // see notes from http://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-February/013592.html
-                    // "It depends on sample format you set in swr_alloc_set_opts().
-                    // For planar sample formats out[x] have x channel
-                    // For interleaved sample formats there is out[0] only and it have
-                    // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
-
-                    bool planar = false;
-                    switch (cc->sample_fmt) {
-                        case AV_SAMPLE_FMT_U8P:
-                        case AV_SAMPLE_FMT_S16P:
-                        case AV_SAMPLE_FMT_S32P:
-                        case AV_SAMPLE_FMT_FLTP:
-                        case AV_SAMPLE_FMT_DBLP: planar = true;
-                    }
-
-                    if (!planar || cc->channels == 1)
-                    {
-                        memcpy(outBuffer, frame->data[0], additional_bytes);
-                        outBuffer += additional_bytes;
-                        bytes_written+=additional_bytes;
-                    }
-                    else
-                    {
-                        for (int sample = 0; sample < frame->nb_samples; sample++)
-                        {
-                            for (int channel = 0; channel < cc->channels; channel++)
-                            {
-                                u8 *thisChannel = frame->data[channel];
-                                u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
-                                for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
-                                {
-                                    *outBuffer = *thisSample;
-                                    outBuffer++;
-                                    thisSample++;
-                                    bytes_written++;
-                                }
-                            }
-                        }
-                    }
-                    // note bytes_written is total this call, not just this frame
-                    // assert(bytes_written == additional_bytes); // only true on first loop
+                    sws_scale(
+                        sws,
+                        (u8**)frame->data,
+                        frame->linesize,
+                        0,
+                        frame->height,
+                        outFrame->data,
+                        outFrame->linesize);
 
 
+                    // as far as i can tell, these need to be freed before leaving
+                    // AND they need to be unref'd before every use below
+                    av_free_packet(&packet);
+                    av_frame_free(&frame);
 
-                    // now try to guess when we're done based on the size of the last frame
-                    if (bytes_written+additional_bytes > requestedBytes)
-                    {
-                        *outPTS = av_frame_get_best_effort_timestamp(frame);
+                    // for now try only returning when frame_finished,
+                    // (before it was every avcodec_decode_video2
+                    // even if we didn't get a compelte frame)
+                    return true;
 
-                        // av_free_packet(&readingPacket);
-                        // av_free_packet(&decodingPacket);
-                        av_free_packet(&readingPacket);
-                        av_frame_free(&frame);
-                        return bytes_written;
-                    }
-
-                    // // just one frame;
-                    // return bytes_written;
-                }
-                else
-                {
-                    decodingPacket.size = 0;
-                    decodingPacket.data = nullptr;
                 }
 
-                // grab pts from frame before unref, in case we exit via end of function
-                *outPTS = av_frame_get_best_effort_timestamp(frame);
 
-                av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
-
-                // don't this right, because we may be pulling a second frame from it?
-                // av_packet_unref(&decodingPacket);
             }
-
-            // don't need because it's just a shallow copy of readingP??
-            // av_free_packet(&decodingPacket);
-            // av_packet_unref(&decodingPacket); // crash?? need to reuse over multi frames
+            // call these before reuse in avcodec_decode_video2 or av_read_frame
+            av_packet_unref(&packet);
+            av_frame_unref(frame);
         }
 
-        next_frame:
-
-        av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
-    }
-
-    // Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
-    // is set, there can be buffered up frames that need to be flushed, so we'll do that
-    if (cc->codec->capabilities & CODEC_CAP_DELAY)
-    {
-        av_init_packet(&readingPacket);
-        // Decode all the remaining frames in the buffer, until the end is reached
-        int gotFrame = 0;
-        while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
-        {
-            // todo: need to actually use these last frames of decoded audio
-            // todo: just replace this whole function with send_packet/receive_frame api?
-        }
-    }
-
-    av_free_packet(&readingPacket);
-    av_frame_free(&frame);
-    return bytes_written; // ever get here? yes, at the end of a file
-}
-
-bool GetNextVideoFrame(
-    AVFormatContext *fc,
-    AVCodecContext *cc,
-    SwsContext *sws_context,
-    int streamIndex,
-    AVFrame *outFrame,
-    double msOfDesiredFrame,
-    double msAllowableAudioLead,
-    bool skip_if_behind_audio,
-    i64 *outPTS,
-    int *frames_skipped)
-{
-
-    if (!fc || !cc)
-    {
-        *outPTS = 0;
-        *frames_skipped = 0;
         return false;
     }
 
 
-    AVPacket packet;
-
-    AVFrame *frame = av_frame_alloc();  // just metadata
-
-    if (!frame) { LogError("ffmpeg: Couldn't alloc frame."); return false; }
-
-                // char temp2[123];
-                // sprintf(temp2, "time_base %i / %i\n",
-                //         fc->streams[streamIndex]->time_base.num,
-                //         fc->streams[streamIndex]->time_base.den
-                //         );
-                // LogMessage(temp2);
 
 
-    // i64 frame_want = nearestI64(msSinceStart /1000.0 * 30.0);
-    //     char frambuf2[123];
-    //     sprintf(frambuf2, "want: %lli \n", frame_want+1);
-    //     LogMessage(frambuf2);
-    // bool displayedSkipMsg = false;
-
-    // int frames_skipped = 0;
-
-    while(av_read_frame(fc, &packet) >= 0)
-    {
-        if (packet.stream_index == streamIndex)
-        {
-            int frame_finished;
-            avcodec_decode_video2(cc, frame, &frame_finished, &packet);
-
-            if (frame_finished)
-            {
-
-                // todo: is variable frame rate possible? (eg some frames shown twice?)
-                // todo: is it possible to get these not in pts order? (doesn't seem like it)
-
-                // char temp[123];
-                // sprintf(temp, "frame->pts %lli\n", inFrame->pts);
-                // LogMessage(temp);
-
-                double msToPlayThisFrame = 1000.0 *
-                    av_frame_get_best_effort_timestamp(frame) * //frame->pts *
-                    fc->streams[streamIndex]->time_base.num /
-                    fc->streams[streamIndex]->time_base.den;
 
 
-                // char zxcv[123];
-                // sprintf(zxcv, "msToPlayVideoFrame: %.1f msSinceStart: %.1f msAllowed: %.1f\n",
-                //         msToPlayFrame,
-                //         msSinceStart,
-                //         msAudioLatencyEstimate + msDelayAllowed
-                //         );
-                // LogMessage(zxcv);
+};
 
 
-                if (msToPlayThisFrame < msOfDesiredFrame - msAllowableAudioLead
-                    && skip_if_behind_audio)
-                {
-                    // LogMessage("skipped a frame\n");
-                    *frames_skipped++;
-
-                    // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
-
-                    // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
-                    // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
-                    //     char frambuf[123];
-                    //     sprintf(frambuf, "%lli ", frame_count+1);
-                    //     LogMessage(frambuf);
-
-                    // seems like we'd want this here right?
-                    av_packet_unref(&packet);
-                    av_frame_unref(frame);
-
-                    continue;
-                }
-                // if (frames_skipped > 0) {
-                //     char skipbuf[256];
-                //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
-                //     LogMessage(skipbuf);
-                // }
-
-
-                *outPTS = av_frame_get_best_effort_timestamp(frame);
-
-
-                // char linebuf[123];
-                // sprintf(linebuf, "frame->linesize[0]: %i outFrame->linesize[0]: %i \n",
-                //         frame->linesize[0],
-                //         outFrame->linesize[0]
-                //         );
-                // LogMessage(linebuf);
-
-
-                sws_scale(
-                    sws_context,
-                    (u8**)frame->data,
-                    frame->linesize,
-                    0,
-                    frame->height,
-                    outFrame->data,
-                    outFrame->linesize);
-
-
-                // as far as i can tell, these need to be freed before leaving
-                // AND they need to be unref'd before every use below
-                av_free_packet(&packet);
-                av_frame_free(&frame);
-
-                // for now try only returning when frame_finished,
-                // (before it was every avcodec_decode_video2
-                // even if we didn't get a compelte frame)
-                return true;
-
-            }
-
-
-        }
-        // call these before reuse in avcodec_decode_video2 or av_read_frame
-        av_packet_unref(&packet);
-        av_frame_unref(frame);
-    }
-
-    return false;
-}
 
 
 
@@ -851,12 +858,12 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
     // step through video frames...
     int frames_skipped;
     i64 pts;
-    GetNextVideoFrame(
-        source->vfc,
-        source->video.codecContext,
-        source->sws_context,
-        source->video.index,
-        source->frame_output,
+    source->GetNextVideoFrame(
+        // source->vfc,
+        // source->video.codecContext,
+        // source->sws_context,
+        // source->video.index,
+        // source->frame_output,
         seconds * 1000.0,// - msAudioLatencyEstimate,
         0,
         true,
@@ -869,10 +876,10 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
     ffmpeg_sound_buffer dummyBufferJunkData;
     dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
     dummyBufferJunkData.size_in_bytes = 1024 * 10;
-    int bytes_queued_up = GetNextAudioFrame(
-        source->afc,
-        source->audio.codecContext,
-        source->audio.index,
+    int bytes_queued_up = source->GetNextAudioFrame(
+        // source->afc,
+        // source->audio.codecContext,
+        // source->audio.index,
         dummyBufferJunkData,
         1024,
         seconds * 1000.0,

@@ -308,10 +308,7 @@ struct GhosterWindow
 
                     // ideally a little bite of sound, every frame
                     // todo: better way to track all the pts, both a/v and seeking etc?
-                    int bytes_queued_up = GetNextAudioFrame(
-                        rolling_movie.reel.afc,
-                        rolling_movie.reel.audio.codecContext,
-                        rolling_movie.reel.audio.index,
+                    int bytes_queued_up = rolling_movie.reel.GetNextAudioFrame(
                         ffmpeg_to_sdl_buffer,
                         wanted_bytes,
                         -1,
@@ -424,12 +421,7 @@ struct GhosterWindow
                 )
                 {
                     int frames_skipped = 0;
-                    GetNextVideoFrame(
-                        rolling_movie.reel.vfc,
-                        rolling_movie.reel.video.codecContext,
-                        rolling_movie.reel.sws_context,
-                        rolling_movie.reel.video.index,
-                        rolling_movie.reel.frame_output,
+                    rolling_movie.reel.GetNextVideoFrame(
                         aud_seconds * 1000.0,  // rolling_movie.audio_stopwatch.MsElapsed(), // - sdl_stuff.estimated_audio_latency_ms,
                         allowableAudioLead,
                         rolling_movie.reel.IsAudioAvailable(),
