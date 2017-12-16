@@ -44,6 +44,7 @@ struct decoded_frames
 };
 
 
+// basically a movie source with a time component
 struct RollingMovie
 {
 
@@ -63,8 +64,6 @@ struct RollingMovie
 
     bool is_paused = false;  // needed here or.. hmm
     bool was_paused = false;
-
-    double targetMsPerFrame;
 };
 
 
@@ -81,6 +80,8 @@ struct AppState {
 
     char *exe_directory;
 
+
+    double targetMsPerFrame;
 };
 
 
@@ -133,7 +134,6 @@ double secondsFromAudioPTS(RollingMovie movie)
 
 
 
-bool SwapInNewReel(ffmpeg_source *movie, RollingMovie *outMovie);
 
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio);
 
@@ -151,6 +151,7 @@ struct GhosterWindow
     SDLStuff sdl_stuff;
 
     RollingMovie rolling_movie;
+
     ffmpeg_source next_reel;
 
     double msLastFrame; // todo: replace this with app timer? make timer usage more obvious
@@ -208,22 +209,6 @@ struct GhosterWindow
 
 
 
-    // bool clientPointIsOnProgressBar(int x, int y)
-    // {
-    //     return y >= system.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-    //            y <= system.winHEI-PROGRESS_BAR_B;
-    // }
-
-    // void appSetProgressBar(int clientX, int clientY)
-    // {
-    //     if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
-    //     {
-    //         double prop = (double)clientX / (double)system.winWID;
-
-    //         message.setSeek = true;
-    //         message.seekProportion = prop;
-    //     }
-    // }
 
     void setVolume(double volume)
     {
@@ -233,49 +218,6 @@ struct GhosterWindow
     }
 
 
-    // void EmptyMsgQueue()
-    // {
-    //     ClearScrollingDisplay(debug_overlay.text.memory);
-    // }
-    // void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
-    // {
-    //     char buf[123];
-    //     sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
-
-    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    // }
-    // void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
-    // {
-    //     char buf[123];
-    //     sprintf(buf, "%s: %f\n", msg, val);
-
-    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    // }
-    // void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
-    // {
-    //     char buf[123];
-    //     sprintf(buf, "%s: %i\n", msg, val);
-
-    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    // }
-    // void QueueNewMsg(char *msg, u32 col = 0xff888888)
-    // {
-    //     AddToScrollingDisplay(msg, debug_overlay.text.memory);
-    // }
-
-    // void QueueNewSplash(char *msg, u32 col = 0xff888888)
-    // {
-    //     TransmogrifyTextInto(splash_overlay.text.memory, msg); // todo: check length somehow hmm...
-
-    //     splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
-    //     // message.splashBackgroundCol.hex = col;
-
-    // }
-    // void ClearCurrentSplash()
-    // {
-    //     QueueNewSplash("", 0x0);  // no message
-    //     splash_overlay.msLeftOfDisplay = -1;
-    // }
 
 
     void LoadNewMovie()
@@ -284,12 +226,22 @@ struct GhosterWindow
 
         // ClearCurrentSplash();
 
-        if (!SwapInNewReel(&next_reel, &rolling_movie))
+
+        // swap reels
+        rolling_movie.reel.TransferFromReel(&next_reel);
+
+
+        // SDL, for sound atm
+        if (rolling_movie.reel.audio.codecContext)
         {
-            // assert(false);
-            MessageBox(0,"Error in setup for new movie.\n",0,0);
-            // QueueNewMsg("invalid file", 0x7676eeff);
+            SetupSDLSoundFor(rolling_movie.reel.audio.codecContext, &sdl_stuff, rolling_movie.reel.fps);
+            SetupSoundBuffer(rolling_movie.reel.audio.codecContext, &ffmpeg_to_sdl_buffer);
+            SetupSoundBuffer(rolling_movie.reel.audio.codecContext, &volume_adjusted_buffer);
         }
+
+
+
+        state.targetMsPerFrame = 1000.0 / rolling_movie.reel.fps;
 
         // if (system.fullscreen)
         // {
@@ -304,10 +256,11 @@ struct GhosterWindow
         }
 
 
-        if (message.startAtSeconds != 0)
-        {
-            ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
-        }
+        rolling_movie.elapsed = message.startAtSeconds;
+
+        // get first frame even if startAt is 0 because we could be paused
+        ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
+
 
         state.bufferingOrLoading = false;
         appPlay(false);
@@ -318,12 +271,6 @@ struct GhosterWindow
     }
 
 
-    // void UpdateWindowSize(int wid, int hei)
-    // {
-    //     system.winWID = wid;
-    //     system.winHEI = hei;
-    //     // message.resizeWindowBuffers = true;
-    // }
 
     void Init(char *exedir)
     {
@@ -336,20 +283,7 @@ struct GhosterWindow
         state.exe_directory = exedir;
 
 
-        rolling_movie.targetMsPerFrame = 30; // for before video loads
-
-        // debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
-        // splash_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
-
-        // debug_overlay.bgAlpha = 125;
-        // splash_overlay.bgAlpha = 0;
-
-        // todo: move this to ghoster app
-        // space we can re-use for title strings
-        // global_title_buffer = (char*)malloc(TITLE_BUFFER_SIZE); //remember this includes space for \0
-
-        // maybe alloc ghoster app all at once? is this really the only mem we need for it?
-        // rolling_movie.cached_url = (char*)malloc(URL_BUFFER_SIZE);
+        state.targetMsPerFrame = 30; // for before video loads
     }
 
 
@@ -357,43 +291,9 @@ struct GhosterWindow
     void Update()
     {
 
-        // needed when using trackpopupmenu for our context menu
-        // if (system.contextMenuOpen &&
-        //     state.menuCloseTimer.started &&
-        //     state.menuCloseTimer.MsSinceStart() > 300)
-        // {
-        //     system.contextMenuOpen = false;
-        // }
-
-
         // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
         double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
         msLastFrame = state.app_timer.MsSinceStart();
-
-
-
-
-        // EmptyMsgQueue();
-        // QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
-        // QueueNewMsg(system.mDownPoint, "system.mDownPoint");
-        // QueueNewMsg(system.mDown, "system.mDown");
-        // // QueueNewMsg(system.ctrlDown, "system.ctrlDown");
-        // QueueNewMsg(system.clickingOnProgressBar, "system.clickingOnProgressBar");
-        // QueueNewMsg(system.mouseHasMovedSinceDownL, "system.mouseHasMovedSinceDownL");
-        // QueueNewMsg(system.msOfLastMouseMove, "system.msOfLastMouseMove");
-        // QueueNewMsg(state.app_timer.MsSinceStart(), "state.app_timer.MsSinceStart()");
-        // QueueNewMsg(" ");
-        // // for (int i = 0; i < alreadyPlayedCount; i++)
-        // // {
-        // //     QueueNewMsg((double)alreadyPlayedRandos[i], "alreadyPlayed");
-        // // }
-        // QueueNewMsg(global_popup_window, "global_popup_window");
-        // QueueNewMsg(global_icon_menu_window, "global_icon_menu_window");
-        // QueueNewMsg((double)selectedItem, "selectedItem");
-        // QueueNewMsg((double)subMenuSelectedItem, "subMenuSelectedItem");
-        // QueueNewMsg(global_is_submenu_shown, "global_is_submenu_shown");
-        // QueueNewMsg(message.next_mup_was_closing_menu, "message.next_mup_was_closing_menu");
-        // QueueNewMsg(" ");
 
 
 
@@ -405,36 +305,6 @@ struct GhosterWindow
             LoadNewMovie();
         }
 
-
-
-
-        // POINT mPos;   GetCursorPos(&mPos);
-        // RECT winRect; GetWindowRect(system.window, &winRect);
-        // if (!PtInRect(&winRect, mPos))
-        // {
-        //     // // OutputDebugString("mouse outside window\n");
-        //     // drawProgressBar = false;
-
-        //     // if we mouse up while not on window all our mdown etc flags will be wrong
-        //     // so we just force an "end of click" when we leave the window
-        //     system.mDown = false;
-        //     system.mouseHasMovedSinceDownL = false;
-        //     system.clickingOnProgressBar = false;
-        // }
-
-
-
-        // // awkward way to detect if mouse leaves the menu (and hide highlighting)
-        // GetWindowRect(global_icon_menu_window, &winRect);
-        // if (!PtInRect(&winRect, mPos)) {
-        //     subMenuSelectedItem = -1;
-        //     RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-        // }
-        // GetWindowRect(global_popup_window, &winRect);
-        // if (!PtInRect(&winRect, mPos)) {
-        //     selectedItem = -1;
-        //     RedrawWindow(global_popup_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-        // }
 
 
         double percent; // make into method?
@@ -570,7 +440,7 @@ struct GhosterWindow
                 double ts_video = secondsFromVideoPTS(rolling_movie);
                 double vid_seconds = ts_video;
 
-                double estimatedVidPTS = vid_seconds + rolling_movie.targetMsPerFrame/1000.0;
+                double estimatedVidPTS = vid_seconds + state.targetMsPerFrame/1000.0;
 
 
                 // better to have audio lag than lead, these based loosely on:
@@ -648,42 +518,6 @@ struct GhosterWindow
 
 
 
-        // debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, {0x00000000}, false);
-
-        // if (state.displayDebugText)
-        // {
-        //     debug_overlay.alpha = 1;
-        //     debug_overlay.msLeftOfDisplay = 1;
-        // }
-        // else
-        // {
-        //     debug_overlay.alpha = 0;
-        //     debug_overlay.msLeftOfDisplay = 0;
-        // }
-
-
-        // // splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
-        // splash_overlay.alpha = 0;
-        // if (splash_overlay.msLeftOfDisplay > 0)
-        // {
-        //     splash_overlay.msLeftOfDisplay -= temp_dt;
-        //     double maxA = 0.65; // implicit min of 0
-        //     splash_overlay.alpha = ((-cos(splash_overlay.msLeftOfDisplay*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
-        // }
-
-
-
-        // HWND destWin = system.window;
-        // if (state.wallpaperMode)
-        // {
-        //     destWin = global_wallpaper_window;
-        // }
-
-
-
-        // rendering was here
-
-
 
         // REPEAT
 
@@ -703,11 +537,11 @@ struct GhosterWindow
         // but accurately track our continuous audio timer
         // (eg if we're late one frame, go early the next?)
 
-        if (dt < rolling_movie.targetMsPerFrame)
+        if (dt < state.targetMsPerFrame)
         {
-            double msToSleep = rolling_movie.targetMsPerFrame - dt;
+            double msToSleep = state.targetMsPerFrame - dt;
             Sleep(msToSleep);
-            while (dt < rolling_movie.targetMsPerFrame)  // is this weird?
+            while (dt < state.targetMsPerFrame)  // is this weird?
             {
                 dt = state.app_timer.MsSinceLastFrame();
             }
@@ -719,8 +553,7 @@ struct GhosterWindow
             // todo: seems to happen a lot with just clicking a bunch?
             // missed fps target
             char msg[256];
-            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n",
-                    rolling_movie.targetMsPerFrame, dt);
+            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n", state.targetMsPerFrame, dt);
             OutputDebugString(msg);
         }
         state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
@@ -1096,108 +929,6 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
     return true;
 }
 
-
-// todo: peruse this for memory leaks. also: better name!
-// done and done, but maybe another pass over both
-
-// make into a moveifile / staticmovie method?
-bool SwapInNewReel(ffmpeg_source *newMovie, RollingMovie *outMovie)
-{
-
-    // swap reels
-    outMovie->reel.TransferFromReel(newMovie);
-
-
-    // temp pointer for the rest of this function
-    ffmpeg_source *movie = &outMovie->reel;
-
-
-    // // set window size on video source resolution
-    // if (movie->video.codecContext)
-    // {
-    //     outMovie->vidWID = movie->video.codecContext->width;
-    //     outMovie->vidHEI = movie->video.codecContext->height;
-    // }
-    // else
-    // {
-    //     outMovie->vidWID = 400;
-    //     outMovie->vidHEI = 400;
-    // }
-        // char hwbuf[123];
-        // sprintf(hwbuf, "wid: %i  hei: %i\n", movie->video.codecContext->width, movie->video.codecContext->height);
-        // OutputDebugString(hwbuf);
-
-    // RECT winRect;
-    // GetWindowRect(global_ghoster.system.window, &winRect);
-    // //keep top left of window in same pos for now, change to keep center in same position?
-    // MoveWindow(global_ghoster.system.window, winRect.left, winRect.top, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);  // ever non-zero opening position? launch option?
-
-    // outMovie->aspect_ratio = (double)outMovie->vidWID / (double)outMovie->vidHEI;
-
-
-
-    // MAKE NOTE OF VIDEO LENGTH
-
-    // todo: add handling for this
-    // edit: somehow we get this far even on a text file with no video or audio streams??
-    assert(movie->vfc->start_time==0);
-        // char rewq[123];
-        // sprintf(rewq, "start: %lli\n", start_time);
-        // OutputDebugString(rewq);
-
-
-    OutputDebugString("\nvideo format ctx:\n");
-    logFormatContextDuration(movie->vfc);
-    OutputDebugString("\naudio format ctx:\n");
-    logFormatContextDuration(movie->afc);
-
-    // outMovie->duration = (double)movie->vfc->duration / (double)AV_TIME_BASE;
-    outMovie->elapsed = 0;
-
-    // outMovie->audio_stopwatch.ResetCompletely();
-
-
-    // SET FPS BASED ON LOADED VIDEO
-
-
-    outMovie->targetMsPerFrame = 1000.0 / outMovie->reel.fps;
-
-
-
-
-
-
-    // SDL, for sound atm
-
-    if (movie->audio.codecContext)
-    {
-        SetupSDLSoundFor(movie->audio.codecContext, &global_ghoster.sdl_stuff, movie->fps);
-
-        SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.ffmpeg_to_sdl_buffer);
-        SetupSoundBuffer(movie->audio.codecContext, &global_ghoster.volume_adjusted_buffer);
-    }
-
-
-
-
-    // MORE FFMPEG
-
-
-
-
-    // char linbuf[123];
-    // sprintf(linbuf, "linesize: %i\n", *outMovie->frame_output->linesize);
-    // OutputDebugString(linbuf);
-
-
-
-    // get first frame in case we are paused
-    ffmpeg_hard_seek_to_timestamp(&outMovie->reel, 0, global_ghoster.sdl_stuff.estimated_audio_latency_ms);
-
-
-    return true;
-
-}
 
 
 

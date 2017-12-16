@@ -129,6 +129,31 @@ const int FFMEPG_PATH_SIZE = 1024;  // todo: what to use for this?
 
 
 
+
+
+// adapted from ffmpeg dump.c
+void logFormatContextDuration(AVFormatContext *fc)
+{
+    int methodEnum = fc->duration_estimation_method;
+    char buf[1024];
+    if (fc->duration != AV_NOPTS_VALUE) {
+        int hours, mins, secs, us;
+        int64_t duration = fc->duration + (fc->duration <= INT64_MAX - 5000 ? 5000 : 0); // ?
+        secs  = duration / AV_TIME_BASE;
+        us    = duration % AV_TIME_BASE;
+        mins  = secs / 60;
+        secs %= 60;
+        hours = mins / 60;
+        mins %= 60;
+        sprintf(buf, "DURATION:\n%02d:%02d:%02d.%02d\nmethod:%i\n", hours, mins, secs, (100 * us) / AV_TIME_BASE, methodEnum);
+    } else {
+        sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
+    }
+    LogMessage(buf);
+}
+
+
+
 // basically a static movie from ffmpeg source
 // would "MovieSource" be a better name?
 struct ffmpeg_source
@@ -217,39 +242,25 @@ struct ffmpeg_source
         assert(loaded);
 
         //fps
-        double targetFPS;
-        char fpsbuf[123];
         if (video.codecContext)
         {
             fps = ((double)video.codecContext->time_base.den /
                    (double)video.codecContext->time_base.num) /
                    (double)video.codecContext->ticks_per_frame;
-
-            sprintf(fpsbuf, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
-                video.codecContext->time_base.num,
-                video.codecContext->time_base.den,   fps,
-                video.codecContext->ticks_per_frame
-            );
         }
         else
         {
-            fps = 30;
-            sprintf(fpsbuf, "\nno video found, default to %.2f fps\n", fps);
+            fps = 30; // default if no video
         }
-        OutputDebugString(fpsbuf);
-
 
         // duration
         durationSeconds = vfc->duration / (double)AV_TIME_BASE;
         totalFrameCount = durationSeconds * fps;
 
-
         // w / h / aspect_ratio
         width = video.codecContext->width;
         height = video.codecContext->height;
         aspect_ratio = (double)width / (double)height;
-
-
     }
 
     void SetupSwsContex()
@@ -306,6 +317,31 @@ struct ffmpeg_source
         else return false;
     }
 
+    void DebugPrintInfo()
+    {
+        // todo: implement this function
+
+        OutputDebugString("\nvideo format ctx:\n");
+        logFormatContextDuration(vfc);
+        OutputDebugString("\naudio format ctx:\n");
+        logFormatContextDuration(afc);
+
+        char fpsbuf[123];
+        if (video.codecContext)
+        {
+            sprintf(fpsbuf, "\nvideo frame rate: %i / %i  (%.2f FPS)\nticks_per_frame: %i\n",
+                video.codecContext->time_base.num,
+                video.codecContext->time_base.den,   fps,
+                video.codecContext->ticks_per_frame
+            );
+        }
+        else
+        {
+            sprintf(fpsbuf, "\nno video found, fps defaulted to %.2f fps\n", fps);
+        }
+
+        // (etc)
+    }
 
     bool SetFromPaths(char *videopath, char *audiopath)
     {
@@ -857,23 +893,7 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
     if (source->audio.codecContext) av_seek_frame(source->afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
 
 
-    // todo: special if at start of file?
-
-    // todo: what if we seek right to an I-frame? i think that would still work,
-    // we'd have to pull at least 1 frame to have something to display anyway
-
-    double realTimeMs = seconds * 1000.0; //(double)seekPos / (double)AV_TIME_BASE;
-    // double msSinceAudioStart = movie->audio_stopwatch.MsElapsed();
-        // char msbuf[123];
-        // sprintf(msbuf, "msSinceAudioStart: %f\n", msSinceAudioStart);
-        // OutputDebugString(msbuf);
-
-
-    // movie->audio_stopwatch.SetMsElapsedFromSeconds(ts.seconds());
-
-
-    // step through frames for both contexts until we reach our desired timestamp
-
+    // step through video frames...
     int frames_skipped;
     i64 pts;
     GetNextVideoFrame(
@@ -889,6 +909,7 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
         &frames_skipped);
 
 
+    // step through audio frames...
     // kinda awkward
     SoundBuffer dummyBufferJunkData;
     dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
@@ -899,34 +920,9 @@ void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double
         source->audio.index,
         dummyBufferJunkData,
         1024,
-        realTimeMs,
+        seconds * 1000.0,
         &pts); //&movie->ptsOfLastAudio);
     free(dummyBufferJunkData.data);
-
-
-    // i64 streamIndex = source->video.index;
-    // i64 base_num = source->vfc->streams[streamIndex]->time_base.num;
-    // i64 base_den = source->vfc->streams[streamIndex]->time_base.den;
-    // timestamp currentTS = {movie->ptsOfLastVideo * base_num, base_den, source->fps};
-
-    double totalFrameCount = (source->vfc->duration / (double)AV_TIME_BASE) * (double)source->fps;
-    double durationSeconds = source->vfc->duration / (double)AV_TIME_BASE;
-
-        // char morebuf[123];
-        // sprintf(morebuf, "dur (s): %f * fps: %f = %f frames\n", durationSeconds, ts.framesPerSecond, totalFrameCount);
-        // OutputDebugString(morebuf);
-
-        // char morebuf2[123];
-        // sprintf(morebuf2, "dur: %lli / in base: %i\n", source->vfc->duration, AV_TIME_BASE);
-        // OutputDebugString(morebuf2);
-
-        // char ptsbuf[123];
-        // sprintf(ptsbuf, "at: %lli / want: %lli of %lli\n",
-        //         nearestI64(currentTS.frame())+1,
-        //         nearestI64(ts.frame())+1,
-        //         nearestI64(totalFrameCount));
-        // OutputDebugString(ptsbuf);
-
 }
 
 
@@ -940,30 +936,6 @@ void InitAV()
 
 
 
-
-
-
-
-// adapted from ffmpeg dump.c
-void logFormatContextDuration(AVFormatContext *fc)
-{
-    int methodEnum = fc->duration_estimation_method;
-    char buf[1024];
-    if (fc->duration != AV_NOPTS_VALUE) {
-        int hours, mins, secs, us;
-        int64_t duration = fc->duration + (fc->duration <= INT64_MAX - 5000 ? 5000 : 0); // ?
-        secs  = duration / AV_TIME_BASE;
-        us    = duration % AV_TIME_BASE;
-        mins  = secs / 60;
-        secs %= 60;
-        hours = mins / 60;
-        mins %= 60;
-        sprintf(buf, "DURATION:\n%02d:%02d:%02d.%02d\nmethod:%i\n", hours, mins, secs, (100 * us) / AV_TIME_BASE, methodEnum);
-    } else {
-        sprintf(buf, "DURATION:\nN/A\nmethod:%i\n", methodEnum);
-    }
-    LogMessage(buf);
-}
 
 
 
