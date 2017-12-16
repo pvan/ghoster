@@ -1466,7 +1466,8 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     // LOAD FILE
     if (!global_ghoster.message.load_new_file)
     {
-        global_ghoster.message.QueuePlayRandom();
+        // global_ghoster.message.QueuePlayRandom();
+        global_ghoster.message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
     }
 
 
