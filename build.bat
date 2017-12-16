@@ -58,7 +58,7 @@ xcopy /s /y /q lib\SDL2-2.0.5\lib\x64\*.dll %build_folder%
 xcopy /s /y /q lib\youtube-dl.exe %build_folder%
 
 pushd %build_folder%
-cl -nologo %CompilerFlags% %WarningFlags% ..\ghoster.cpp %LinkerFlags% user32.lib Winmm.lib ..\resource.res
+cl -nologo %CompilerFlags% %WarningFlags% ..\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\resource.res
 popd
 
 
@@ -68,5 +68,5 @@ set release_folder=ghoster
 
 IF NOT EXIST %release_folder% mkdir %release_folder%
 xcopy /s /y /q %build_folder%\*.dll %release_folder%>NUL
-xcopy /s /y /q %build_folder%\ghoster.exe %release_folder%>NUL
+xcopy /s /y /q %build_folder%\app.exe %release_folder%>NUL
 xcopy /s /y /q %build_folder%\youtube-dl.exe %release_folder%>NUL

@@ -1,65 +1,7 @@
-#include <windows.h>
-#include <stdio.h>
-#include <stdint.h> // types
-#include <assert.h>
-#include <math.h>
-
-
-// for drag drop, sys tray icon
-#include <shellapi.h>
-#pragma comment(lib, "shell32.lib")
-
-
-// for themes
-#include <Uxtheme.h>
-#include <Vsstyle.h> // parts and
-#include <Vssym32.h> // states defns
-#pragma comment(lib, "UxTheme.lib")
-
-
-#include <Windowsx.h> // SelectFont, GET_X_LPARAM
-
-
-#include "resource.h"
 
 
 
-#define uint unsigned int
 
-#define u8  uint8_t
-#define u16 uint16_t
-#define u32 uint32_t
-#define u64 uint64_t
-
-#define i8  int8_t
-#define i16 int16_t
-#define i32 int32_t
-#define i64 int64_t
-
-
-int tempW;
-int tempH;
-
-const bool DEBUG_MCLICK_MSGS = false;
-
-const bool FORCE_NON_ZERO_OPACITY = false;  // not sure if we want this or not
-
-
-HWND global_workerw;
-HWND global_wallpaper_window;
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-const char *WALLPAPER_CLASS_NAME = "ghoster wallpaper window class";
-
-HWND global_popup_window;
-HWND global_icon_menu_window;
-static int selectedItem = -1;
-static int subMenuSelectedItem = -1;
-static bool global_is_submenu_shown = false;
-
-HINSTANCE global_hInstance;
-
-
-static char *global_exe_directory;
 
 
 static HANDLE global_asyn_load_thread;
@@ -73,64 +15,6 @@ const int URL_BUFFER_SIZE = 1024;  // todo: what to use for this?
 
 
 
-UINT singleClickTimerID;
-
-// static HBITMAP gobal_bitmap_checkmark;
-
-static HBITMAP global_bitmap_w;
-static HBITMAP global_bitmap_b;
-
-static HBITMAP global_bitmap_c1;
-static HBITMAP global_bitmap_c2;
-static HBITMAP global_bitmap_c3;
-static HBITMAP global_bitmap_c4;
-
-static HBITMAP global_bitmap_p1;
-static HBITMAP global_bitmap_p2;
-static HBITMAP global_bitmap_p3;
-static HBITMAP global_bitmap_p4;
-
-static HBITMAP global_bitmap_r1;
-static HBITMAP global_bitmap_r2;
-static HBITMAP global_bitmap_r3;
-static HBITMAP global_bitmap_r4;
-
-static HBITMAP global_bitmap_y1;
-static HBITMAP global_bitmap_y2;
-static HBITMAP global_bitmap_y3;
-static HBITMAP global_bitmap_y4;
-
-
-
-#define ID_SYSTRAY 999
-#define ID_SYSTRAY_MSG WM_USER + 1
-
-static HICON global_icon;
-static HICON global_icon_w;
-static HICON global_icon_b;
-
-static HICON global_icon_c1;
-static HICON global_icon_c2;
-static HICON global_icon_c3;
-static HICON global_icon_c4;
-
-static HICON global_icon_p1;
-static HICON global_icon_p2;
-static HICON global_icon_p3;
-static HICON global_icon_p4;
-
-static HICON global_icon_r1;
-static HICON global_icon_r2;
-static HICON global_icon_r3;
-static HICON global_icon_r4;
-
-static HICON global_icon_y1;
-static HICON global_icon_y2;
-static HICON global_icon_y3;
-static HICON global_icon_y4;
-
-
-
 
 
 // progress bar position
@@ -140,28 +24,11 @@ const int PROGRESS_BAR_B = 0;
 // hide progress bar after this many ms
 const double PROGRESS_BAR_TIMEOUT = 1000;
 
-// disallow opacity greater than this when in ghost mode
-const double GHOST_MODE_MAX_OPACITY = 0.95;
-
-// feels like i want this less often
-const bool GHOST_MODE_SETS_TOPMOST = false;
-
-// how long to wait before toggling pause when single click (which could be start of double click)
-// higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
-// lower makes single click feel better (less delay when clicking to pause/unpause)
-const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 500ms by default
-
-// snap to screen edge if this close
-const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 
 // how long to leave messages on screen (including any fade time ATM)
 const double MS_TO_DISPLAY_MSG = 3000;
 
 
-
-
-void LogError(char *s);
-void LogMessage(char *s);
 
 
 
@@ -219,131 +86,32 @@ struct RollingMovie
 // todo: split into appstate and moviestate? rename RollingMovie to moviestate? rename state to app_state? or win_state?
 
 struct AppState {
-    bool appRunning = true;
-
 
     bool lock_aspect = true;
     bool repeat = true;
 
-    // these could almost all be in app system state... hmm..
-    bool clickThrough = false;
-    bool topMost = false;
-    bool enableSnapping = true;
-    bool wallpaperMode = false;
-
-    double opacity = 1.0;
-    double last_opacity;
-    bool had_to_cache_opacity = false;
-
     double volume = 1.0;
-
-
-    Timer app_timer;
 
     bool bufferingOrLoading = true;
 
-    bool displayDebugText = false;
+    Timer app_timer;
+
+    char *exe_directory;
 
 };
 
 
-// basically anything related to the OS in some way
-struct AppSystemState
-{
-
-    HWND window;
-    int winWID;
-    int winHEI;
-
-
-    HICON icon; // randomly assigned on launch, or set in menu todo: should be in app state probably
-
-
-
-    bool fullscreen = false;  // could be in app state maybe
-    WINDOWPLACEMENT last_win_pos;
-
-
-    bool contextMenuOpen;
-
-
-    // mouse state
-    POINT mDownPoint;
-
-    bool mDown;
-    bool clickingOnProgressBar = false;
-
-    bool mouseHasMovedSinceDownL = false;
-    double msOfLastMouseMove = -1000;
-};
-
-
-
-
-
-
-struct AppTextBuffer
-{
-    char *memory = 0;
-    int space;
-
-    void Allocate(int len)
-    {
-        space = len;
-        if (memory) free(memory);
-        memory = (char*)malloc(space * sizeof(char));
-        assert(memory); //todo for now
-    }
-
-    // void Set(char *msg)
-    // {
-    //     int newLen = strlen(msg);
-    //     assert(newLen < space);
-    //     memcpy(memory, msg, newLen);
-    // }
-};
-
-struct MessageOverlay
-{
-    AppTextBuffer text;
-    float alpha;
-
-    int bgAlpha = 0;
-
-    double msLeftOfDisplay = 0;
-
-    int maxLines = 1;
-
-
-    void Allocate(int wid, int hei, int textLength)
-    {
-        text.Allocate(textLength);
-    }
-
-
-};
 
 struct AppMessages
 {
-    // not sure why we're splitting these off from state
-    // maybe just to keep things somewhat organized
 
-    // bool resizeWindowBuffers = false;
-
-    bool next_mup_was_double_click; // a message of sorts passed from double click (a mdown event) to mouse up
-    bool next_mup_was_closing_menu;
-
-    bool savestate_is_saved = false;
-    bool toggledPauseOnLastSingleClick = false;
 
     bool setSeek = false;
     double seekProportion = 0;
 
     bool loadNewMovie = false;
-    // MovieReel newMovieToRun;
 
     int startAtSeconds = 0;
-
 
 
     char file_to_load[1024]; // todo what max
@@ -364,12 +132,6 @@ struct AppMessages
 };
 
 
-
-#pragma comment(lib, "gdi32.lib")
-
-#include "renderer.cpp"
-
-#include "text.cpp"
 
 
 
@@ -502,58 +264,11 @@ void HardSeekToFrameForTimestamp(RollingMovie *movie, timestamp ts, double msAud
 }
 
 
-// todo: what to do with these?
-textured_quad movie_screen;
-textured_quad progress_gray;
-textured_quad progress_red;
+// // todo: what to do with these?
+// textured_quad movie_screen;
+// textured_quad progress_gray;
+// textured_quad progress_red;
 
-
-const int MAX_MSGS = 20;
-int msgCount = 0;
-void ClearScrollingDisplay(char *allMsgs)
-{
-    msgCount = 0;
-    allMsgs[0] = '\0';
-}
-void AddToScrollingDisplay(char *newMsg, char *allMsgs)
-{
-    char *temp = (char*)malloc(1024*5); // todo same as init
-
-    msgCount++;
-
-    if (msgCount > MAX_MSGS)
-    {
-        char *secondLine = allMsgs;
-        while (1)
-        {
-            assert(*secondLine); // should be at least one \n if we reached max msgs
-            if (*secondLine == '\n')
-            {
-                secondLine++;
-                break;
-            }
-
-            secondLine++;
-        }
-
-        strcpy(temp, secondLine);
-        strcpy(allMsgs, temp);
-    }
-
-    int len = strlen(allMsgs);
-    char *end = allMsgs; while(*end) end++;
-    if (end != allMsgs) // not empty
-    {
-        if (*(end-1) == '\n') end--; // use existing \n if there
-        else *end = '\n'; // convert old null terminator to newline
-        end++; // start copying after that
-    }
-    // memcpy(end, newMsg, strlen(newMsg));
-    strcpy(end, newMsg);
-
-    free(temp);
-
-}
 
 
 bool SwapInNewReel(MovieReel *movie, RollingMovie *outMovie);
@@ -561,14 +276,12 @@ bool SwapInNewReel(MovieReel *movie, RollingMovie *outMovie);
 void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio);
 
 
-void setWallpaperMode(HWND, bool);
-void setFullscreen(bool);
 
 struct GhosterWindow
 {
 
     AppState state;
-    AppSystemState system;
+    // AppSystemState system;
 
     SoundBuffer ffmpeg_to_sdl_buffer;
     SoundBuffer volume_adjusted_buffer;
@@ -585,15 +298,15 @@ struct GhosterWindow
     AppMessages message;
 
 
-    MessageOverlay debug_overlay;
-    MessageOverlay splash_overlay;
+    // MessageOverlay debug_overlay;
+    // MessageOverlay splash_overlay;
 
 
     void appPlay(bool userRequest = true)
     {
         if (userRequest)
         {
-            QueueNewSplash("Play", 0x7cec7aff);
+            // QueueNewSplash("Play", 0x7cec7aff);
         }
         // rolling_movie.audio_stopwatch.Start();
         if (rolling_movie.reel.IsAudioAvailable())
@@ -605,7 +318,7 @@ struct GhosterWindow
     {
         if (userRequest)
         {
-            QueueNewSplash("Pause", 0xfa8686ff);
+            // QueueNewSplash("Pause", 0xfa8686ff);
         }
         // rolling_movie.audio_stopwatch.Pause();
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
@@ -633,22 +346,22 @@ struct GhosterWindow
 
 
 
-    bool clientPointIsOnProgressBar(int x, int y)
-    {
-        return y >= system.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
-               y <= system.winHEI-PROGRESS_BAR_B;
-    }
+    // bool clientPointIsOnProgressBar(int x, int y)
+    // {
+    //     return y >= system.winHEI-(PROGRESS_BAR_H+PROGRESS_BAR_B) &&
+    //            y <= system.winHEI-PROGRESS_BAR_B;
+    // }
 
-    void appSetProgressBar(int clientX, int clientY)
-    {
-        if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
-        {
-            double prop = (double)clientX / (double)system.winWID;
+    // void appSetProgressBar(int clientX, int clientY)
+    // {
+    //     if (clientPointIsOnProgressBar(clientX, clientY)) // check here or outside?
+    //     {
+    //         double prop = (double)clientX / (double)system.winWID;
 
-            message.setSeek = true;
-            message.seekProportion = prop;
-        }
-    }
+    //         message.setSeek = true;
+    //         message.seekProportion = prop;
+    //     }
+    // }
 
     void setVolume(double volume)
     {
@@ -658,74 +371,74 @@ struct GhosterWindow
     }
 
 
-    void EmptyMsgQueue()
-    {
-        ClearScrollingDisplay(debug_overlay.text.memory);
-    }
-    void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
-    {
-        char buf[123];
-        sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
+    // void EmptyMsgQueue()
+    // {
+    //     ClearScrollingDisplay(debug_overlay.text.memory);
+    // }
+    // void QueueNewMsg(POINT val, char *msg, u32 col = 0xff888888)
+    // {
+    //     char buf[123];
+    //     sprintf(buf, "%s: %i, %i\n", msg, val.x, val.y);
 
-        AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    }
-    void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
-    {
-        char buf[123];
-        sprintf(buf, "%s: %f\n", msg, val);
+    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
+    // }
+    // void QueueNewMsg(double val, char *msg, u32 col = 0xff888888)
+    // {
+    //     char buf[123];
+    //     sprintf(buf, "%s: %f\n", msg, val);
 
-        AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    }
-    void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
-    {
-        char buf[123];
-        sprintf(buf, "%s: %i\n", msg, val);
+    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
+    // }
+    // void QueueNewMsg(bool val, char *msg, u32 col = 0xff888888)
+    // {
+    //     char buf[123];
+    //     sprintf(buf, "%s: %i\n", msg, val);
 
-        AddToScrollingDisplay(buf, debug_overlay.text.memory);
-    }
-    void QueueNewMsg(char *msg, u32 col = 0xff888888)
-    {
-        AddToScrollingDisplay(msg, debug_overlay.text.memory);
-    }
+    //     AddToScrollingDisplay(buf, debug_overlay.text.memory);
+    // }
+    // void QueueNewMsg(char *msg, u32 col = 0xff888888)
+    // {
+    //     AddToScrollingDisplay(msg, debug_overlay.text.memory);
+    // }
 
-    void QueueNewSplash(char *msg, u32 col = 0xff888888)
-    {
-        TransmogrifyTextInto(splash_overlay.text.memory, msg); // todo: check length somehow hmm...
+    // void QueueNewSplash(char *msg, u32 col = 0xff888888)
+    // {
+    //     TransmogrifyTextInto(splash_overlay.text.memory, msg); // todo: check length somehow hmm...
 
-        splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
-        // message.splashBackgroundCol.hex = col;
+    //     splash_overlay.msLeftOfDisplay = MS_TO_DISPLAY_MSG;
+    //     // message.splashBackgroundCol.hex = col;
 
-    }
-    void ClearCurrentSplash()
-    {
-        QueueNewSplash("", 0x0);  // no message
-        splash_overlay.msLeftOfDisplay = -1;
-    }
+    // }
+    // void ClearCurrentSplash()
+    // {
+    //     QueueNewSplash("", 0x0);  // no message
+    //     splash_overlay.msLeftOfDisplay = -1;
+    // }
 
 
     void LoadNewMovie()
     {
         OutputDebugString("Ready to load new movie...\n");
 
-        ClearCurrentSplash();
+        // ClearCurrentSplash();
 
         if (!SwapInNewReel(&next_reel, &rolling_movie))
         {
             // assert(false);
-            // MsgBox("Error in setup for new movie.\n");
-            QueueNewMsg("invalid file", 0x7676eeff);
+            MessageBox(0,"Error in setup for new movie.\n",0,0);
+            // QueueNewMsg("invalid file", 0x7676eeff);
         }
 
-        if (system.fullscreen)
+        // if (system.fullscreen)
+        // {
+        //     // kind of hacky solution
+        //     setFullscreen(false);
+        //     SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
+        //     setFullscreen(true);  // we need to set this anyway in the case that we launch fullscreen
+        // }
+        // else
         {
-            // kind of hacky solution
-            setFullscreen(false);
-            SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
-            setFullscreen(true);  // we need to set this anyway in the case that we launch fullscreen
-        }
-        else
-        {
-            SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
+            // SetWindowToAspectRatio(system.window, rolling_movie.aspect_ratio);
         }
 
 
@@ -739,31 +452,37 @@ struct GhosterWindow
         state.bufferingOrLoading = false;
         appPlay(false);
 
-        // need to recreate wallpaper window basically
-        if (state.wallpaperMode)
-            setWallpaperMode(system.window, state.wallpaperMode);
+        // // need to recreate wallpaper window basically
+        // if (state.wallpaperMode)
+        //     setWallpaperMode(system.window, state.wallpaperMode);
     }
 
 
-    void UpdateWindowSize(int wid, int hei)
-    {
-        system.winWID = wid;
-        system.winHEI = hei;
-        // message.resizeWindowBuffers = true;
-    }
+    // void UpdateWindowSize(int wid, int hei)
+    // {
+    //     system.winWID = wid;
+    //     system.winHEI = hei;
+    //     // message.resizeWindowBuffers = true;
+    // }
 
-    void Init()
+    void Init(char *exedir)
     {
+
+        InitAV();  // basically just registers all codecs..
 
         state.app_timer.Start();  // now started in ghoster.init
 
 
+        state.exe_directory = exedir;
 
-        debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
-        splash_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
 
-        debug_overlay.bgAlpha = 125;
-        splash_overlay.bgAlpha = 0;
+        rolling_movie.targetMsPerFrame = 30; // for before video loads
+
+        // debug_overlay.Allocate(system.winWID, system.winHEI, 1024*5); // todo: add length checks during usage
+        // splash_overlay.Allocate(system.winWID, system.winHEI, 1024*5);
+
+        // debug_overlay.bgAlpha = 125;
+        // splash_overlay.bgAlpha = 0;
 
         // todo: move this to ghoster app
         // space we can re-use for title strings
@@ -794,58 +513,30 @@ struct GhosterWindow
 
 
 
-        EmptyMsgQueue();
-        QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
-        QueueNewMsg(system.mDownPoint, "system.mDownPoint");
-        QueueNewMsg(system.mDown, "system.mDown");
-        // QueueNewMsg(system.ctrlDown, "system.ctrlDown");
-        QueueNewMsg(system.clickingOnProgressBar, "system.clickingOnProgressBar");
-        QueueNewMsg(system.mouseHasMovedSinceDownL, "system.mouseHasMovedSinceDownL");
-        QueueNewMsg(system.msOfLastMouseMove, "system.msOfLastMouseMove");
-        QueueNewMsg(state.app_timer.MsSinceStart(), "state.app_timer.MsSinceStart()");
-        QueueNewMsg(" ");
-        // for (int i = 0; i < alreadyPlayedCount; i++)
-        // {
-        //     QueueNewMsg((double)alreadyPlayedRandos[i], "alreadyPlayed");
-        // }
-        QueueNewMsg(global_popup_window, "global_popup_window");
-        QueueNewMsg(global_icon_menu_window, "global_icon_menu_window");
-        QueueNewMsg((double)selectedItem, "selectedItem");
-        QueueNewMsg((double)subMenuSelectedItem, "subMenuSelectedItem");
-        QueueNewMsg(global_is_submenu_shown, "global_is_submenu_shown");
-        QueueNewMsg(message.next_mup_was_closing_menu, "message.next_mup_was_closing_menu");
-        QueueNewMsg(" ");
-        // QueueNewMsg(message.next_mup_was_double_click, "message.next_mup_was_double_click");
-        // QueueNewMsg(message.resizeWindowBuffers, "message.resizeWindowBuffers");
-        // QueueNewMsg(message.savestate_is_saved, "message.savestate_is_saved");
-        // QueueNewMsg(message.toggledPauseOnLastSingleClick, "message.toggledPauseOnLastSingleClick");
-        // QueueNewMsg(message.setSeek, "message.setSeek");
-        // QueueNewMsg(message.seekProportion, "message.seekProportion");
-        // QueueNewMsg(message.loadNewMovie, "message.loadNewMovie");
-        // QueueNewMsg((double)message.startAtSeconds, "message.startAtSeconds");
-        // QueueNewMsg(message.file_to_load, "message.file_to_load");
-        // QueueNewMsg(message.load_new_file, "message.load_new_file");
+        // EmptyMsgQueue();
+        // QueueNewMsg(system.contextMenuOpen, "system.contextMenuOpen");
+        // QueueNewMsg(system.mDownPoint, "system.mDownPoint");
+        // QueueNewMsg(system.mDown, "system.mDown");
+        // // QueueNewMsg(system.ctrlDown, "system.ctrlDown");
+        // QueueNewMsg(system.clickingOnProgressBar, "system.clickingOnProgressBar");
+        // QueueNewMsg(system.mouseHasMovedSinceDownL, "system.mouseHasMovedSinceDownL");
+        // QueueNewMsg(system.msOfLastMouseMove, "system.msOfLastMouseMove");
+        // QueueNewMsg(state.app_timer.MsSinceStart(), "state.app_timer.MsSinceStart()");
         // QueueNewMsg(" ");
-        // QueueNewMsg(popupMouseDown, "popupMouseDown");
-        // QueueNewMsg(*popupSliderCapture, "*popupSliderCapture");
+        // // for (int i = 0; i < alreadyPlayedCount; i++)
+        // // {
+        // //     QueueNewMsg((double)alreadyPlayedRandos[i], "alreadyPlayed");
+        // // }
+        // QueueNewMsg(global_popup_window, "global_popup_window");
+        // QueueNewMsg(global_icon_menu_window, "global_icon_menu_window");
+        // QueueNewMsg((double)selectedItem, "selectedItem");
+        // QueueNewMsg((double)subMenuSelectedItem, "subMenuSelectedItem");
+        // QueueNewMsg(global_is_submenu_shown, "global_is_submenu_shown");
+        // QueueNewMsg(message.next_mup_was_closing_menu, "message.next_mup_was_closing_menu");
         // QueueNewMsg(" ");
 
 
 
-
-        // if (message.resizeWindowBuffers)
-        //     // ||
-        //     // system.winWID != debug_overlay.bitmap.width ||
-        //     // system.winHEI != debug_overlay.bitmap.height
-        //     // )
-        // {
-        //     message.resizeWindowBuffers = false;
-
-        //     r_resize(system.winWID, system.winHEI);
-
-        //     // debug_overlay.Resize(system.winWID, system.winHEI);
-        //     // splash_overlay.Resize(system.winWID, system.winHEI);
-        // }
 
 
         if (message.loadNewMovie)
@@ -857,33 +548,33 @@ struct GhosterWindow
 
 
 
-        POINT mPos;   GetCursorPos(&mPos);
-        RECT winRect; GetWindowRect(system.window, &winRect);
-        if (!PtInRect(&winRect, mPos))
-        {
-            // // OutputDebugString("mouse outside window\n");
-            // drawProgressBar = false;
+        // POINT mPos;   GetCursorPos(&mPos);
+        // RECT winRect; GetWindowRect(system.window, &winRect);
+        // if (!PtInRect(&winRect, mPos))
+        // {
+        //     // // OutputDebugString("mouse outside window\n");
+        //     // drawProgressBar = false;
 
-            // if we mouse up while not on window all our mdown etc flags will be wrong
-            // so we just force an "end of click" when we leave the window
-            system.mDown = false;
-            system.mouseHasMovedSinceDownL = false;
-            system.clickingOnProgressBar = false;
-        }
+        //     // if we mouse up while not on window all our mdown etc flags will be wrong
+        //     // so we just force an "end of click" when we leave the window
+        //     system.mDown = false;
+        //     system.mouseHasMovedSinceDownL = false;
+        //     system.clickingOnProgressBar = false;
+        // }
 
 
 
-        // awkward way to detect if mouse leaves the menu (and hide highlighting)
-        GetWindowRect(global_icon_menu_window, &winRect);
-        if (!PtInRect(&winRect, mPos)) {
-            subMenuSelectedItem = -1;
-            RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-        }
-        GetWindowRect(global_popup_window, &winRect);
-        if (!PtInRect(&winRect, mPos)) {
-            selectedItem = -1;
-            RedrawWindow(global_popup_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
-        }
+        // // awkward way to detect if mouse leaves the menu (and hide highlighting)
+        // GetWindowRect(global_icon_menu_window, &winRect);
+        // if (!PtInRect(&winRect, mPos)) {
+        //     subMenuSelectedItem = -1;
+        //     RedrawWindow(global_icon_menu_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+        // }
+        // GetWindowRect(global_popup_window, &winRect);
+        // if (!PtInRect(&winRect, mPos)) {
+        //     selectedItem = -1;
+        //     RedrawWindow(global_popup_window, 0, 0, RDW_INVALIDATE | RDW_UPDATENOW);
+        // }
 
 
         double percent; // make into method?
@@ -1107,34 +798,34 @@ struct GhosterWindow
 
         // debug_overlay.bitmap.SetFromText(system.window, debug_overlay.text.memory, 20, {0xffffffff}, {0x00000000}, false);
 
-        if (state.displayDebugText)
-        {
-            debug_overlay.alpha = 1;
-            debug_overlay.msLeftOfDisplay = 1;
-        }
-        else
-        {
-            debug_overlay.alpha = 0;
-            debug_overlay.msLeftOfDisplay = 0;
-        }
+        // if (state.displayDebugText)
+        // {
+        //     debug_overlay.alpha = 1;
+        //     debug_overlay.msLeftOfDisplay = 1;
+        // }
+        // else
+        // {
+        //     debug_overlay.alpha = 0;
+        //     debug_overlay.msLeftOfDisplay = 0;
+        // }
 
 
-        // splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
-        splash_overlay.alpha = 0;
-        if (splash_overlay.msLeftOfDisplay > 0)
-        {
-            splash_overlay.msLeftOfDisplay -= temp_dt;
-            double maxA = 0.65; // implicit min of 0
-            splash_overlay.alpha = ((-cos(splash_overlay.msLeftOfDisplay*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
-        }
+        // // splash_overlay.bitmap.SetFromText(system.window, splash_overlay.text.memory, 36, {0xffffffff}, message.splashBackgroundCol, true);
+        // splash_overlay.alpha = 0;
+        // if (splash_overlay.msLeftOfDisplay > 0)
+        // {
+        //     splash_overlay.msLeftOfDisplay -= temp_dt;
+        //     double maxA = 0.65; // implicit min of 0
+        //     splash_overlay.alpha = ((-cos(splash_overlay.msLeftOfDisplay*M_PI / MS_TO_DISPLAY_MSG) + 1) / 2) * maxA;
+        // }
 
 
 
-        HWND destWin = system.window;
-        if (state.wallpaperMode)
-        {
-            destWin = global_wallpaper_window;
-        }
+        // HWND destWin = system.window;
+        // if (state.wallpaperMode)
+        // {
+        //     destWin = global_wallpaper_window;
+        // }
 
 
 
@@ -1192,159 +883,143 @@ struct GhosterWindow
 static GhosterWindow global_ghoster;
 
 
-// char last_splash[1024];
+// // char last_splash[1024];
 
-textured_quad splash_quad;
-textured_quad debug_quad;
+// textured_quad splash_quad;
+// textured_quad debug_quad;
 
-double last_render_time;
-int cachedW;
-int cachedH;
-void the_one_render_call_to_rule_them_all(GhosterWindow app)
-{
-    if (!app.state.appRunning) return;  // kinda smells
+// double last_render_time;
+// int cachedW;
+// int cachedH;
+// void the_one_render_call_to_rule_them_all(GhosterWindow app)
+// {
+//     if (!app.state.appRunning) return;  // kinda smells
 
-    RECT wr; GetWindowRect(app.system.window, &wr);
-    int sw = wr.right-wr.left;
-    int sh = wr.bottom-wr.top;
+//     RECT wr; GetWindowRect(app.system.window, &wr);
+//     int sw = wr.right-wr.left;
+//     int sh = wr.bottom-wr.top;
 
-    if (sw!=cachedW || sh!=cachedH)
-    {
-        cachedW = sw;
-        cachedH = sh;
-        r_resize(sw, sh);
-    }
+//     if (sw!=cachedW || sh!=cachedH)
+//     {
+//         cachedW = sw;
+//         cachedH = sh;
+//         r_resize(sw, sh);
+//     }
 
-    // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
-    double temp_dt = app.state.app_timer.MsSinceStart() - last_render_time;
-    last_render_time = app.state.app_timer.MsSinceStart();
-
-
-    // use ts audio to get track bar position
-    // app.rolling_movie.elapsed = ts_audio.seconds();
-    double percent = app.rolling_movie.elapsed/app.rolling_movie.duration;
+//     // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
+//     double temp_dt = app.state.app_timer.MsSinceStart() - last_render_time;
+//     last_render_time = app.state.app_timer.MsSinceStart();
 
 
-    bool drawProgressBar;
-    if (app.state.app_timer.MsSinceStart() - app.system.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT
-        && !app.system.clickingOnProgressBar)
-    {
-        drawProgressBar = false;
-    }
-    else
-    {
-        drawProgressBar = true;
-    }
-
-    POINT mPos;   GetCursorPos(&mPos);
-    RECT winRect; GetWindowRect(app.system.window, &winRect);
-    if (!PtInRect(&winRect, mPos))
-    {
-        // OutputDebugString("mouse outside window\n");
-        drawProgressBar = false;
-    }
+//     // use ts audio to get track bar position
+//     // app.rolling_movie.elapsed = ts_audio.seconds();
+//     double percent = app.rolling_movie.elapsed/app.rolling_movie.duration;
 
 
-    static float t = 0;
-    if (app.state.bufferingOrLoading)
-    {
-        t += temp_dt;
-        // float col = sin(t*M_PI*2 / 100);
-        // col = (col + 1) / 2; // 0-1
-        // col = 0.9*col + 0.4*(1-col); //lerp
+//     bool drawProgressBar;
+//     if (app.state.app_timer.MsSinceStart() - app.system.msOfLastMouseMove > PROGRESS_BAR_TIMEOUT
+//         && !app.system.clickingOnProgressBar)
+//     {
+//         drawProgressBar = false;
+//     }
+//     else
+//     {
+//         drawProgressBar = true;
+//     }
 
-        // e^sin(x) very interesting shape, via
-        // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
-        float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
-        float min = 1/M_E;
-        float max = M_E;
-        col = (col-min) / (max-min); // 0-1
-        col = 0.75*col + 0.2*(1-col); //lerp
-
-        r_clear(col, col, col, 1);  // r g b a
-    }
-    else
-    {
-        r_clear();
-
-        if (app.state.lock_aspect && app.system.fullscreen)
-        {
-            // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
-            // certainly seems easier to change viewport
-            // update: now we're changing the verts
-            RECT subRect = r_CalcLetterBoxRect(app.system.winWID, app.system.winHEI, app.rolling_movie.aspect_ratio);
-            float ndcL = r_PixelToNDC(subRect.left,   app.system.winWID);
-            float ndcR = r_PixelToNDC(subRect.right,  app.system.winWID);
-            float ndcT = r_PixelToNDC(subRect.top,    app.system.winHEI);
-            float ndcB = r_PixelToNDC(subRect.bottom, app.system.winHEI);
-            movie_screen.update(app.rolling_movie.vid_buffer, 960,720,  ndcL, ndcT, ndcR, ndcB);
-        }
-        else
-        {
-            movie_screen.update(app.rolling_movie.vid_buffer, 960,720);
-        }
-        movie_screen.render();
-
-        if (drawProgressBar)
-        {
-            int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
-            double ndcB = r_PixelToNDC(PROGRESS_BAR_B, app.system.winHEI);
-            double ndcH = r_PixelToNDC(progress_bar_t, app.system.winHEI);
-
-            double neg1_to_1 = percent*2.0 - 1.0;
-
-            u32 gray = 0xffaaaaaa;
-            progress_gray.update((u8*)&gray, 1,1,  neg1_to_1, ndcB, 1, ndcH);
-            progress_gray.render(0.4);
-
-            u32 red = 0xffff0000;
-            progress_red.update((u8*)&red, 1,1,  -1, ndcB, neg1_to_1, ndcH);
-            progress_red.render(0.6);
-        }
-    }
-
-    // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
-
-    // // todo: improve the args needed for these calls?
-    // r_render_msg(app.debug_overlay, 32, 0,0, app.system.winWID,app.system.winHEI, false, false);
-    // r_render_msg(app.splash_overlay, 64, app.system.winWID/2,app.system.winHEI/2, app.system.winWID,app.system.winHEI);
-
-    // if (strcmp(app.splash_overlay.text.memory, last_splash) != 0)
-    // {
-
-        debug_quad.destroy();
-        splash_quad.destroy();
-
-        debug_quad = r_create_msg(app.debug_overlay, 32, false, false);
-        splash_quad = r_create_msg(app.splash_overlay, 64);
-
-        // strcpy(last_splash, app.splash_overlay.text.memory);
-    // }
-
-    debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
-    splash_quad.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
-
-    debug_quad.render(app.debug_overlay.alpha);
-    splash_quad.render(app.splash_overlay.alpha);
-
-    r_swap();
-}
+//     POINT mPos;   GetCursorPos(&mPos);
+//     RECT winRect; GetWindowRect(app.system.window, &winRect);
+//     if (!PtInRect(&winRect, mPos))
+//     {
+//         // OutputDebugString("mouse outside window\n");
+//         drawProgressBar = false;
+//     }
 
 
-// todo: consider a LogWarning as well?
-void LogError(char *s)
-{
-    global_ghoster.QueueNewMsg(s, 0x0000ffff);
-}
-void LogMessage(char *s)
-{
-    OutputDebugString(s);
-}
-// for displaying to user
-void SplashMessage(char *s, u32 col = 0x7676eeff)
-{
-    global_ghoster.QueueNewSplash(s, col);
-}
+//     static float t = 0;
+//     if (app.state.bufferingOrLoading)
+//     {
+//         t += temp_dt;
+//         // float col = sin(t*M_PI*2 / 100);
+//         // col = (col + 1) / 2; // 0-1
+//         // col = 0.9*col + 0.4*(1-col); //lerp
+
+//         // e^sin(x) very interesting shape, via
+//         // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+//         float col = pow(M_E, sin(t*M_PI*2 / 3000));  // cycle every 3000ms
+//         float min = 1/M_E;
+//         float max = M_E;
+//         col = (col-min) / (max-min); // 0-1
+//         col = 0.75*col + 0.2*(1-col); //lerp
+
+//         r_clear(col, col, col, 1);  // r g b a
+//     }
+//     else
+//     {
+//         r_clear();
+
+//         if (app.state.lock_aspect && app.system.fullscreen)
+//         {
+//             // todo: is it better to change the vbo or the viewport? maybe doesn't matter?
+//             // certainly seems easier to change viewport
+//             // update: now we're changing the verts
+//             RECT subRect = r_CalcLetterBoxRect(app.system.winWID, app.system.winHEI, app.rolling_movie.aspect_ratio);
+//             float ndcL = r_PixelToNDC(subRect.left,   app.system.winWID);
+//             float ndcR = r_PixelToNDC(subRect.right,  app.system.winWID);
+//             float ndcT = r_PixelToNDC(subRect.top,    app.system.winHEI);
+//             float ndcB = r_PixelToNDC(subRect.bottom, app.system.winHEI);
+//             movie_screen.update(app.rolling_movie.vid_buffer, 960,720,  ndcL, ndcT, ndcR, ndcB);
+//         }
+//         else
+//         {
+//             movie_screen.update(app.rolling_movie.vid_buffer, 960,720);
+//         }
+//         movie_screen.render();
+
+//         if (drawProgressBar)
+//         {
+//             int progress_bar_t = PROGRESS_BAR_H+PROGRESS_BAR_B;
+//             double ndcB = r_PixelToNDC(PROGRESS_BAR_B, app.system.winHEI);
+//             double ndcH = r_PixelToNDC(progress_bar_t, app.system.winHEI);
+
+//             double neg1_to_1 = percent*2.0 - 1.0;
+
+//             u32 gray = 0xffaaaaaa;
+//             progress_gray.update((u8*)&gray, 1,1,  neg1_to_1, ndcB, 1, ndcH);
+//             progress_gray.render(0.4);
+
+//             u32 red = 0xffff0000;
+//             progress_red.update((u8*)&red, 1,1,  -1, ndcB, neg1_to_1, ndcH);
+//             progress_red.render(0.6);
+//         }
+//     }
+
+//     // tt_print(system.winWID/2, system.winHEI/2, "H E L L O   W O R L D", system.winWID, system.winHEI);
+
+//     // // todo: improve the args needed for these calls?
+//     // r_render_msg(app.debug_overlay, 32, 0,0, app.system.winWID,app.system.winHEI, false, false);
+//     // r_render_msg(app.splash_overlay, 64, app.system.winWID/2,app.system.winHEI/2, app.system.winWID,app.system.winHEI);
+
+//     // if (strcmp(app.splash_overlay.text.memory, last_splash) != 0)
+//     // {
+
+//         debug_quad.destroy();
+//         splash_quad.destroy();
+
+//         debug_quad = r_create_msg(app.debug_overlay, 32, false, false);
+//         splash_quad = r_create_msg(app.splash_overlay, 64);
+
+//         // strcpy(last_splash, app.splash_overlay.text.memory);
+//     // }
+
+//     debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
+//     splash_quad.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+
+//     debug_quad.render(app.debug_overlay.alpha);
+//     splash_quad.render(app.splash_overlay.alpha);
+
+//     r_swap();
+// }
 
 
 
@@ -1382,10 +1057,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     si.wShowWindow = SW_HIDE;
 
     char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
-    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_exe_directory);
+    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_ghoster.state.exe_directory);
 
     char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "%syoutube-dl.exe %s %s", global_exe_directory, options, url);
+    sprintf(args, "%syoutube-dl.exe %s %s", global_ghoster.state.exe_directory, options, url);
     // MsgBox(args);
 
     if (!CreateProcess(
@@ -1503,93 +1178,6 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 
 
-void SetWindowSize(HWND hwnd, int wid, int hei)
-{
-    global_ghoster.UpdateWindowSize(wid, hei);
-
-    RECT winRect;
-    GetWindowRect(hwnd, &winRect);
-    MoveWindow(hwnd, winRect.left, winRect.top, wid, hei, true);
-}
-
-void SetWindowToNativeRes(HWND hwnd, RollingMovie movie)
-{
-    char hwbuf[123];
-    sprintf(hwbuf, "wid: %i  hei: %i\n",
-        global_ghoster.rolling_movie.reel.video.codecContext->width,
-        global_ghoster.rolling_movie.reel.video.codecContext->height);
-    OutputDebugString(hwbuf);
-
-    SetWindowSize(hwnd, movie.vidWID, movie.vidHEI);
-}
-
-
-void SetWindowToAspectRatio(HWND hwnd, double aspect_ratio)
-{
-    // todo: intermittent window resize failure on video load.. something failing in here?
-
-    RECT winRect;
-    GetWindowRect(hwnd, &winRect);
-    int w = winRect.right - winRect.left;
-    int h = winRect.bottom - winRect.top;
-    // which to adjust tho?
-    int nw = (int)((double)h * aspect_ratio);
-    int nh = (int)((double)w / aspect_ratio);
-    // // i guess always make smaller for now
-    // if (nw < w)
-    //     MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
-    // else
-    //     MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
-    // now always adjusting width
-
-    // char buf[256];
-    // sprintf(buf, "ratio: %f  w: %i  h: %i  nw: %i  nh: %i\n", aspect_ratio, w, h, nw, nh);
-    // OutputDebugString(buf);
-
-    // MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
-    SetWindowSize(hwnd, nw, h);
-    r_resize(nw, h);
-}
-
-
-// todo: global variable instead?
-NOTIFYICONDATA SysTrayDefaultInfo(HWND hwnd)
-{
-    NOTIFYICONDATA info =
-    {
-        sizeof(NOTIFYICONDATA),
-        hwnd,
-        ID_SYSTRAY,               //UINT  uID
-        NIF_ICON | NIF_MESSAGE | NIF_TIP,
-        ID_SYSTRAY_MSG,           //UINT  uCallbackMessage
-        global_icon,              //HICON hIcon
-        "replace with movie title",               //TCHAR szTip[64]
-        0,                    //DWORD dwState
-        0,                    //DWORD dwStateMask
-        0,                    //TCHAR szInfo[256]
-        0,                    //UINT uVersion
-        0,                    //TCHAR szInfoTitle[64]
-        0,                    //DWORD dwInfoFlags
-        0,                    //GUID  guidItem
-        0                     //HICON hBalloonIcon
-    };
-    return info;
-}
-
-void SetTitle(HWND hwnd, char *title)
-{
-    // system tray hover
-    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
-    assert(strlen(title) < 256);
-    strcpy_s(info.szTip, 256, title); // todo: check length
-    info.hIcon = global_ghoster.system.icon;
-    Shell_NotifyIcon(NIM_MODIFY, &info);
-
-    // window titlebar (taskbar)
-    SetWindowText(hwnd, title);
-}
-
-
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
 bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
@@ -1613,7 +1201,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
                 free(video_url);
                 free(audio_url);
 
-                SplashMessage("video failed");
+                // SplashMessage("video failed");
                 return false;
             }
             free(video_url);
@@ -1624,7 +1212,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
             free(video_url);
             free(audio_url);
 
-            SplashMessage("no video");
+            // SplashMessage("no video");
             return false;
         }
     }
@@ -1633,7 +1221,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
         // *newMovie = OpenMovieReel(path, path);
         if (!newMovie->SetFromPaths(path, path))
         {
-            SplashMessage("invalid file");
+            // SplashMessage("invalid file");
             return false;
         }
 
@@ -1650,7 +1238,7 @@ bool LoadMovieReelFromPath(char *path, MovieReel *newMovie)
         // char buf[123];
         // sprintf(buf, "invalid url\n%s", path);
         // SplashMessage(buf);
-        SplashMessage("invalid url");
+        // SplashMessage("invalid url");
         return false;
     }
 
@@ -1873,7 +1461,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     }
 
     // todo: better place for this? i guess it might be fine
-    SetTitle(global_ghoster.system.window, global_ghoster.next_reel.title);
+    // SetTitle(global_ghoster.system.window, global_ghoster.next_reel.title);
 
     // global_ghoster.message.newMovieToRun = DeepCopyMovieReel(newMovie);
     global_ghoster.message.loadNewMovie = true;
@@ -1888,7 +1476,7 @@ bool CreateNewMovieFromPath(char *path)
     // try waiting on this until we confirm it's a good path/file
     // global_ghoster.state.bufferingOrLoading = true;
     // global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
-    SplashMessage("fetching...", 0xaaaaaaff);
+    // SplashMessage("fetching...", 0xaaaaaaff);
 
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
@@ -1958,7 +1546,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     // global_ghoster.state.app_timer.Start();  // now started in ghoster.init
     global_ghoster.state.app_timer.EndFrame();  // seed our first frame dt
 
-    while (global_ghoster.state.appRunning)
+    while (running)
     {
         // why is this outside of update?
         // maybe have message_check function or something eventually?
@@ -2034,1446 +1622,34 @@ bool CopyUrlToClipboard(bool withTimestamp = false)
 
 
 
-HICON MakeIconFromBitmap(HINSTANCE hInstance, HBITMAP hbm)
-{
-    ICONINFO info = {true, 0, 0, hbm, hbm};
-    return CreateIconIndirect(&info);
-}
+// // todo: if we have a "videostate" struct we could just copy/restore it for these functions? hmm
 
-void MakeIcons(HINSTANCE hInstance)
-{
+// // note we're saving this every time we click down (since it could be the start of a double click)
+// // so don't make this too crazy
+// void saveVideoPositionForAfterDoubleClick()
+// {
+//     global_ghoster.message.savestate_is_saved = true;
 
-    // // also this bitmap here
-    // gobal_bitmap_checkmark = LoadBitmap((HINSTANCE) NULL, (LPTSTR) OBM_CHECK);
+//     // global_ghoster.rolling_movie.elapsed = global_ghoster.rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
+//     // double percent = global_ghoster.rolling_movie.elapsed / global_ghoster.rolling_movie.duration;
 
+//     // todo: this won't be sub-frame accurate
+//     // but i guess if we're pausing for a split second it won't be exact anyway
+//     double percent = global_ghoster.rolling_movie.elapsed/global_ghoster.rolling_movie.duration;
+//     global_ghoster.message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
+// }
 
-    global_icon = (HICON)LoadImage(
-        hInstance,
-        MAKEINTRESOURCE(ID_ICON),
-        IMAGE_ICON,
-        0, 0, LR_DEFAULTSIZE);
+// void restoreVideoPositionAfterDoubleClick()
+// {
+//     if (global_ghoster.message.savestate_is_saved)
+//     {
+//         global_ghoster.message.savestate_is_saved = false;
 
-    global_bitmap_w  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_W ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_b  = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_B ), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_c1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_c2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_c3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_c4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_C4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_p1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_p2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_p3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_p4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_P4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_r1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_r2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_r3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_r4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_R4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_y1 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y1), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_y2 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y2), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_y3 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y3), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
-    global_bitmap_y4 = (HBITMAP)LoadImage(hInstance, MAKEINTRESOURCE(ID_ICON_Y4), IMAGE_BITMAP, 0, 0, LR_DEFAULTSIZE);
+//         global_ghoster.message.setSeek = true;
+//     }
 
-    global_icon_w =  MakeIconFromBitmap(hInstance, global_bitmap_w );
-    global_icon_b =  MakeIconFromBitmap(hInstance, global_bitmap_b );
-    global_icon_c1 = MakeIconFromBitmap(hInstance, global_bitmap_c1);
-    global_icon_c2 = MakeIconFromBitmap(hInstance, global_bitmap_c2);
-    global_icon_c3 = MakeIconFromBitmap(hInstance, global_bitmap_c3);
-    global_icon_c4 = MakeIconFromBitmap(hInstance, global_bitmap_c4);
-    global_icon_p1 = MakeIconFromBitmap(hInstance, global_bitmap_p1);
-    global_icon_p2 = MakeIconFromBitmap(hInstance, global_bitmap_p2);
-    global_icon_p3 = MakeIconFromBitmap(hInstance, global_bitmap_p3);
-    global_icon_p4 = MakeIconFromBitmap(hInstance, global_bitmap_p4);
-    global_icon_r1 = MakeIconFromBitmap(hInstance, global_bitmap_r1);
-    global_icon_r2 = MakeIconFromBitmap(hInstance, global_bitmap_r2);
-    global_icon_r3 = MakeIconFromBitmap(hInstance, global_bitmap_r3);
-    global_icon_r4 = MakeIconFromBitmap(hInstance, global_bitmap_r4);
-    global_icon_y1 = MakeIconFromBitmap(hInstance, global_bitmap_y1);
-    global_icon_y2 = MakeIconFromBitmap(hInstance, global_bitmap_y2);
-    global_icon_y3 = MakeIconFromBitmap(hInstance, global_bitmap_y3);
-    global_icon_y4 = MakeIconFromBitmap(hInstance, global_bitmap_y4);
+//     // cancel any play/pause messages (todo: could cancel other valid msgs)
+//     global_ghoster.ClearCurrentSplash();
+// }
 
-}
 
-HICON GetIconByInt(int i)
-{
-    if (i-- < 1) return global_icon_c1;
-    if (i-- < 1) return global_icon_c2;
-    if (i-- < 1) return global_icon_c3;
-    if (i-- < 1) return global_icon_c4;
-
-    if (i-- < 1) return global_icon_p1;
-    if (i-- < 1) return global_icon_p2;
-    if (i-- < 1) return global_icon_p3;
-    if (i-- < 1) return global_icon_p4;
-
-    if (i-- < 1) return global_icon_r1;
-    if (i-- < 1) return global_icon_r2;
-    if (i-- < 1) return global_icon_r3;
-    if (i-- < 1) return global_icon_r4;
-
-    if (i-- < 1) return global_icon_y1;
-    if (i-- < 1) return global_icon_y2;
-    if (i-- < 1) return global_icon_y3;
-    if (i-- < 1) return global_icon_y4;
-
-    return global_icon_b;
-}
-
-
-HICON RandomIcon()
-{
-    return GetIconByInt(randomInt(16));
-}
-
-
-
-
-void AddSysTrayIcon(HWND hwnd)
-{
-    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
-    Shell_NotifyIcon(NIM_ADD, &info);
-}
-
-void RemoveSysTrayIcon(HWND hwnd)
-{
-    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
-    Shell_NotifyIcon(NIM_DELETE, &info);
-}
-
-void SetIcon(HWND hwnd, HICON icon)
-{
-    // system tray icon
-    NOTIFYICONDATA info = SysTrayDefaultInfo(hwnd);
-    info.hIcon = icon;
-    Shell_NotifyIcon(NIM_MODIFY, &info);
-
-    // window icon (taskbar)
-    SendMessage (hwnd, WM_SETICON, ICON_BIG, (LPARAM)icon);
-    SendMessage (hwnd, WM_SETICON, ICON_SMALL, (LPARAM)icon);
-
-    // only needed if we're using the new wallpaper window icon in the taskbar
-    // set wallpaper window same for now
-    if (hwnd != global_wallpaper_window) SetIcon(global_wallpaper_window, icon);
-}
-
-
-
-void setFullscreen(bool enable)
-{
-    if (enable)
-    {
-        // todo: BUG: transparency is lost when we full screen
-        // ShowWindow(global_ghoster.system.window, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
-
-        // for now just change our window size to the monitor
-        // but leave 1 pixel along the bottom because this method causes the same bug as SW_MAXIMIZE
-        global_ghoster.system.last_win_pos.length = sizeof(WINDOWPLACEMENT);
-        if (GetWindowPlacement(global_ghoster.system.window, &global_ghoster.system.last_win_pos)); // cache last position
-        //
-        MONITORINFO mi = { sizeof(mi) };
-        if (GetMonitorInfo(MonitorFromWindow(global_ghoster.system.window, MONITOR_DEFAULTTOPRIMARY), &mi))
-        {
-            SetWindowPos(
-                global_ghoster.system.window,
-                HWND_TOP,
-                mi.rcMonitor.left, mi.rcMonitor.top,
-                mi.rcMonitor.right - mi.rcMonitor.left,
-                mi.rcMonitor.bottom - mi.rcMonitor.top -1,   // todo: note this workaround for bug explained above
-                SWP_NOOWNERZORDER | SWP_FRAMECHANGED
-                );
-            global_ghoster.system.fullscreen = true;
-
-
-            // move to top so we're above taskbar
-            // todo: only works if we set as topmost.. setting it temporarily for now
-            SetWindowPos(global_ghoster.system.window, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-
-
-            // resize backbuffer to new size
-            RECT winRect; GetWindowRect(global_ghoster.system.window, &winRect);
-            r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
-        }
-    }
-    else
-    {
-        // ShowWindow(global_ghoster.system.window, SW_RESTORE);
-
-        if (global_ghoster.system.last_win_pos.length)
-        {
-            // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
-            SetWindowPos(
-                global_ghoster.system.window,
-                0,
-                global_ghoster.system.last_win_pos.rcNormalPosition.left,
-                global_ghoster.system.last_win_pos.rcNormalPosition.top,
-                global_ghoster.system.last_win_pos.rcNormalPosition.right -
-                global_ghoster.system.last_win_pos.rcNormalPosition.left,
-                global_ghoster.system.last_win_pos.rcNormalPosition.bottom -
-                global_ghoster.system.last_win_pos.rcNormalPosition.top,
-                0);
-        }
-        global_ghoster.system.fullscreen = false;
-
-
-        // unset our temp topmost from fullscreening if we aren't actually set that way
-        if (!global_ghoster.state.topMost)
-        {
-            SetWindowPos(global_ghoster.system.window, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-        }
-
-
-        // resize backbuffer to new size
-        RECT winRect; GetWindowRect(global_ghoster.system.window, &winRect);
-        r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
-
-
-        // make this an option... (we might want to keep it in the corner eg)
-        // int mouseX = GET_X_LPARAM(lParam);
-        // int mouseY = GET_Y_LPARAM(lParam);
-        // int winX = mouseX - winWID/2;
-        // int winY = mouseY - winHEI/2;
-        // MoveWindow(hwnd, winX, winY, winWID, winHEI, true);
-    }
-}
-
-void toggleFullscreen()
-{
-    WINDOWPLACEMENT winpos;
-    winpos.length = sizeof(WINDOWPLACEMENT);
-    if (GetWindowPlacement(global_ghoster.system.window, &winpos))
-    {
-        if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.system.fullscreen)
-        {
-            setFullscreen(false);
-        }
-        else
-        {
-            setFullscreen(true);
-        }
-    }
-}
-
-void setTopMost(HWND hwnd, bool enable)
-{
-    global_ghoster.state.topMost = enable;
-    if (enable)
-        SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-    else
-        SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-}
-void setClickThrough(HWND hwnd, bool enable)
-{
-    LONG style = GetWindowLong(hwnd, GWL_EXSTYLE);
-    if (enable)
-    {
-        style = style | WS_EX_TRANSPARENT;
-    }
-    else
-    {
-        style = style & ~WS_EX_TRANSPARENT;
-    }
-    SetWindowLong(hwnd, GWL_EXSTYLE, style);
-}
-void setOpacity(HWND hwnd, double opacity, bool userRequest = true)
-{
-    if (opacity < 0) opacity = 0;
-    if (opacity > 1) opacity = 1;
-    if (global_ghoster.state.clickThrough && opacity > GHOST_MODE_MAX_OPACITY)
-        opacity = GHOST_MODE_MAX_OPACITY;
-    if (FORCE_NON_ZERO_OPACITY)
-    {
-        if (opacity < 0.01) // if we become completely invisible, we'll lose clicks
-            opacity = 0.01;
-    }
-
-    // if we manually change opacity, don't restore it when leaving ghost mode
-    if (userRequest)
-    {
-        if (global_ghoster.state.had_to_cache_opacity && opacity != global_ghoster.state.last_opacity)
-            global_ghoster.state.had_to_cache_opacity = false;
-    }
-
-    global_ghoster.state.opacity = opacity;
-    SetLayeredWindowAttributes(global_ghoster.system.window, 0, 255.0*opacity, LWA_ALPHA);
-}
-
-void setGhostMode(HWND hwnd, bool enable)
-{
-    global_ghoster.state.clickThrough = enable;
-    setClickThrough(hwnd, enable);
-    if (enable)
-    {
-        SetIcon(hwnd, global_icon_w);
-        if (GHOST_MODE_SETS_TOPMOST) setTopMost(hwnd, true);
-        if (global_ghoster.state.opacity > GHOST_MODE_MAX_OPACITY)
-        {
-            global_ghoster.state.last_opacity = global_ghoster.state.opacity;
-            global_ghoster.state.had_to_cache_opacity = true;
-            global_ghoster.state.opacity = GHOST_MODE_MAX_OPACITY;
-            setOpacity(hwnd, global_ghoster.state.opacity, false);
-        }
-        else
-        {
-            global_ghoster.state.had_to_cache_opacity = false;
-        }
-    }
-    else
-    {
-        SetIcon(hwnd, global_ghoster.system.icon);
-        if (global_ghoster.state.had_to_cache_opacity)
-        {
-            global_ghoster.state.opacity = global_ghoster.state.last_opacity;
-            setOpacity(hwnd, global_ghoster.state.opacity, false);
-        }
-    }
-}
-
-
-
-// We enumerate all Windows, until we find one, that has the SHELLDLL_DefView as a child.
-// If we found that window, we take its next sibling and assign it to workerw.
-BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
-{
-    HWND p = FindWindowEx(hwnd, 0, "SHELLDLL_DefView", 0);
-
-    if (p != 0)
-    {
-        // Gets the WorkerW Window after the current one.
-        global_workerw = FindWindowEx(0, hwnd, "WorkerW", 0);
-    }
-
-    return true;
-}
-
-void setWallpaperMode(HWND hwnd, bool enable)
-{
-
-    // cleanup first if we are already in wallpaper mode and trying to enable
-    if (global_ghoster.state.wallpaperMode && enable)
-    {
-        if (global_wallpaper_window)
-            DestroyWindow(global_wallpaper_window);
-    }
-
-    global_ghoster.state.wallpaperMode = enable;
-    if (enable)
-    {
-        setTopMost(hwnd, false); // todo: test if needed
-
-        // wallpaper mode method via
-        // https://www.codeproject.com/Articles/856020/Draw-Behind-Desktop-Icons-in-Windows
-
-        HWND progman = FindWindow("Progman", "Program Manager");
-
-        // Send 0x052C to Progman. This message directs Progman to spawn a
-        // WorkerW behind the desktop icons. If it is already there, nothing happens.
-        u64 *result = 0;
-        SendMessageTimeout(
-            progman,
-            0x052C,
-            0,
-            0,
-            SMTO_NORMAL,
-            1000, //timeout in ms
-            result);
-
-        EnumWindows(EnumWindowsProc, 0);
-
-        if (!global_workerw)
-        {
-            // MsgBox("Unable to find WorkerW!");
-            global_ghoster.QueueNewMsg("wallpaper failed!", 0x7676eeff);
-        }
-
-        // which of these work seems a bit intermittent
-        // maybe something we're doing is effecting which one works
-        // right now the known working method is...
-        // -SW_HIDE workerw
-        // -create window
-        // -setparent of window to progman
-
-        // HWND newParent = global_workerw;  // may have to use this in 8+
-        HWND newParent = progman;
-
-
-        // trick is to hide this or it could intermittently hide our own window
-        // todo: bug: once we hide this, if we minimize our window it appears on the desktop again!
-        ShowWindow(global_workerw, SW_HIDE);
-
-
-        // // alt idea.. might be able to get something like this to work instead of
-        // // making a whole new window and parenting it to progman...
-        // // though, I couldn't get this work right
-        // // it seems the "show desktop" function in the bottom right is
-        // // different than just a SW_MINIMIZE
-        // // source: when we do a "show desktop" after SW_HIDEing workerW, we get a kind of wallpaper mode
-        // // (if you test again, don't forget to continue to render to our main window)
-        // setTopMost(hwnd, false); // todo: test if needed
-        // ShowWindow(global_ghoster.system.window, SW_MINIMIZE);
-
-
-
-        // create our new window
-        // we need a new window so we can discard it when we're done with wallpaper mode
-        // trying to salvage a window after setparent seems to cause a number of issues
-
-        RECT win;
-        GetWindowRect(hwnd, &win);
-
-        // // not sure if these are needed, has worked with and without
-        // SetWindowPos(newParent, HWND_BOTTOM, win.left, win.top, win.right-win.left, win.bottom-win.top, 0);
-        // ShowWindow(newParent, SW_MAXIMIZE);
-
-        global_wallpaper_window = CreateWindowEx(
-            0,
-            // WS_EX_TOOLWINDOW, // don't show taskbar
-            WALLPAPER_CLASS_NAME, "ghoster video player wallpaper",
-            WS_POPUP | WS_VISIBLE,
-            win.left, win.top,
-            win.right - win.left,
-            win.bottom - win.top,
-            0,
-            0, global_hInstance, 0);
-
-        // set dc format to be same as our main dc
-        HDC hdc = GetDC(global_wallpaper_window);
-        PIXELFORMATDESCRIPTOR pixel_format = {};
-        pixel_format.nSize = sizeof(pixel_format);
-        pixel_format.nVersion = 1;
-        pixel_format.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-        pixel_format.iPixelType = PFD_TYPE_RGBA;
-        pixel_format.cColorBits = 32;
-        pixel_format.cAlphaBits = 8;
-        int format_index = ChoosePixelFormat(hdc, &pixel_format);
-        SetPixelFormat(hdc, format_index, &pixel_format);
-        if (!global_ghoster.system.window) {
-            // todo: log the specific and check if wallpaper mode failed from a level above
-            // MsgBox("Couldn't open wallpaper window.");
-            global_ghoster.QueueNewMsg("wallpaper failed!", 0x7676eeff);
-        }
-
-        // only need this if we're using the new wallpaper window icon in the taskbar
-        if (global_ghoster.state.clickThrough)
-            SetIcon(global_wallpaper_window, global_icon_w);
-        else
-            SetIcon(global_wallpaper_window, global_ghoster.system.icon);
-
-
-        // only seems to work when setting after window has been created
-        SetParent(global_wallpaper_window, newParent);
-
-
-        // actually this method seems to work pretty well...
-        ShowWindow(hwnd, SW_HIDE);
-        // with this method, not sure how to prevent main window from showing when clicking on sys tray icon
-        // SetLayeredWindowAttributes(hwnd, 0, 0, LWA_ALPHA);  // make invisible
-        // setClickThrough(hwnd, true);
-
-    }
-    else
-    {
-        // try this to undo our unwanted wallpaper mode bug when using "show desktop"
-        // seems to work, but we also have to show on program exit
-        // the only problem is if we have two ghoster apps open, one could hide this
-        // and the other one could be bugged out when using "show desktop" when not topmost
-        // not to mention any other apps that could be bugged out by hiding this
-        // UPDATE: some more info on this,
-        // when "show desktop" is done, it first minimizes all "minimizable" windows
-        // then brings the Z order of the desktop to the front...
-        // so maybe is there a way to make our main window minimizable?
-        // EDIT: WS_MINIMIZEBOX seemed to do the trick, now everything works as expected
-        // (though there could theoretically be other windows that aren't minimizable
-        // (that are effected while a ghoster window is in wallpaper mode)
-
-        // now that we have WS_MINIMIZEBOX, let's not re-show this
-        // so if we have multiple windows stuck to desktop, it won't hide the others behind this
-        // if (global_workerw)
-        //     ShowWindow(global_workerw, SW_SHOW);
-
-        if (global_wallpaper_window)
-            DestroyWindow(global_wallpaper_window);
-
-        ShowWindow(hwnd, SW_SHOW);
-        // setOpacity(hwnd, global_ghoster.state.opacity);
-        // setClickThrough(hwnd, global_ghoster.state.clickThrough);
-    }
-}
-
-
-// todo: if we have a "videostate" struct we could just copy/restore it for these functions? hmm
-
-// note we're saving this every time we click down (since it could be the start of a double click)
-// so don't make this too crazy
-void saveVideoPositionForAfterDoubleClick()
-{
-    global_ghoster.message.savestate_is_saved = true;
-
-    // global_ghoster.rolling_movie.elapsed = global_ghoster.rolling_movie.audio_stopwatch.MsElapsed() / 1000.0;
-    // double percent = global_ghoster.rolling_movie.elapsed / global_ghoster.rolling_movie.duration;
-
-    // todo: this won't be sub-frame accurate
-    // but i guess if we're pausing for a split second it won't be exact anyway
-    double percent = global_ghoster.rolling_movie.elapsed/global_ghoster.rolling_movie.duration;
-    global_ghoster.message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
-}
-
-void restoreVideoPositionAfterDoubleClick()
-{
-    if (global_ghoster.message.savestate_is_saved)
-    {
-        global_ghoster.message.savestate_is_saved = false;
-
-        global_ghoster.message.setSeek = true;
-    }
-
-    // cancel any play/pause messages (todo: could cancel other valid msgs)
-    global_ghoster.ClearCurrentSplash();
-}
-
-
-
-bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
-{
-    POINT newPoint = {x, y};
-    ScreenToClient(hwnd, &newPoint);
-    return global_ghoster.clientPointIsOnProgressBar(newPoint.x, newPoint.y);
-}
-
-
-bool EdgeIsClose(int a, int b)
-{
-    return abs(a-b) < SNAP_IF_PIXELS_THIS_CLOSE;
-}
-
-void SnapRectEdgesToRect(RECT in, RECT limit, RECT *out)
-{
-    *out = in;
-
-    int width = out->right - out->left;
-    int height =  out->bottom - out->top;
-
-    if (EdgeIsClose(in.left  , limit.left  )) out->left = limit.left;
-    if (EdgeIsClose(in.top   , limit.top   )) out->top  = limit.top;
-    if (EdgeIsClose(in.right , limit.right )) out->left = limit.right - width;
-    if (EdgeIsClose(in.bottom, limit.bottom)) out->top  = limit.bottom - height;
-
-    out->right = out->left + width;
-    out->bottom = out->top + height;
-}
-
-void SnapRectToMonitor(RECT in, RECT *out)
-{
-    MONITORINFO mi = { sizeof(mi) };
-    if (GetMonitorInfo(MonitorFromWindow(global_ghoster.system.window, MONITOR_DEFAULTTOPRIMARY), &mi))
-    {
-        // snap to whatever is closer
-        int distToBottom = abs(in.bottom - mi.rcMonitor.bottom);
-        int distToTaskbar = abs(in.bottom - mi.rcWork.bottom);
-        if (distToBottom < distToTaskbar)
-            SnapRectEdgesToRect(in, mi.rcMonitor, out);
-        else
-            SnapRectEdgesToRect(in, mi.rcWork, out);
-    }
-}
-
-void sysDragWindow(HWND hwnd, int x, int y)
-{
-
-    if (global_ghoster.system.fullscreen)
-    {
-        // this restores window size, sets not topmost (if needed) etc
-        setFullscreen(false);
-
-        // move window to mouse..
-        int mouseX = x;
-        int mouseY = y;
-        int winX = mouseX - global_ghoster.system.winWID/2;
-        int winY = mouseY - global_ghoster.system.winHEI/2;
-        MoveWindow(hwnd, winX, winY, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);
-    }
-
-    // WINDOWPLACEMENT winpos;
-    // winpos.length = sizeof(WINDOWPLACEMENT);
-    // if (GetWindowPlacement(hwnd, &winpos))
-    // {
-    //     if (winpos.showCmd == SW_MAXIMIZE || global_ghoster.system.fullscreen)
-    //     {
-    //         // ShowWindow(hwnd, SW_RESTORE);
-
-    //         SetWindowPos(
-    //             global_ghoster.system.window,
-    //             0,
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.left,
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.top,
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.right -
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.left,
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.bottom -
-    //             global_ghoster.system.last_win_pos.rcNormalPosition.top,
-    //             0);
-    //         global_ghoster.system.fullscreen = false;
-
-    //         // move window to mouse..
-    //         int mouseX = x;
-    //         int mouseY = y;
-    //         int winX = mouseX - global_ghoster.system.winWID/2;
-    //         int winY = mouseY - global_ghoster.system.winHEI/2;
-    //         MoveWindow(hwnd, winX, winY, global_ghoster.system.winWID, global_ghoster.system.winHEI, true);
-    //     }
-    // }
-
-    global_ghoster.system.mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
-    global_ghoster.message.next_mup_was_closing_menu = false; // also needs to be reset here
-    // (basically mups after drags aren't treated as regular mups)
-
-    SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
-}
-
-
-
-void onMouseMove(HWND hwnd, int clientX, int clientY)
-{
-    // this is for progress bar timeout.. rename/move?
-    global_ghoster.system.msOfLastMouseMove = global_ghoster.state.app_timer.MsSinceStart();
-
-    if (global_ghoster.system.mDown)
-    {
-        // need to determine if click or drag here, not in buttonup
-        // because mousemove will trigger (i think) at the first pixel of movement
-        POINT mPos = { clientX, clientY };
-        double dx = (double)mPos.x - (double)global_ghoster.system.mDownPoint.x;
-        double dy = (double)mPos.y - (double)global_ghoster.system.mDownPoint.y;
-        double distance = sqrt(dx*dx + dy*dy);
-        double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
-        if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
-        {
-            // we haven't moved enough to be considered a drag
-            // or to eliminate a double click possibility (edit: although system handles that now)
-        }
-        else
-        {
-            global_ghoster.system.mouseHasMovedSinceDownL = true;
-
-            if (global_ghoster.clientPointIsOnProgressBar(
-                    global_ghoster.system.mDownPoint.x,
-                    global_ghoster.system.mDownPoint.y))
-            {
-                global_ghoster.appSetProgressBar(clientX, clientY);
-            }
-            else
-            {
-                sysDragWindow(hwnd, clientX, clientY);
-            }
-        }
-    }
-}
-
-
-VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
-{
-    if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
-
-    KillTimer(0, singleClickTimerID);
-    {
-        global_ghoster.appTogglePause();
-
-        // we have to track whether get here or not
-        // so we know if we've toggled pause between our double click or not
-        // (it could be either case now that we have a little delay in our pause)
-        global_ghoster.message.toggledPauseOnLastSingleClick = true;
-    }
-}
-
-void onMouseUpL()
-{
-    if (DEBUG_MCLICK_MSGS) OutputDebugString("LUP\n");
-
-    global_ghoster.system.mDown = false;
-
-    if (global_ghoster.message.next_mup_was_closing_menu)
-    {
-        global_ghoster.message.next_mup_was_closing_menu = false;
-        return;
-    }
-
-    if (global_ghoster.system.mouseHasMovedSinceDownL)
-    {
-        // end of a drag
-        // todo: i don't think we ever actually get here on the end of a drag
-        // basically onMouseUpL is never called after a drag, not sure why
-        // but it means some special mup state reset needs to happen in appDrag
-    }
-    else
-    {
-        if (!global_ghoster.clientPointIsOnProgressBar(
-                        global_ghoster.system.mDownPoint.x,
-                        global_ghoster.system.mDownPoint.y))
-        {
-            // since this could be the mouse up in between the two clicks of a double click,
-            // wait a little bit before we actually pause (should work with 0 delay as well)
-
-            // don't queue up another pause if this is the end of a double click
-            // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
-            if (!global_ghoster.message.next_mup_was_double_click)
-            {
-                global_ghoster.message.toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
-                singleClickTimerID = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
-            }
-            else
-            {
-                // if we are ending the click and we already registered the first click as a pause,
-                // toggle pause again to undo that
-                if (global_ghoster.message.toggledPauseOnLastSingleClick)
-                {
-                    // OutputDebugString("undo that click\n");
-                    global_ghoster.appTogglePause();
-                }
-            }
-        }
-    }
-
-    global_ghoster.system.mouseHasMovedSinceDownL = false;
-    global_ghoster.system.clickingOnProgressBar = false;
-
-    if (global_ghoster.message.next_mup_was_double_click)
-    {
-        global_ghoster.message.next_mup_was_double_click = false;
-
-        // cancel any pending single click effects lingering from the first mup of this dclick
-        KillTimer(0, singleClickTimerID);
-
-        // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
-        if (global_ghoster.message.toggledPauseOnLastSingleClick)
-        {
-            // OutputDebugString("restore our vid position\n");
-            restoreVideoPositionAfterDoubleClick();
-        }
-        else
-        {
-            // OutputDebugString("that was a fast doubleclick! no stutter\n");
-        }
-    }
-}
-
-void onDoubleClickDownL()
-{
-    if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOUBLECLICK\n");
-
-    if (global_ghoster.clientPointIsOnProgressBar(
-        global_ghoster.system.mDownPoint.x,
-        global_ghoster.system.mDownPoint.y))
-    {
-        // OutputDebugString("on bar dbl\n");
-        global_ghoster.system.clickingOnProgressBar = true;
-        return;
-    }
-
-    toggleFullscreen();
-
-    // note we actually have to do this in mouse up because that's where the vid gets paused
-    // restoreVideoPositionAfterDoubleClick();
-
-    // instead make a note to restore in mouseUp
-    global_ghoster.message.next_mup_was_double_click = true;
-
-}
-
-void onMouseDownL(int clientX, int clientY)
-{
-    // OutputDebugString("LDOWN\n");
-
-    // i think we can just ignore if context menu is open
-    if (global_ghoster.system.contextMenuOpen)
-        return;
-
-    // mouse state / info about click...
-    global_ghoster.system.mDown = true;
-    global_ghoster.system.mouseHasMovedSinceDownL = false;
-    global_ghoster.system.mDownPoint = {clientX, clientY};
-
-    if (global_ghoster.clientPointIsOnProgressBar(clientX, clientY))
-    {
-        // OutputDebugString("on bar\n");
-        global_ghoster.system.clickingOnProgressBar = true;
-        global_ghoster.appSetProgressBar(clientX, clientY);
-    }
-    else
-    {
-        // note this works because onMouseDownL doesn't trigger on the second click of a double click
-        saveVideoPositionForAfterDoubleClick();
-    }
-}
-
-
-
-// needs global ghoster and a number of its functions
-#include "menu.cpp"
-
-
-
-static int sys_moving_anchor_x;
-static int sys_moving_anchor_y;
-
-static bool in_movesize_loop;
-static bool inhibit_movesize_loop;
-
-UINT backdoor_render_timer;
-
-LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    switch(message)
-    {
-
-        // allow placement above top of monitor edge (just the in_movesize_loop/inhibit stuff)
-        // /*
-        case WM_ENTERSIZEMOVE: {
-            POINT mPos;   GetCursorPos(&mPos);
-            RECT winRect; GetWindowRect(hwnd, &winRect);
-            sys_moving_anchor_x = mPos.x - winRect.left;
-            sys_moving_anchor_y = mPos.y - winRect.top;
-
-            // MONITORINFO mi = { sizeof(mi) };
-            // if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
-            // {
-            //     r_resize(mi.rcMonitor.right-mi.rcMonitor.left, abs(mi.rcMonitor.bottom-mi.rcMonitor.top));
-            // }
-
-            in_movesize_loop = true;
-            inhibit_movesize_loop = false;
-
-            SetTimer(hwnd, backdoor_render_timer, 16, 0); // 0 to get WM_TIMER msgs
-        } break;
-        case WM_EXITSIZEMOVE: {
-            in_movesize_loop = false;
-            inhibit_movesize_loop = false;
-
-            // RECT winRect; GetWindowRect(hwnd, &winRect);
-            // r_resize(winRect.right-winRect.left, winRect.bottom-winRect.top);
-
-            KillTimer(hwnd, backdoor_render_timer);
-        } break;
-        case WM_CAPTURECHANGED: {
-            inhibit_movesize_loop = in_movesize_loop;
-        } break;
-        case WM_WINDOWPOSCHANGING: {
-            if (inhibit_movesize_loop) {
-                WINDOWPOS* wp = reinterpret_cast<WINDOWPOS*>(lParam);
-                wp->flags |= SWP_NOMOVE;
-                return 0;
-            }
-        } break;
-        // */
-
-        case WM_TIMER: {
-            the_one_render_call_to_rule_them_all(global_ghoster);
-        } break;
-
-
-        case WM_CLOSE: {
-            global_ghoster.state.appRunning = false;
-        } break;
-
-        case WM_SIZE: {
-            SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-
-            // OPTION 1a
-            // r_resize(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // flicker if we try this
-
-            // // OPTION 3
-            // // update these for our app loop to use for setting the backbuffer
-            // tempW = GET_X_LPARAM(lParam);
-            // tempH = GET_Y_LPARAM(lParam);
-
-            // // OPTION 1 / 2
-            // // if we don't do this, and resize each loop,
-            // // we can get flicker-free resizing but we'll have resize black bars
-            // r_swap(); // draw hud here too? it depends on window size so with low fps we can see it jitter
-            // the_one_render_call_to_rule_them_all(global_ghoster);
-
-            return 0;
-        }
-
-        case WM_SIZING: {  // when dragging border
-            RECT rc = *(RECT*)lParam;
-            int w = rc.right - rc.left;
-            int h = rc.bottom - rc.top;
-
-            if (global_ghoster.state.lock_aspect)
-            {
-                double aspect_ratio = global_ghoster.rolling_movie.aspect_ratio;
-                switch (wParam)
-                {
-                    case WMSZ_LEFT:
-                    case WMSZ_RIGHT:
-                        rc.bottom = rc.top + (int)((double)w / aspect_ratio);
-                        break;
-
-                    case WMSZ_TOP:
-                    case WMSZ_BOTTOM:
-                        rc.right = rc.left + (int)((double)h * aspect_ratio);
-                        break;
-
-                    case WMSZ_LEFT + WMSZ_TOP:
-                    case WMSZ_LEFT + WMSZ_BOTTOM:
-                        rc.left = rc.right - (int)((double)h * aspect_ratio);
-                        break;
-
-                    case WMSZ_RIGHT + WMSZ_TOP:
-                        rc.top = rc.bottom - (int)((double)w / aspect_ratio);
-                        break;
-
-                    case WMSZ_RIGHT + WMSZ_BOTTOM:
-                        rc.bottom = rc.top + (int)((double)w / aspect_ratio);
-                        break;
-                }
-                *(RECT*)lParam = rc;
-            }
-
-            // OPTION 1a (same as if done in WM_SIZE)
-            // r_resize(w, h); // flicker if we try this
-
-        } break;
-
-
-        case WM_NCHITTEST: {
-
-            RECT win;
-            if (!GetWindowRect(hwnd, &win))
-                return HTNOWHERE;
-
-            POINT pos = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
-
-            bool left   = pos.x < win.left   + pad.x;
-            bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
-            bool top    = pos.y < win.top    + pad.y;
-            bool bottom = pos.y > win.bottom - pad.y -1;
-
-            // little hack to allow us to use progress bar all the way out to the edge
-            if (screenPointIsOnProgressBar(hwnd, pos.x, pos.y) && !bottom) { left = false; right = false; }
-
-            if (top && left)     return HTTOPLEFT;
-            if (top && right)    return HTTOPRIGHT;
-            if (bottom && left)  return HTBOTTOMLEFT;
-            if (bottom && right) return HTBOTTOMRIGHT;
-            if (left)            return HTLEFT;
-            if (right)           return HTRIGHT;
-            if (top)             return HTTOP;
-            if (bottom)          return HTBOTTOM;
-
-            // return HTCAPTION;
-            return HTCLIENT; // we now specifically call HTCAPTION in LBUTTONDOWN
-        } break;
-
-
-        case WM_LBUTTONDOWN: {
-            onMouseDownL(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-        } break;
-        // case WM_NCLBUTTONDOWN: {
-        // } break;
-        case WM_LBUTTONDBLCLK: {
-            onDoubleClickDownL();
-        } break;
-
-        case WM_MOUSEMOVE: {
-            onMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-        } break;
-
-        case WM_LBUTTONUP:
-        case WM_NCLBUTTONUP: {
-            onMouseUpL();
-        } break;
-
-        case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
-            POINT openPoint = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            ClientToScreen(hwnd, &openPoint);
-            OpenRClickMenuAt(hwnd, openPoint);
-        } break;
-        case WM_NCRBUTTONDOWN: {  // non-client area, apparently lParam is treated diff?
-            POINT openPoint = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
-            OpenRClickMenuAt(hwnd, openPoint);
-        } break;
-
-
-        case WM_MOVING: {
-            if (global_ghoster.state.enableSnapping)
-            {
-                POINT mPos;   GetCursorPos(&mPos);
-
-                int width = ((RECT*)lParam)->right - ((RECT*)lParam)->left;
-                int height = ((RECT*)lParam)->bottom - ((RECT*)lParam)->top;
-
-                RECT positionIfNoSnap;
-                positionIfNoSnap.left = mPos.x - sys_moving_anchor_x;
-                positionIfNoSnap.top = mPos.y - sys_moving_anchor_y;
-                positionIfNoSnap.right = positionIfNoSnap.left + width;
-                positionIfNoSnap.bottom = positionIfNoSnap.top + height;
-
-                SnapRectToMonitor(positionIfNoSnap, (RECT*)lParam);
-            }
-        } break;
-
-        case WM_SYSKEYDOWN:  // req for alt?
-        case WM_KEYDOWN: {
-            if (wParam == 0x56 &&  // V
-                GetKeyState(VK_CONTROL) & 0x8000)  // ctrl
-            {
-                PasteClipboard();
-            }
-            if (wParam == VK_RETURN) // enter
-            {
-                if ((HIWORD(lParam) & KF_ALTDOWN)) // +alt
-                {
-                    toggleFullscreen();
-                }
-            }
-        } break;
-
-        case WM_KEYUP: {
-            if (wParam >= 0x30 && wParam <= 0x39) // 0-9
-            {
-                global_ghoster.message.QueueLoadMovie(TEST_FILES[wParam - 0x30]);
-            }
-            if (wParam == VK_OEM_3) // ~
-            {
-                global_ghoster.message.QueuePlayRandom();
-            }
-            if (wParam == VK_TAB)
-            {
-                global_ghoster.state.displayDebugText = !global_ghoster.state.displayDebugText;
-            }
-        } break;
-
-
-
-        // can also implement IDropTarget, but who wants to do that?
-        case WM_DROPFILES: {
-            char filePath[MAX_PATH];
-            // 0 = just take the first one
-            if (DragQueryFile((HDROP)wParam, 0, (LPSTR)&filePath, MAX_PATH))
-            {
-                // OutputDebugString(filePath);
-                global_ghoster.message.QueueLoadMovie(filePath);
-            }
-            else
-            {
-                // MsgBox("Unable to determine file path of dropped file.");
-                global_ghoster.QueueNewMsg("not a file?", 0x7676eeff);
-            }
-        } break;
-
-
-        case ID_SYSTRAY_MSG: {
-            switch (lParam) {
-                case WM_LBUTTONUP:
-                    // if (!global_ghoster.state.wallpaperMode)
-                    // {
-                        SetForegroundWindow(hwnd);
-                        setGhostMode(hwnd, !global_ghoster.state.clickThrough);
-                    // }
-                break;
-                case WM_RBUTTONUP:
-                    POINT mousePos;
-                    GetCursorPos(&mousePos);
-                    // SetForegroundWindow(hwnd); // this is done in openRclick
-                    OpenRClickMenuAt(hwnd, mousePos);
-                break;
-            }
-        } break;
-
-
-    }
-    return DefWindowProc(hwnd, message, wParam, lParam);
-}
-
-
-
-static HHOOK mouseHook;
-LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
-{
-    // PKBDLLHOOKSTRUCT k = (PKBDLLHOOKSTRUCT)(lParam);
-
-    if (wParam == WM_RBUTTONDOWN || wParam == WM_LBUTTONDOWN)
-    {
-        // GetCursorPos(&p);
-        POINT point = ((MSLLHOOKSTRUCT*)(lParam))->pt;
-
-        RECT popupRect;
-        RECT submenuRect;
-        GetWindowRect(global_popup_window, &popupRect);
-        GetWindowRect(global_icon_menu_window, &submenuRect);
-        if (!PtInRect(&popupRect, point) && !PtInRect(&submenuRect, point))
-        {
-            if (global_ghoster.system.contextMenuOpen)
-            {
-                global_ghoster.message.next_mup_was_closing_menu = true;
-            }
-            HideSubMenu();
-            CloseMenu();
-        }
-    }
-
-    return CallNextHookEx(0, nCode, wParam, lParam);
-}
-
-int CALLBACK WinMain(
-    HINSTANCE hInstance,
-    HINSTANCE hPrevInstance,
-    LPSTR lpCmdLine,
-    int nCmdShow
-)
-{
-    global_hInstance = hInstance;
-
-
-    assert(Test_SecondsFromStringTimestamp());
-    assert(Test_StringEndsWith());
-
-
-    // load icons/bitmaps
-    MakeIcons(hInstance);
-
-
-    global_ghoster.Init();
-
-
-
-    // defaults
-    int startX = 0;
-    int startY = 0;
-    int startW = 960;
-    int startH = 720;
-    bool startInGhostMode = false;
-    int nest = 0; // todo: enum 0=none, 1=tl, 2=tr, 3=bl, 4=br
-
-
-
-    // COMMAND LINE ARGS
-
-
-    wchar_t **argList;
-    int argCount;
-    argList = CommandLineToArgvW(GetCommandLineW(), &argCount);
-    if (argList == 0)
-    {
-        // MsgBox("CommandLineToArgvW failed.");
-        global_ghoster.QueueNewMsg("CommandLineToArgvW fail!", 0x7676eeff);  // here even? or not
-    }
-
-    // make note of exe directory
-    global_exe_directory = (char*)malloc(MAX_PATH); // todo: what to use?
-    wcstombs(global_exe_directory, argList[0], MAX_PATH);
-    DirectoryFromPath(global_exe_directory);
-        // OutputDebugString("\n\n\n\n");
-        // OutputDebugString(global_exe_directory);
-        // OutputDebugString("\n\n\n\n");
-
-    for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
-    {
-        char filePathOrUrl[256]; // todo what max to use
-        wcstombs(filePathOrUrl, argList[i], 256);
-        if (filePathOrUrl[0] != '-')
-        {
-            global_ghoster.message.QueueLoadMovie(filePathOrUrl);
-        }
-
-        if (strcmp(filePathOrUrl, "-top") == 0)
-        {
-            global_ghoster.state.topMost = true;
-        }
-        if (strcmp(filePathOrUrl, "-notop") == 0)
-        {
-            global_ghoster.state.topMost = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-aspect") == 0)
-        {
-            global_ghoster.state.lock_aspect = true;
-        }
-        if (strcmp(filePathOrUrl, "-noaspect") == 0 || strcmp(filePathOrUrl, "-stretch") == 0)
-        {
-            global_ghoster.state.lock_aspect = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-repeat") == 0)
-        {
-            global_ghoster.state.repeat = true;
-        }
-        if (strcmp(filePathOrUrl, "-norepeat") == 0)
-        {
-            global_ghoster.state.repeat = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-ghost") == 0)
-        {
-            startInGhostMode = true;
-        }
-        if (strcmp(filePathOrUrl, "-noghost") == 0)
-        {
-            startInGhostMode = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-snap") == 0)
-        {
-            global_ghoster.state.enableSnapping = true;
-        }
-        if (strcmp(filePathOrUrl, "-nosnap") == 0)
-        {
-            global_ghoster.state.enableSnapping = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-wall") == 0)
-        {
-            global_ghoster.state.wallpaperMode = true;
-        }
-        if (strcmp(filePathOrUrl, "-nowall") == 0)
-        {
-            global_ghoster.state.wallpaperMode = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-fullscreen") == 0)
-        {
-            global_ghoster.system.fullscreen = true;
-        }
-        if (strcmp(filePathOrUrl, "-nofullscreen") == 0)
-        {
-            global_ghoster.system.fullscreen = false;
-        }
-
-        if (strcmp(filePathOrUrl, "-blinky") == 0)
-        {
-            global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*2);
-        }
-        if (strcmp(filePathOrUrl, "-pinky") == 0)
-        {
-            global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*1);
-        }
-        if (strcmp(filePathOrUrl, "-inky") == 0)
-        {
-            global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*0);
-        }
-        if (strcmp(filePathOrUrl, "-clyde") == 0)
-        {
-            global_ghoster.system.icon = GetIconByInt(randomInt(4) + 4*3);
-        }
-
-        if (StringBeginsWith(filePathOrUrl, "-opac"))
-        {
-            char *opacNum = filePathOrUrl + 5; // 5 = length of "-opac"
-            global_ghoster.state.opacity = (double)atoi(opacNum) / 100.0;
-        }
-
-        if (StringBeginsWith(filePathOrUrl, "-vol"))
-        {
-            char *volNum = filePathOrUrl + 4; // 4 = length of "-vol"
-            global_ghoster.state.volume = (double)atoi(volNum) / 100.0;
-        }
-
-        if (StringBeginsWith(filePathOrUrl, "-x"))
-        {
-            char *xNum = filePathOrUrl + 2; // 2 = length of "-x"
-            startX = (double)atoi(xNum);
-        }
-        if (StringBeginsWith(filePathOrUrl, "-y"))
-        {
-            char *yNum = filePathOrUrl + 2; // 2 = length of "-y"
-            startY = (double)atoi(yNum);
-        }
-        if (StringBeginsWith(filePathOrUrl, "-w"))
-        {
-            char *wNum = filePathOrUrl + 2; // 2 = length of "-w"
-            startW = (double)atoi(wNum);
-        }
-        if (StringBeginsWith(filePathOrUrl, "-h"))
-        {
-            char *hNum = filePathOrUrl + 2; // 2 = length of "-h"
-            startH = (double)atoi(hNum);
-        }
-
-        if (StringBeginsWith(filePathOrUrl, "-tl"))
-        {
-            nest = 1;
-        }
-        if (StringBeginsWith(filePathOrUrl, "-tr"))
-        {
-            nest = 2;
-        }
-        if (StringBeginsWith(filePathOrUrl, "-bl"))
-        {
-            nest = 3;
-        }
-        if (StringBeginsWith(filePathOrUrl, "-br"))
-        {
-            nest = 4;
-        }
-        if (StringBeginsWith(filePathOrUrl, "-Bl"))  // todo: better name for above/below taskbar
-        {
-            nest = 5;
-        }
-        if (StringBeginsWith(filePathOrUrl, "-Br"))
-        {
-            nest = 6;
-        }
-
-        // todo: many settings here are coupled with the setX() functions called below
-        // maybe move this whole arg parsing below window creation so we don't have this two-step process?
-        // update: however some (like size/pos) might be nice to have before creating window?
-    }
-
-
-    // FFMPEG
-    InitAV();  // basically just registers all codecs.. call when needed instead?
-
-
-    // install mouse hook so we know when we click outside of a menu (to close it)
-    // (could also use this to detect clicks on an owner-draw menu item)
-    // (probably would have been easier than redrawing our own entire menu)
-    // (but we'd have been stuck with an old non-themed menu that way)
-    mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
-
-
-    // register class for wallpaper window if we ever use one
-    WNDCLASS wc2 = {};
-    wc2.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
-    wc2.lpfnWndProc =  DefWindowProc;//WndProc;
-    wc2.hInstance = hInstance;
-    wc2.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc2.lpszClassName = WALLPAPER_CLASS_NAME;
-    if (!RegisterClass(&wc2)) { MsgBox("RegisterClass for wallpaper window failed."); return 1; }
-
-
-
-    // create windows for popup menu
-    global_popup_window = InitPopupMenu(hInstance, menuItems, sizeof(menuItems)/sizeof(menuItem));
-
-
-
-    // WINDOW
-
-    // register wndproc
-    WNDCLASS wc = {};
-    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC | CS_DBLCLKS;
-    wc.lpfnWndProc = WndProc;
-    wc.hInstance = hInstance;
-    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = "ghoster window class";
-    if (!RegisterClass(&wc)) { MsgBox("RegisterClass failed."); return 1; }
-
-    RECT neededRect = {startX, startY, startX+startW, startY+startH};
-
-    // todo: test with multiple monitors
-    if (nest != 0)
-    {
-        MONITORINFO mi = { sizeof(mi) };
-        //todo can't get from window before window exists
-        if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
-        {
-            if (nest == 1)
-                neededRect = { 0, 0, startW, startH};
-            if (nest == 2)
-                neededRect = { mi.rcMonitor.right-startW, 0, mi.rcMonitor.right, startH};
-            if (nest == 3)
-                neededRect = { 0, mi.rcWork.bottom-startH, startW, mi.rcWork.bottom};
-            if (nest == 4)
-                neededRect = { mi.rcWork.right-startW, mi.rcWork.bottom-startH, mi.rcWork.right, mi.rcWork.bottom};
-            if (nest == 5)
-                neededRect = { 0, mi.rcMonitor.bottom-startH, startW, mi.rcMonitor.bottom};
-            if (nest == 6)
-                neededRect = { mi.rcMonitor.right-startW, mi.rcMonitor.bottom-startH, mi.rcMonitor.right, mi.rcMonitor.bottom};
-        }
-    }
-
-    // HWND
-    global_ghoster.system.window = CreateWindowEx(
-        WS_EX_LAYERED,
-        wc.lpszClassName, "ghoster video player",
-        WS_MINIMIZEBOX |   // i swear sometimes we can't shrink (via show desktop) without WS_MINIMIZEBOX
-        WS_POPUP | WS_VISIBLE,
-        neededRect.left, neededRect.top,
-        neededRect.right-neededRect.left, neededRect.bottom-neededRect.top,
-        0, 0, hInstance, 0);
-
-    if (!global_ghoster.system.window) { MsgBox("Couldn't open window."); }
-
-
-    // todo: move to ghoster init?
-    global_ghoster.UpdateWindowSize(neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
-
-    global_ghoster.rolling_movie.targetMsPerFrame = 16; // just some seed for before movie loads
-
-    // /*
-    // setup starting options based on command args / defaults (defaults are set in struct)....
-
-    if (!global_ghoster.system.icon)
-        global_ghoster.system.icon = RandomIcon();
-
-    AddSysTrayIcon(global_ghoster.system.window); // sets as default icon
-    SetIcon(global_ghoster.system.window, global_ghoster.system.icon);
-
-
-    setOpacity(global_ghoster.system.window, global_ghoster.state.opacity);
-    setTopMost(global_ghoster.system.window, global_ghoster.state.topMost);
-
-    // do not call here, wait until movie as been loaded and window is correct size
-    // setFullscreen(global_ghoster.system.fullscreen);
-
-    global_ghoster.setVolume(global_ghoster.state.volume);
-
-    if (startInGhostMode)
-        setGhostMode(global_ghoster.system.window, startInGhostMode);
-
-    // this has to be called after loading video so size is correct (maybe other things too)
-    // (it's now called after every new video which is better anyway)
-    // if (global_ghoster.state.wallpaperMode)
-    //     setWallpaperMode(global_ghoster.system.window, global_ghoster.state.wallpaperMode);
-
-    // end options setup
-    // */
-
-
-    // ENABLE DRAG DROP
-    DragAcceptFiles(global_ghoster.system.window, true);
-
-
-
-    r_init(global_ghoster.system.window, neededRect.right-neededRect.left, neededRect.bottom-neededRect.top);
-
-    ttf_init();
-
-
-
-    // MAIN APP LOOP
-    CreateThread(0, 0, RunMainLoop, 0, 0, 0);
-
-
-    // MSG LOOP
-    while (global_ghoster.state.appRunning)
-    {
-        MSG Message;
-        while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
-        {
-            TranslateMessage(&Message);
-            DispatchMessage(&Message);
-        }
-
-        the_one_render_call_to_rule_them_all(global_ghoster);
-
-        Sleep(16);
-    }
-
-    // if (global_workerw) CloseWindow(global_workerw);
-    RemoveSysTrayIcon(global_ghoster.system.window);
-    UnhookWindowsHookEx(mouseHook);
-
-    r_cleanup();
-
-    // show this again if we happen to be in wallpaper mode on exit
-    // if not, the next time user changes wallpaper it won't transition gradually
-    // (but only on the first transition)
-    // there could be other consequences too like windows being "put on the desktop"
-    // rather than minimized when using "show desktop" (which is how we found this is needed)
-
-    // no longer re-show this, so we don't hide other wallpaper-mode windows
-    // if (global_workerw)
-    //     ShowWindow(global_workerw, SW_SHOW);
-
-    return 0;
-}
