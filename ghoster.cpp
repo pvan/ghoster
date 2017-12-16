@@ -1358,6 +1358,10 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         global_ghoster.Update();
     }
 
+    // todo: sdl_cleanup() funciton;
+    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
+    SDL_CloseAudioDevice(global_ghoster.sdl_stuff.audio_device);
+
     return 0;
 }
 
