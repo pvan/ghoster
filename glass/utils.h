@@ -1,7 +1,11 @@
+#ifndef UTILS_H
+#define UTILS_H
 
 
+// todo: move glass and movie depend on this file, try to elim both dependances?
 
 
+#define PRINT(...) { char buf[256]; sprintf(buf, __VA_ARGS__); OutputDebugString(buf); }
 
 
 
@@ -179,3 +183,7 @@ bool Test_SecondsFromStringTimestamp()
     assert(SecondsFromStringTimestamp("3h65m0s") == 3*60*60+65*60+0);
     return true;
 }
+
+
+
+#endif

@@ -2,17 +2,19 @@
 #include <windowsx.h>  // GET_X_LPARAM
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
+
 
 // for drag drop, sys tray icon, command line args
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
 
 
-#include "types.h"
-// #include "directx.cpp"
-// #include "text.cpp"
+#include <Wingdi.h> // StretchDIBits
+#pragma comment(lib, "Gdi32.lib")
 
-#include "glass/glass.cpp"
+
+#include "types.h"
 
 
 void LogError(char *str) { MessageBox(0,str,0,0); }
@@ -25,9 +27,10 @@ void LogMessage(char *str) { OutputDebugString(str); }
 
 
 
+bool running = true;
 HWND g_hwnd;
-static MovieProjector projector;
 
+static MovieProjector projector;
 
 
 void render()
@@ -66,59 +69,51 @@ void render()
 }
 
 
-// char msg[1024];
-
-// d3d_textured_quad screen;
-// // d3d_textured_quad hud;
-// // d3d_textured_quad text;
-
-
-// void main_render_call()
-// {
-//     if (!glass.loop_running) return;  // kinda smells
-
-//     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
-//     int sw = winRect.right-winRect.left;
-//     int sh = winRect.bottom-winRect.top;
-
-
-//     // d3d_set_hwnd_target(glass.target_window());
-//     d3d_resize_if_change(sw, sh, glass.target_window());
-
-
-
-//     if (msg && *msg)
-//     {
-//         text.destroy();
-//         text = ttf_create(msg, 64, 255, true, true);
-//     }
-
-//     text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
-
-//     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
-
-//     screen.render();
-//     // hud.render();
-//     text.render();
-//     d3d_swap();
-// }
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    if (uMsg == WM_CLOSE) running = false;
+    if (uMsg ==  WM_NCHITTEST) {
+        RECT win; if (!GetWindowRect(hwnd, &win)) return HTNOWHERE;
+        POINT pos = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+        POINT pad = { GetSystemMetrics(SM_CXFRAME), GetSystemMetrics(SM_CYFRAME) };
+        bool left   = pos.x < win.left   + pad.x;
+        bool right  = pos.x > win.right  - pad.x -1;  // win.right 1 pixel beyond window, right?
+        bool top    = pos.y < win.top    + pad.y;
+        bool bottom = pos.y > win.bottom - pad.y -1;
+        if (top && left)     return HTTOPLEFT;
+        if (top && right)    return HTTOPRIGHT;
+        if (bottom && left)  return HTBOTTOMLEFT;
+        if (bottom && right) return HTBOTTOMRIGHT;
+        if (left)            return HTLEFT;
+        if (right)           return HTRIGHT;
+        if (top)             return HTTOP;
+        if (bottom)          return HTBOTTOM;
+        return HTCAPTION;
+    }
+    if (uMsg ==  WM_SIZE) {
+        // if (device) device->Present(0, 0, 0, 0);
+    }
+    return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     timeBeginPeriod(1); // set resolution of sleep
 
+    WNDCLASS wc = {0};
+    wc.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "app";
+    if (!RegisterClass(&wc)) { MessageBox(0, "RegisterClass failed", 0, 0); return 1; }
 
-    glass_create_window(hInstance, 0,0,400,400);
-    glass.render = render;
-    g_hwnd = glass.hwnd;
-
-
-    // assert(d3d_load());
-    // assert(d3d_init(glass.hwnd, 400, 400));
-
-    // ttf_init();
-
-
+    HWND hwnd = CreateWindowEx(
+        0, "app", "title",
+        // WS_POPUP | WS_VISIBLE,
+        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        CW_USEDEFAULT, CW_USEDEFAULT, 400, 400, 0, 0, hInstance, 0);
+    if (!hwnd) { MessageBox(0, "CreateWindowEx failed", 0, 0); return 1; }
+    g_hwnd = hwnd;
 
 
     // should we have each module parse this themselves?
@@ -148,14 +143,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
 
+    while(running)
+    {
+        MSG msg;
+        while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+        {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        render();
+        Sleep(16);
+    }
 
-    glass_run_msg_render_loop();
-
-
-    // d3d_cleanup();
 
     projector.KillBackgroundChurn();
 
     OutputDebugString("Ending app process...\n");
     return 0;
 }
+
+
+
+
+
+
+
+
