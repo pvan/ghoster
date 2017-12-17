@@ -1,7 +1,6 @@
 
 
 
-
 void LogError(char *str) { MessageBox(0,str,0,0); }
 void LogMessage(char *str) { OutputDebugString(str); }
 
@@ -18,23 +17,6 @@ void LogMessage(char *str) { OutputDebugString(str); }
 // todo: support multiple threads launched
 // and use results from the most recent working one?
 static HANDLE global_asyn_load_thread;
-
-
-
-
-
-// progress bar position
-const int PROGRESS_BAR_H = 22;
-const int PROGRESS_BAR_B = 0;
-
-// hide progress bar after this many ms
-const double PROGRESS_BAR_TIMEOUT = 1000;
-
-
-// how long to leave messages on screen (including any fade time ATM)
-const double MS_TO_DISPLAY_MSG = 3000;
-
-
 
 
 
@@ -139,7 +121,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam );
 // (just ahead or all over file?)
 // (eg make halfway point between I-frames new I-frames?)
 // (custom in-memory (on drive?) compression?)
-// but i guess decoding less important than downloading?
+// but improving dl > improving decoding which is already fast
 //
 // thinking eventually something like this:
 // .StartBackgroundChurn()
@@ -193,29 +175,29 @@ struct MovieProjector
 
 
 
-    void appPlay()
+    void PlayMovie()
     {
         if (rolling_movie.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
         state.is_paused = false;
     }
 
-    void appPause()
+    void PauseMovie()
     {
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         state.is_paused = true;
     }
 
-    void appTogglePause()
+    void TogglePlayPauseMovie()
     {
         state.is_paused = !state.is_paused;
         if (state.is_paused && !state.was_paused)
         {
-            appPause();
+            PauseMovie();
         }
         if (!state.is_paused && state.was_paused)
         {
-            appPlay();
+            PlayMovie();
         }
         state.was_paused = state.is_paused;
     }
@@ -223,7 +205,7 @@ struct MovieProjector
 
 
 
-    void setVolume(double volume)
+    void SetVolume(double volume)
     {
         if (volume < 0) volume = 0;
         if (volume > 1) volume = 1;
@@ -233,7 +215,7 @@ struct MovieProjector
 
 
 
-    void LoadNewMovie()
+    void LoadNewMovie(ffmpeg_source *new_source)
     {
         OutputDebugString("Ready to load new movie...\n");
 
@@ -241,7 +223,7 @@ struct MovieProjector
 
 
         // swap reels
-        rolling_movie.reel.TransferFromReel(&next_reel);
+        rolling_movie.reel.TransferFromReel(new_source);
 
 
         // SDL, for sound atm
@@ -265,7 +247,7 @@ struct MovieProjector
 
 
         state.bufferingOrLoading = false;
-        appPlay();
+        PlayMovie();
     }
 
 
@@ -291,7 +273,7 @@ struct MovieProjector
         if (message.loadNewMovie)
         {
             message.loadNewMovie = false;
-            LoadNewMovie();
+            LoadNewMovie(&next_reel);
         }
 
         double percent; // make into method?
@@ -299,7 +281,7 @@ struct MovieProjector
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
-            appPause();
+            PauseMovie();
         }
         else
         {
@@ -521,7 +503,7 @@ struct MovieProjector
     {
         // try waiting on this until we confirm it's a good path/file
         // projector.state.bufferingOrLoading = true;
-        // projector.appPause(false); // stop playing movie as well, we'll auto start the next one
+        // projector.PauseMovie(false); // stop playing movie as well, we'll auto start the next one
         // SplashMessage("fetching...", 0xaaaaaaff);
 
         // // todo: move this into some parse subcall?

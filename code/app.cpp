@@ -21,7 +21,6 @@
 
 
 
-HWND g_hwnd;
 static MovieProjector projector;
 
 
@@ -74,7 +73,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
-    g_hwnd = glass.hwnd;
 
 
     assert(d3d_load());
