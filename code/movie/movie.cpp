@@ -14,14 +14,12 @@ void LogMessage(char *str) { OutputDebugString(str); }
 
 
 
-// todo: support multiple threads launched
+// todo: support multiple threads launched?
 // and use results from the most recent working one?
-static HANDLE global_asyn_load_thread;
-
-
-
-bool movie_ytdl_running = false;
-HANDLE movie_ytdl_process = 0;
+// update: current system seems to work pretty well
+static HANDLE movie_asyn_load_thread = 0;
+static bool movie_ytdl_running = false;
+static HANDLE movie_ytdl_process = 0;
 
 float GetWallClockSeconds()
 {
@@ -36,8 +34,8 @@ struct frame_buffer
     u8 *mem;
     int wid;
     int hei;
-    int get_size() { return mem ? wid*hei*sizeof(u32) : 0; }
-    void alloc_mem(int w, int h) {
+    int size() { return mem ? wid*hei*sizeof(u32) : 0; }
+    void alloc(int w, int h) {
         free_if_needed();
         mem = (u8*)malloc(w*h*sizeof(u32));
         wid=w;
@@ -49,7 +47,7 @@ struct frame_buffer
     }
     void resize_if_needed(int w, int h) {
         if (w!=wid || h!=hei)
-            alloc_mem(w,h);
+            alloc(w,h);
     }
 };
 
@@ -572,8 +570,8 @@ struct MovieProjector
                 int bw = rolling_movie.reel.vid_width;
                 int bh = rolling_movie.reel.vid_height;
                 back_buffer->resize_if_needed(bw, bh);
-                assert(back_buffer->get_size() == bw*bh*sizeof(u32));
-                memcpy(back_buffer->mem, src, back_buffer->get_size());
+                assert(back_buffer->size() == bw*bh*sizeof(u32));
+                memcpy(back_buffer->mem, src, back_buffer->size());
 
                 frame_buffer *old_front = front_buffer;
                 front_buffer = back_buffer;
@@ -630,10 +628,10 @@ struct MovieProjector
         // but is starting a thread each time we load a new movie really what we want? seems like overkill
         // now that we guard against dangling ytdl, this seems to work decently well
         OutputDebugString("\n");
-        if (global_asyn_load_thread != 0)
+        if (movie_asyn_load_thread != 0)
         {
             DWORD exitCode;
-            GetExitCodeThread(global_asyn_load_thread, &exitCode);
+            GetExitCodeThread(movie_asyn_load_thread, &exitCode);
             if (exitCode == STILL_ACTIVE)
             {
                 OutputDebugString("ytdl started, forcing it closed too...\n");
@@ -645,13 +643,13 @@ struct MovieProjector
                     TerminateProcess(movie_ytdl_process, 0); // kill youtube-dl if still running
                 }
                 OutputDebugString("forcing old thread to close\n");
-                TerminateThread(global_asyn_load_thread, exitCode);
+                TerminateThread(movie_asyn_load_thread, exitCode);
             }
         }
 
         // TODO: any reason we don't just move this whole function into the async call?
 
-        global_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)this, 0, 0);
+        movie_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)this, 0, 0);
 
 
         // // strip off timestamp before caching path
@@ -874,7 +872,7 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
         {
             // todo: sometimes fails in here somewhere when loading urls?
             // maybe bad internet?
-            // LogMessage("PARSED CORRECTLY\n");
+            LogMessage("PARSED CORRECTLY\n"); // strangely this seems to cause us to succeed here more?
             // if (!newMovie) PRINT("newMovie NULL??\n");
             if (!newMovie->SetFromPaths(video_url, audio_url))
             {
@@ -933,7 +931,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
 
-    PRINT("starting new loading thread... %x", GetThreadId(global_asyn_load_thread));
+    PRINT("starting new loading thread... %x", GetThreadId(movie_asyn_load_thread));
 
     // projector->message.new_source_ready = false; // feels like this should not be needed here
 
@@ -968,7 +966,6 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 
 
 
-// todo: pass in ghoster app to run here?
 DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
@@ -1060,7 +1057,7 @@ bool PasteClipboard(MovieProjector projector)
         OutputDebugString(printit);
     projector.QueueLoadFromPath(clipboardContents);
     free(clipboardContents);
-    return true; // todo: do we need a result from loadmovie?
+    return true;
 }
 
 
