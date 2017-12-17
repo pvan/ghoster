@@ -2,11 +2,6 @@
 
 
 
-void MsgBox(char *s) {
-    MessageBox(0, s, "vid player", MB_OK);
-}
-
-
 
 
 

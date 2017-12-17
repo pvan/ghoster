@@ -26,9 +26,6 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 #include "util.h"
 
-#include "urls.h"
-
-
 
 #include "ffmpeg.cpp"
 
@@ -111,11 +108,11 @@ struct AppMessages
         load_new_file = true;
     }
 
-    void QueuePlayRandom()
-    {
-        int r = getUnplayedIndex();
-        QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
-    }
+    // void QueuePlayRandom()
+    // {
+    //     int r = getUnplayedIndex();
+    //     QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
+    // }
 
 
 };

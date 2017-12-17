@@ -30,6 +30,11 @@ HWND g_hwnd;
 static MovieProjector projector;
 
 
+
+#include "urls.h"
+
+
+
 void render()
 {
     // source setup
