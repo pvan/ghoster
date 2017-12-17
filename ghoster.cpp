@@ -48,9 +48,11 @@ struct RollingMovie
 
     double elapsed;
 
-    i64 ptsOfLastVideo;
+    i64 ptsOfLastVideo; // "ptsOfLastVideoFrameDecoded" too verbose?
     i64 ptsOfLastAudio;
 
+    // better names for these?
+    // secondsFromLastDecodedVideoPTS ? hmm
     double secondsFromVideoPTS()
     {
         return ffmpeg_seconds_from_pts(ptsOfLastVideo, reel.vfc, reel.video.index);
@@ -77,7 +79,7 @@ struct AppState
     bool bufferingOrLoading = true;
 
 
-    bool is_paused = false;  // needed here or.. hmm
+    bool is_paused = false;
     bool was_paused = false;
 
     double targetMsPerFrame;
@@ -119,12 +121,46 @@ struct AppMessages
 DWORD WINAPI RunMainLoop( LPVOID lpParam );
 
 
-
+// not crazy about the api for this
+// i think longer-term this would
+// continuously decode / dl frames ahead/behind
+// (just ahead or all over file?)
+// (eg make halfway point between I-frames new I-frames?)
+// (custom in-memory (on drive?) compression?)
+// but i guess decoding less important than downloading?
+//
+// thinking eventually something like this:
+// .StartBackgroundChurn()
+// .CheckMoviePath(path) ?
+// .TryLoadMoviePath(path)
+// dt? = GetBestAvailableNextFrame(&outFrame)
+// GetBestAvailableFrameAtTime(seconds) ?
+// GetBestAvailableFrameForFrameX(frameCount) ?
+// .PauseChurn() ?
+// .Destroy()
+//
+// with these controls:
+// .TryLoadingNewMoviePath()
+// .PauseVideoPlayback() / PlayVideoPlayback()
+// .SeekTo(percent)
+// .Step(+1 / -1) ?
+// .SetVolume(amt)
+// .SetSpeed() ?
+// .GetSourcePathWithTimestamp()
+// .SetCPUUsage()?
+//
+// but not sure how to handle sound
+// maybe circular buffer constantly being filled while churn()
+// and do we query for data by timestamp?
+// or let decoder control speed/playback?
+// and just query for what data/timestamp decoder is at? hmm
+// .AdjustTargetAudioLagTime(ms) ?
+// .SetMaxAudioLagTime(ms) ?
+// .SetMaxAudioLeadTime(ms) ?
+// .SetMaxAudioLagLeadTime(ms, ms) ?
 struct MovieProjector
 {
-
     AppState state;
-    // AppSystemState system;
 
     ffmpeg_sound_buffer ffmpeg_to_sdl_buffer;
     ffmpeg_sound_buffer volume_adjusted_buffer;
@@ -141,9 +177,6 @@ struct MovieProjector
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
 
-
-    // MessageOverlay debug_overlay;
-    // MessageOverlay splash_overlay;
 
 
     void appPlay()
@@ -221,6 +254,10 @@ struct MovieProjector
         appPlay();
     }
 
+
+    // something like this to replace "percent" etc?
+    double _elapsed_time_at_last_audio_decode() { return rolling_movie.secondsFromAudioPTS(); }
+    double _elapsed_time_at_last_video_decode() { return rolling_movie.secondsFromVideoPTS(); }
 
 
     void Init(char *exedir)
