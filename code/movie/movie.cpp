@@ -615,11 +615,16 @@ struct MovieProjector
         // maybe better would be to finish each thread but not use the movie it retrieves
         // unless it was the last thread started? (based on some unique identifier?)
         // but is starting a thread each time we load a new movie really what we want? seems odd
+        OutputDebugString("\n");
         if (global_asyn_load_thread != 0)
         {
             DWORD exitCode;
             GetExitCodeThread(global_asyn_load_thread, &exitCode);
-            TerminateThread(global_asyn_load_thread, exitCode);
+            if (exitCode == STILL_ACTIVE)
+            {
+                OutputDebugString("forcing old thread to close\n");
+                TerminateThread(global_asyn_load_thread, exitCode);
+            }
         }
 
         // TODO: any reason we don't just move this whole function into the async call?
@@ -894,6 +899,8 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
 DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
+
+    PRINT("starting new loading thread... %x", GetThreadId(global_asyn_load_thread));
 
     // projector->message.new_source_ready = false; // feels like this should not be needed here
 

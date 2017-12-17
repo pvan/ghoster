@@ -123,10 +123,10 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
     // good for estimating how many bytes to send to sdl
     sdl_stuff->spec_size = spec.size;
 
-    LogMessage("SDL: audio spec wanted:\n");
-    logSpec(&wanted_spec);
-    LogMessage("SDL: audio spec got:\n");
-    logSpec(&spec);
+    // LogMessage("SDL: audio spec wanted:\n");
+    // logSpec(&wanted_spec);
+    // LogMessage("SDL: audio spec got:\n");
+    // logSpec(&spec);
 
     return true;
 }
