@@ -16,23 +16,21 @@
 
 #include "types.h"
 
+
 void LogError(char *str) { MessageBox(0,str,0,0); }
 void LogMessage(char *str) { OutputDebugString(str); }
+
+#include "movie/movie.h"
+
+
+#include "urls.h"
+
 
 
 bool running = true;
 HWND g_hwnd;
 
-
-#include "movie.cpp"
-
-
 static MovieProjector projector;
-
-
-
-#include "urls.h"
-
 
 
 void render()
@@ -137,7 +135,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     projector.Init(exe_directory);
 
-    projector.StartLoop();
+    projector.StartBackgroundChurn();
 
     // todo: have projector be running in background, so load is really "queue load" etc
     // // projector.start();
@@ -158,8 +156,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
 
+    projector.KillBackgroundChurn();
 
-
+    OutputDebugString("Ending app process...\n");
     return 0;
 }
 

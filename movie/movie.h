@@ -1,9 +1,17 @@
 
 
 
+#include "utils.cpp"
+
+
+#include "ffmpeg.cpp"
+
+#include "sdl.cpp"
 
 
 
+// todo: support multiple threads launched
+// and use results from the most recent working one
 static HANDLE global_asyn_load_thread;
 
 
@@ -24,12 +32,6 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 
 
-#include "util.h"
-
-
-#include "ffmpeg.cpp"
-
-#include "sdl.cpp"
 
 
 float GetWallClockSeconds()
@@ -123,7 +125,7 @@ struct AppMessages
 
 DWORD WINAPI AsyncMovieLoad( LPVOID lpParam );
 
-DWORD WINAPI RunMainLoop( LPVOID lpParam );
+DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam );
 
 
 // not crazy about the api for this
@@ -166,7 +168,10 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam );
 // .SetMaxAudioLagLeadTime(ms, ms) ?
 struct MovieProjector
 {
-    AppState state;
+    bool is_churning = false;  // are we decoding in the background?
+    HANDLE churn_thread;
+
+    AppState state; // todo: drop this sub struct?
 
     ffmpeg_sound_buffer ffmpeg_to_sdl_buffer;
     ffmpeg_sound_buffer volume_adjusted_buffer;
@@ -176,8 +181,6 @@ struct MovieProjector
     RollingMovie rolling_movie;
 
     ffmpeg_source next_reel;
-
-    double msLastFrame; // todo: replace this with app timer? make timer usage more obvious
 
 
     // mostly flags, basic way to communicate between threads etc
@@ -571,10 +574,30 @@ struct MovieProjector
 
 
 
-    void StartLoop()
+    void StartBackgroundChurn()
     {
-        // MAIN APP LOOP
-        CreateThread(0, 0, RunMainLoop, (void*)this, 0, 0);
+        churn_thread = CreateThread(0, 0, StartProjectorChurnThread, (void*)this, 0, 0);
+    }
+
+    void Cleanup()
+    {
+        // sometimes crash on exit when not calling this? todo: confirm
+        SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
+        SDL_CloseAudioDevice(sdl_stuff.audio_device);
+    }
+
+    void KillBackgroundChurn()
+    {
+        is_churning = false;
+
+        // wait for thread to end so it can cleanup properly
+        // we could cleanup here instead?
+        // then this would be the only way to stop the churn cleanly, but that's probably fine
+        // we should wait for thread to end anyway in that case, so probably doesn't matter
+        DWORD res = WaitForSingleObject(churn_thread, 500/*ms timeout*/);
+        // if (res == WAIT_OBJECT_0) thread closed
+        if (res == WAIT_TIMEOUT) OutputDebugString("Timeout reached waiting for churn thread to end...");
+        // if (res == WAIT_FAILED) some other error
     }
 
 };
@@ -831,7 +854,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 
 
 // todo: pass in ghoster app to run here?
-DWORD WINAPI RunMainLoop( LPVOID lpParam )
+DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
 
@@ -842,10 +865,10 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         projector->message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
     }
 
-
     double timeLastFrame = GetWallClockSeconds();
 
-    while (running)  // todo: track this background running sep from app running
+    projector->is_churning = true;
+    while (projector->is_churning)
     {
         // why is this outside of update?
         // maybe have message_check function or something eventually?
@@ -886,10 +909,11 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         timeLastFrame = GetWallClockSeconds();
     }
 
-    // todo: sdl_cleanup() function?
-    SDL_PauseAudioDevice(projector->sdl_stuff.audio_device, (int)true);
-    SDL_CloseAudioDevice(projector->sdl_stuff.audio_device);
+    projector->Cleanup(); // basically sdl at time of writing this
 
+    // might be a good idea to make sure we see this message on exit or ending churn?
+    // to make sure everything gets cleaned up right
+    OutputDebugString("Ending churn process...\n");
     return 0;
 }
 
