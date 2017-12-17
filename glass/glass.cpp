@@ -7,8 +7,9 @@
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
 
-#include <Wingdi.h>
-#pragma comment(lib, "Gdi32.lib")
+// for set pixel format.. maybe only needed if using gdi to render to wallpaper window??
+// #include <Wingdi.h>
+// #pragma comment(lib, "Gdi32.lib")
 
 
 
@@ -325,19 +326,19 @@ struct glass_window
                 0, 0, hInstance, 0);
             if (!wallpaper_window) { MessageBox(0,"wallpaper mode failed!",0,0); }
 
-            // set dc format to be same as our main dc
-            // (i'm not sure this is needed??) TODO
-            PIXELFORMATDESCRIPTOR pf = {};
-            pf.nSize = sizeof(pf);
-            pf.nVersion = 1;
-            pf.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
-            pf.iPixelType = PFD_TYPE_RGBA;
-            pf.cColorBits = 32;
-            pf.cAlphaBits = 8;
-            HDC hdc = GetDC(wallpaper_window);
-            int format_index = ChoosePixelFormat(hdc, &pf);
-            SetPixelFormat(hdc, format_index, &pf);
-            ReleaseDC(wallpaper_window, hdc);
+            // // set dc format to be same as our main dc
+            // // (i'm not sure this is needed??) TODO
+            // PIXELFORMATDESCRIPTOR pf = {};
+            // pf.nSize = sizeof(pf);
+            // pf.nVersion = 1;
+            // pf.dwFlags = PFD_SUPPORT_OPENGL | PFD_DRAW_TO_WINDOW | PFD_DOUBLEBUFFER;
+            // pf.iPixelType = PFD_TYPE_RGBA;
+            // pf.cColorBits = 32;
+            // pf.cAlphaBits = 8;
+            // HDC hdc = GetDC(wallpaper_window);
+            // int format_index = ChoosePixelFormat(hdc, &pf);
+            // SetPixelFormat(hdc, format_index, &pf);
+            // ReleaseDC(wallpaper_window, hdc);
 
             // only need this if we're using the new wallpaper window icon in the taskbar
             icon_set(wallpaper_window, icon);

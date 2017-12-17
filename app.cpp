@@ -9,7 +9,7 @@
 
 
 #include "types.h"
-// #include "directx.cpp"
+#include "directx.cpp"
 // #include "text.cpp"
 
 #include "glass/glass.cpp"
@@ -30,78 +30,46 @@ static MovieProjector projector;
 
 
 
+
+char msg[1024];
+
+d3d_textured_quad screen;
+// d3d_textured_quad hud;
+// d3d_textured_quad text;
+
+
 void render()
 {
-    // source setup
-    HDC hdc = GetDC(g_hwnd);
-    RECT dispRect; GetClientRect(g_hwnd, &dispRect);
-    int sw = dispRect.right - dispRect.left;
-    int sh = dispRect.bottom - dispRect.top;
+    if (!glass.loop_running) return;  // kinda smells
 
-    // dest setup
-    void *dst = projector.rolling_movie.reel.vid_buffer;
-    int dw = 960;
-    int dh = 720;
+    RECT winRect; GetWindowRect(glass.hwnd, &winRect);
+    int sw = winRect.right-winRect.left;
+    int sh = winRect.bottom-winRect.top;
 
-    // bmi setup
-    BITMAPINFO bmi;
-    bmi.bmiHeader.biSize = sizeof(BITMAPINFO);
-    bmi.bmiHeader.biWidth = dw;
-    bmi.bmiHeader.biHeight = -dh;
-    bmi.bmiHeader.biPlanes = 1;
-    bmi.bmiHeader.biBitCount = 32;
-    bmi.bmiHeader.biCompression = BI_RGB;
 
-    u32 red = 0xffff0000;
-    if (dst == 0)
-    {
-        dst = (u8*)&red;
-        dw = 1;
-        dh = 1;
-        bmi.bmiHeader.biWidth = dw;
-        bmi.bmiHeader.biHeight = -dh;
-    }
+    // d3d_set_hwnd_target(glass.target_window());
+    d3d_resize_if_change(sw, sh, glass.target_window());
 
-    StretchDIBits(hdc,0,0,sw,sh, 0,0,dw,dh,dst, &bmi,DIB_RGB_COLORS,SRCCOPY);
+
+    if (projector.rolling_movie.reel.vid_buffer)
+        screen.fill_tex_with_mem(projector.rolling_movie.reel.vid_buffer, 960, 720);
+
+
+    // if (msg && *msg)
+    // {
+    //     text.destroy();
+    //     text = ttf_create(msg, 64, 255, true, true);
+    // }
+
+    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+
+    // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
+
+    screen.render();
+    // hud.render();
+    // text.render();
+    d3d_swap();
 }
-
-
-// char msg[1024];
-
-// d3d_textured_quad screen;
-// // d3d_textured_quad hud;
-// // d3d_textured_quad text;
-
-
-// void main_render_call()
-// {
-//     if (!glass.loop_running) return;  // kinda smells
-
-//     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
-//     int sw = winRect.right-winRect.left;
-//     int sh = winRect.bottom-winRect.top;
-
-
-//     // d3d_set_hwnd_target(glass.target_window());
-//     d3d_resize_if_change(sw, sh, glass.target_window());
-
-
-
-//     if (msg && *msg)
-//     {
-//         text.destroy();
-//         text = ttf_create(msg, 64, 255, true, true);
-//     }
-
-//     text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
-
-//     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
-
-//     screen.render();
-//     // hud.render();
-//     text.render();
-//     d3d_swap();
-// }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -113,8 +81,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     g_hwnd = glass.hwnd;
 
 
-    // assert(d3d_load());
-    // assert(d3d_init(glass.hwnd, 400, 400));
+    assert(d3d_load());
+    assert(d3d_init(glass.hwnd, 400, 400));
 
     // ttf_init();
 
@@ -148,14 +116,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
 
-
+    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0.5);
     glass_run_msg_render_loop();
 
 
-    // d3d_cleanup();
-
     projector.KillBackgroundChurn();
 
+
+    d3d_cleanup();
     OutputDebugString("Ending app process...\n");
     return 0;
 }
