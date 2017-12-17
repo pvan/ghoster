@@ -158,10 +158,12 @@ struct ffmpeg_source
     // destroys the reel passed in (we basically take the source and point our reel to it)
     void TransferFromReel(ffmpeg_source *other)
     {
+        if (!other->vfc) { MessageBox(0,"shouldn't see this",0,0); assert(false); }
         FreeEverything();
+        if (!other->vfc) { MessageBox(0,"see this if bug",0,0); assert(false); }
 
         *this = *other;
-        *other = {0}; // destroy original copies
+        memset(other, 0, sizeof(ffmpeg_source)); // destroy original copies
     }
 
 

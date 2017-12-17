@@ -55,7 +55,7 @@ struct frame_buffer
 // basically a movie source with a time component
 struct RollingMovie
 {
-    ffmpeg_source reel;
+    ffmpeg_source reel = {0};
     // ffmpeg_source lowq; //something like this?
     // ffmpeg_source medq;
     // ffmpeg_source highq;
@@ -131,10 +131,7 @@ struct RollingMovie
     // TODO: move audio latency to this class???
     void load_new_source(ffmpeg_source *new_source, double startAt)
     {
-        if (!new_source->vfc) MessageBox(0,"problem outside",0,0);
-
         reel.TransferFromReel(new_source);
-
 
         elapsed = startAt;
 
@@ -172,13 +169,13 @@ struct AppMessages
     double seekProportion = 0;
 
     bool new_source_ready = false;
-    ffmpeg_source new_reel;
+    ffmpeg_source new_reel = {0};
 
     int startAtSeconds = 0;
 
 
-    char file_to_load[1024]; // todo what max
-    bool load_new_file = false;
+    char new_path_to_load[1024]; // todo what max
+    bool new_load_path_queued = false;
 
 };
 
@@ -297,8 +294,8 @@ struct MovieProjector
 
     void QueueLoadFromPath(char *path)
     {
-        strcpy_s(message.file_to_load, 1024, path);
-        message.load_new_file = true;
+        strcpy_s(message.new_path_to_load, 1024, path);
+        message.new_load_path_queued = true;
     }
 
 
@@ -898,7 +895,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
 
-    char *path = projector->message.file_to_load;
+    char *path = projector->message.new_path_to_load;
     char *exe_dir = projector->state.exe_directory;
 
     if (!SlowCreateReelFromAnyPath(path, &projector->message.new_reel, exe_dir))
@@ -930,7 +927,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
     MovieProjector *projector = (MovieProjector*)lpParam;
 
     // LOAD FILE
-    if (!projector->message.load_new_file)
+    if (!projector->message.new_load_path_queued)
     {
         // projector.message.QueuePlayRandom();
         projector->QueueLoadFromPath("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
@@ -945,11 +942,11 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
         // maybe have message_check function or something eventually?
         // i guess it's out here because it's not really about playing a movie?
         // the whole layout of ghoster / loading / system needs to be re-worked
-        if (projector->message.load_new_file)
+        if (projector->message.new_load_path_queued)
         {
             // projector.state.buffering = true;
             projector->CreateAsycLoadingThread();
-            projector->message.load_new_file = false;
+            projector->message.new_load_path_queued = false;
         }
 
 
