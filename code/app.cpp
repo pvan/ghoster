@@ -10,13 +10,10 @@
 
 #include "types.h"
 #include "directx.cpp"
-// #include "text.cpp"
+#include "text.cpp"
 
 #include "glass/glass.cpp"
-
 #include "movie/movie.cpp"
-
-
 #include "urls.h"
 
 
@@ -26,11 +23,11 @@ static MovieProjector projector;
 
 
 
-char msg[1024];
+char msg[1024*4];
 
 d3d_textured_quad screen;
 // d3d_textured_quad hud;
-// d3d_textured_quad text;
+d3d_textured_quad text;
 
 
 bool keyD1;
@@ -71,20 +68,22 @@ void render()
     //     screen.fill_tex_with_mem(src, w, h);
     // }
 
+    static int count = 0;
+    sprintf(msg, "%i", count++);
+    if (msg && *msg)
+    {
+        text.destroy();
+        text = ttf_create(msg, 64, 255, true, true);
+        // text = ttf_create(msg, 32, 255, false, false);
+    }
 
-    // if (msg && *msg)
-    // {
-    //     text.destroy();
-    //     text = ttf_create(msg, 64, 255, true, true);
-    // }
-
-    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+    text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
 
     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
     screen.render();
     // hud.render();
-    // text.render();
+    text.render();
     d3d_swap();
 }
 
@@ -100,7 +99,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     assert(d3d_load());
     assert(d3d_init(glass.hwnd, 400, 400));
 
-    // ttf_init();
+    ttf_init();
 
 
 
@@ -129,7 +128,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
     // window msg pump...
-    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0.5);
+    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0.5); //todo:update to new api
     glass_run_msg_render_loop();
 
 
