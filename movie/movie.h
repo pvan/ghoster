@@ -11,7 +11,7 @@
 
 
 // todo: support multiple threads launched
-// and use results from the most recent working one
+// and use results from the most recent working one?
 static HANDLE global_asyn_load_thread;
 
 

@@ -6,9 +6,6 @@ if not defined DevEnvDir (
 )
 
 
-rc resource.rc
-
-
 
 set WarningFlags= -we4302
 
@@ -58,7 +55,7 @@ xcopy /s /y /q lib\SDL2-2.0.5\lib\x64\*.dll %build_folder%
 xcopy /s /y /q lib\youtube-dl.exe %build_folder%
 
 pushd %build_folder%
-cl -nologo %CompilerFlags% %WarningFlags% ..\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\resource.res
+cl -nologo %CompilerFlags% %WarningFlags% ..\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\icon\resource.res
 popd
 
 
