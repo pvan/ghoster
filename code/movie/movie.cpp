@@ -169,7 +169,13 @@ struct AppMessages
     double seekProportion = 0;
 
     bool new_source_ready = false;
-    ffmpeg_source new_reel = {0};
+
+    // this doesn't seem needed if we prevent a new loading thread while new_source_ready is true
+    // ffmpeg_source new_reel1 = {0};
+    // ffmpeg_source new_reel2 = {0};
+    // ffmpeg_source *new_read_reel; // for reading from when installing in decoder
+    // ffmpeg_source *new_write_reel; // for writing to when loading from disk/net
+    ffmpeg_source new_source = {0};
 
     int startAtSeconds = 0;
 
@@ -316,6 +322,10 @@ struct MovieProjector
         front_buffer = &fb1;
         back_buffer = &fb2;
 
+        // message.new_read_reel = &message.new_reel1;
+        // message.new_write_reel = &message.new_reel2;
+
+
     }
 
 
@@ -327,7 +337,8 @@ struct MovieProjector
             message.new_source_ready = false;
             OutputDebugString("Ready to load new movie...\n");
             // LoadNewMovieSource(&message.new_reel);
-            rolling_movie.load_new_source(&message.new_reel, message.startAtSeconds);
+            // rolling_movie.load_new_source(message.new_read_reel, message.startAtSeconds);
+            rolling_movie.load_new_source(&message.new_source, message.startAtSeconds);
 
             // SDL, for sound atm (todo: move sound playing out of projector and into calling application?)
             if (rolling_movie.reel.audio.codecContext)
@@ -907,7 +918,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     char *path = projector->message.new_path_to_load;
     char *exe_dir = projector->state.exe_directory;
 
-    if (!SlowCreateReelFromAnyPath(path, &projector->message.new_reel, exe_dir))
+    // if (!SlowCreateReelFromAnyPath(path, projector->message.new_write_reel, exe_dir))
+    if (!SlowCreateReelFromAnyPath(path, &projector->message.new_source, exe_dir))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -921,6 +933,10 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // SetTitle(projector.system.window, projector.message.new_reel.title);
 
     projector->message.new_source_ready = true;
+
+    // ffmpeg_source *old_read = projector->message.new_read_reel;
+    // projector->message.new_read_reel = projector->message.new_write_reel;
+    // projector->message.new_write_reel = projector->message.new_read_reel;
 
     return 0;
 }
@@ -951,7 +967,8 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
         // maybe have message_check function or something eventually?
         // i guess it's out here because it's not really about playing a movie?
         // the whole layout of ghoster / loading / system needs to be re-worked
-        if (projector->message.new_load_path_queued)
+        if (projector->message.new_load_path_queued
+            && !projector->message.new_source_ready) // no new thread if we have to process results from one
         {
             // projector.state.buffering = true;
             projector->CreateAsycLoadingThread();
@@ -968,7 +985,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
         // (eg if we're late one frame, go early the next?) hmm
         double dt = GetWallClockSeconds() - timeLastFrame;
         double targetSec = projector->state.targetSecPerFrame;
-        if (dt < targetSec)
+        if (dt < targetSec && targetSec != 0)
         {
             Sleep(targetSec - dt);
             while (dt < targetSec)  // is this weird?
