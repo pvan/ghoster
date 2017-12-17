@@ -167,23 +167,31 @@ struct ffmpeg_source
 
     void PopulateMetadata()
     {
-        assert(loaded);
-
         //fps
-        if (video.codecContext)
-        {
+        if (video.codecContext) {
             fps = ((double)video.codecContext->time_base.den /
                    (double)video.codecContext->time_base.num) /
                    (double)video.codecContext->ticks_per_frame;
-        }
-        else
-        {
-            fps = 30; // default if no video
+        } else if (audio.codecContext) { // todo: test this
+            fps = ((double)audio.codecContext->time_base.den /
+                   (double)audio.codecContext->time_base.num) /
+                   (double)audio.codecContext->ticks_per_frame;
+        } else {
+            fps = 30; // default if no video or audio.. probably shouldn't get here though
+            assert(false); // thinking we should have at least one a or v stream
         }
 
         // duration
-        durationSeconds = vfc->duration / (double)AV_TIME_BASE;
-        totalFrameCount = durationSeconds * fps;
+        if (vfc) {
+            durationSeconds = vfc->duration / (double)AV_TIME_BASE;
+            totalFrameCount = durationSeconds * fps;
+        } else if (afc) { //fallback to duration from audio
+            durationSeconds = afc->duration / (double)AV_TIME_BASE;
+            totalFrameCount = durationSeconds * fps;
+        } else {
+            // uuh..
+            assert(false); // don't call populate metadata until we've loaded the sources
+        }
 
         // w / h / aspect_ratio
         width = video.codecContext->width;
@@ -191,7 +199,8 @@ struct ffmpeg_source
         aspect_ratio = (double)width / (double)height;
     }
 
-    void SetupSwsContex()
+    // todo: these two should only ever be called together, combine?
+    void SetupSwsContex(int w, int h)
     {
         if (sws_context) sws_freeContext(sws_context);
 
@@ -204,19 +213,15 @@ struct ffmpeg_source
                 video.codecContext->width,
                 video.codecContext->height,
                 video.codecContext->pix_fmt,
-                960,
-                720,
+                w,
+                h,
                 AV_PIX_FMT_RGB32,
                 SWS_BILINEAR,
                 0, 0, 0);
         }
     }
-
-    void SetupFrameOutput()
+    void SetupFrameOutput(int w, int h)
     {
-        int w = 960;  // todo: variable
-        int h = 720;
-
         if (frame_output) av_frame_free(&frame_output);
         frame_output = av_frame_alloc();  // just metadata
 
@@ -372,15 +377,14 @@ struct ffmpeg_source
             return false;
         }
 
-        SetupSwsContex();
-        SetupFrameOutput();
+        PopulateMetadata();
+
+        SetupSwsContex(width, height);   // width/height here depend on metadata being populated first
+        SetupFrameOutput(width, height);
 
         loaded = true;
 
-        PopulateMetadata();
-
         // LogMessage("end of movie source creation\n");
-
         return true;
     }
 
