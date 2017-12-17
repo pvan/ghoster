@@ -895,7 +895,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     // projector.state.app_timer.Start();  // now started in ghoster.init
     projector->state.app_timer.EndFrame();  // seed our first frame dt
 
-    while (running)
+    while (running)  // todo: track this background running sep from app running
     {
         // why is this outside of update?
         // maybe have message_check function or something eventually?

@@ -24,7 +24,7 @@ bool running = true;
 HWND g_hwnd;
 
 
-#include "ghoster.cpp"
+#include "movie.cpp"
 
 
 static MovieProjector projector;
