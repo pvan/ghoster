@@ -27,6 +27,9 @@ HWND g_hwnd;
 #include "ghoster.cpp"
 
 
+static MovieProjector projector;
+
+
 void render()
 {
     // source setup

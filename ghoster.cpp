@@ -118,7 +118,11 @@ struct AppMessages
 
 
 
+DWORD WINAPI AsyncMovieLoad( LPVOID lpParam );
+
 DWORD WINAPI RunMainLoop( LPVOID lpParam );
+
+
 
 
 // not crazy about the api for this
@@ -136,6 +140,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam );
 // dt? = GetBestAvailableNextFrame(&outFrame)
 // GetBestAvailableFrameAtTime(seconds) ?
 // GetBestAvailableFrameForFrameX(frameCount) ?
+// if (MovieLoaded) PlayMovie ?
 // .PauseChurn() ?
 // .Destroy()
 //
@@ -527,7 +532,7 @@ struct MovieProjector
 
         // todo: we actually don't want to hit a certain fps like a game,
         // but accurately track our continuous audio timer
-        // (eg if we're late one frame, go early the next?)
+        // (eg if we're late one frame, go early the next?) hmm
 
         if (dt < state.targetMsPerFrame)
         {
@@ -552,21 +557,81 @@ struct MovieProjector
 
     }
 
+
+    bool CreateAsycLoadingThread()
+    {
+        // try waiting on this until we confirm it's a good path/file
+        // projector.state.bufferingOrLoading = true;
+        // projector.appPause(false); // stop playing movie as well, we'll auto start the next one
+        // SplashMessage("fetching...", 0xaaaaaaff);
+
+        // // todo: move this into some parse subcall?
+        // char *timestamp = strstr(path, "&t=");
+        // if (timestamp == 0) timestamp = strstr(path, "#t=");
+        // if (timestamp != 0) {
+        //     int startSeconds = SecondsFromStringTimestamp(timestamp);
+        //     message.startAtSeconds = startSeconds;
+        //         // char buf[123];
+        //         // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
+        //         // OutputDebugString(buf);
+        // }
+        // else
+        // {
+        //     message.startAtSeconds = 0; // so we don't inherit start time of prev video
+        // }
+
+        // todo: we should check for certain fails here
+        // so we don't cancel the loading thread if we don't have to
+        // e.g. we could know right away if this is a text file,
+        // we don't need to wait for youtube-dl for that at least
+        // ideally we wouldn't cancel the loading thread for ANY bad input
+        // maybe we start a new thread for every load attempt
+        // and timestamp them or something so the most recent valid one is loaded?
+
+        // stop previous thread if already loading
+        // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
+        // maybe better would be to finish each thread but not use the movie it retrieves
+        // unless it was the last thread started? (based on some unique identifier?)
+        // but is starting a thread each time we load a new movie really what we want? seems odd
+        if (global_asyn_load_thread != 0)
+        {
+            DWORD exitCode;
+            GetExitCodeThread(global_asyn_load_thread, &exitCode);
+            TerminateThread(global_asyn_load_thread, exitCode);
+        }
+
+        // TODO: any reason we don't just move this whole function into the async call?
+
+        global_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)this, 0, 0);
+
+
+        // // strip off timestamp before caching path
+        // if (timestamp != 0)
+        //     timestamp[0] = '\0';
+
+        // // save url for later (is rolling_movie the best place for cached_url?)
+        // // is this the best place to set cached_url?
+        // strcpy_s(projector.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
+
+
+        return true;
+    }
+
+
+
+
     void StartLoop()
     {
         // MAIN APP LOOP
-        CreateThread(0, 0, RunMainLoop, 0, 0, 0);
+        CreateThread(0, 0, RunMainLoop, (void*)this, 0, 0);
     }
 
 };
 
 
-static MovieProjector projector;
 
-
-
-
-bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
+// todo: consider a sep file / lib for a yotube-dl interface/wrapper?
+bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe_dir)
 {
     // setup our custom pipes...
 
@@ -600,10 +665,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     si.wShowWindow = SW_HIDE;
 
     char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
-    sprintf(youtube_dl_path, "%syoutube-dl.exe", projector.state.exe_directory);
+    sprintf(youtube_dl_path, "%syoutube-dl.exe", exe_dir);
 
     char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "%syoutube-dl.exe %s %s", projector.state.exe_directory, options, url);
+    sprintf(args, "%syoutube-dl.exe %s %s", exe_dir, options, url);
     // MsgBox(args);
 
     if (!CreateProcess(
@@ -621,6 +686,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
 
     WaitForSingleObject(pi.hProcess, INFINITE);
     TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+    // todo: what happens if main process is forced closed while youtube-dl is running? how to close ytdl?
 
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
@@ -654,12 +720,12 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
 
 
 
-bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
+bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTitle, char *exe_dir)
 {
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
 
     // -g gets urls (seems like two: video then audio)
-    if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString))
+    if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))
     {
         return false;
     }
@@ -670,11 +736,11 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
     segments[count++] = tempString;
     for (char *c = tempString; *c; c++)
     {
-        if (*c == '\n')
+        if (*c == '\n')  // basically convert \n to \0 and make pointer to each line in segments
         {
             *c = '\0';
 
-            if (count < 3)
+            if (count < 3)  // only bother with the first 3 though
             {
                 segments[count++] = c+1;
             }
@@ -685,7 +751,6 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
         }
     }
 
-
     int titleLen = strlen(segments[0]);  // note this doesn't include the \0
     if (titleLen+1 > FFMPEG_TITLE_SIZE-1) // note -1 since [size-1] is \0  and +1 since titleLen doesn't count \0
     {
@@ -695,16 +760,11 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
         segments[0][FFMPEG_TITLE_SIZE-4] = '.';
     }
 
-
     strcpy_s(outTitle, FFMPEG_TITLE_SIZE, segments[0]);
-
     strcpy_s(video, 1024*10, segments[1]);  // todo: pass in these string limits?
-
     strcpy_s(audio, 1024*10, segments[2]);
 
-
     free(tempString);
-
 
     OutputDebugString("\n");
     OutputDebugString(outTitle); OutputDebugString("\n");
@@ -712,10 +772,7 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
     OutputDebugString(audio); OutputDebugString("\n");
     OutputDebugString("\n");
 
-
-
     return true;
-
 }
 
 
@@ -723,7 +780,7 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
+bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_dir)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
@@ -737,7 +794,7 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
     {
         char *video_url = (char*)malloc(1024*10);  // big enough for some big url from youtube-dl
         char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
-        if(FindAudioAndVideoUrls(path, video_url, audio_url, outTitle))
+        if(ParseOutputFromYoutubeDL(path, video_url, audio_url, outTitle, exe_dir))
         {
             if (!newMovie->SetFromPaths(video_url, audio_url))
             {
@@ -792,16 +849,14 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
 
 
 
-
 DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
-    char *path = (char*)lpParam;
+    MovieProjector *projector = (MovieProjector*)lpParam;
 
-    // todo: move title into MovieReel? rename to movieFile or something?
-    // char *title = global_title_buffer;
+    char *path = projector->message.file_to_load;
+    char *exe_dir = projector->state.exe_directory;
 
-    // MovieReel newMovie;
-    if (!LoadMovieReelFromPath(path, &projector.next_reel))
+    if (!SlowCreateReelFromAnyPath(path, &projector->next_reel, exe_dir))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -814,73 +869,11 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // todo: better place for this? i guess it might be fine
     // SetTitle(projector.system.window, projector.next_reel.title);
 
-    // projector.message.newMovieToRun = DeepCopyMovieReel(newMovie);
-    projector.message.loadNewMovie = true;
+    projector->message.loadNewMovie = true;
 
     return 0;
 }
 
-
-
-
-
-bool CreateNewMovieFromPath(char *path)
-{
-    // try waiting on this until we confirm it's a good path/file
-    // projector.state.bufferingOrLoading = true;
-    // projector.appPause(false); // stop playing movie as well, we'll auto start the next one
-    // SplashMessage("fetching...", 0xaaaaaaff);
-
-    char *timestamp = strstr(path, "&t=");
-    if (timestamp == 0) timestamp = strstr(path, "#t=");
-    if (timestamp != 0) {
-        int startSeconds = SecondsFromStringTimestamp(timestamp);
-        projector.message.startAtSeconds = startSeconds;
-            // char buf[123];
-            // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
-            // OutputDebugString(buf);
-    }
-    else
-    {
-        projector.message.startAtSeconds = 0; // so we don't inherit start time of prev video
-    }
-
-    // todo: we should check for certain fails here
-    // so we don't cancel the loading thread if we don't have to
-    // e.g. we could know right away if this is a text file,
-    // we don't need to wait for youtube-dl for that at least
-    // ideally we wouldn't cancel the loading thread for ANY bad input
-    // maybe we start a new thread for every load attempt
-    // and timestamp them or something so the most recent valid one is loaded?
-
-    // stop previous thread if already loading
-    // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
-    // maybe better would be to finish each thread but not use the movie it retrieves
-    // unless it was the last thread started? (based on some unique identifier?)
-    // but is starting a thread each time we load a new movie really what we want? seems odd
-    if (global_asyn_load_thread != 0)
-    {
-        DWORD exitCode;
-        GetExitCodeThread(global_asyn_load_thread, &exitCode);
-        TerminateThread(global_asyn_load_thread, exitCode);
-    }
-
-    // TODO: any reason we don't just move this whole function into the async call?
-
-    global_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)path, 0, 0);
-
-
-    // strip off timestamp before caching path
-    if (timestamp != 0)
-        timestamp[0] = '\0';
-
-    // // save url for later (is rolling_movie the best place for cached_url?)
-    // // is this the best place to set cached_url?
-    // strcpy_s(projector.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
-
-
-    return true;
-}
 
 
 
@@ -889,17 +882,18 @@ bool CreateNewMovieFromPath(char *path)
 // todo: pass in ghoster app to run here?
 DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
+    MovieProjector *projector = (MovieProjector*)lpParam;
 
     // LOAD FILE
-    if (!projector.message.load_new_file)
+    if (!projector->message.load_new_file)
     {
         // projector.message.QueuePlayRandom();
-        projector.message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
+        projector->message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
     }
 
 
     // projector.state.app_timer.Start();  // now started in ghoster.init
-    projector.state.app_timer.EndFrame();  // seed our first frame dt
+    projector->state.app_timer.EndFrame();  // seed our first frame dt
 
     while (running)
     {
@@ -907,19 +901,19 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         // maybe have message_check function or something eventually?
         // i guess it's out here because it's not really about playing a movie?
         // the whole layout of ghoster / loading / system needs to be re-worked
-        if (projector.message.load_new_file)
+        if (projector->message.load_new_file)
         {
             // projector.state.buffering = true;
-            CreateNewMovieFromPath(projector.message.file_to_load);
-            projector.message.load_new_file = false;
+            projector->CreateAsycLoadingThread();
+            projector->message.load_new_file = false;
         }
 
-        projector.Update();
+        projector->Update();
     }
 
     // todo: sdl_cleanup() funciton;
-    SDL_PauseAudioDevice(projector.sdl_stuff.audio_device, (int)true);
-    SDL_CloseAudioDevice(projector.sdl_stuff.audio_device);
+    SDL_PauseAudioDevice(projector->sdl_stuff.audio_device, (int)true);
+    SDL_CloseAudioDevice(projector->sdl_stuff.audio_device);
 
     return 0;
 }
@@ -932,7 +926,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 
 
 
-bool PasteClipboard()
+bool PasteClipboard(MovieProjector projector)
 {
     HANDLE h;
     if (!OpenClipboard(0))
@@ -955,7 +949,7 @@ bool PasteClipboard()
 }
 
 
-bool CopyUrlToClipboard(bool withTimestamp = false)
+bool CopyUrlToClipboard(MovieProjector projector, bool withTimestamp = false)
 {
     char *url = projector.rolling_movie.reel.path;
 
