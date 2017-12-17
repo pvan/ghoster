@@ -20,6 +20,8 @@ static HANDLE global_asyn_load_thread;
 
 
 
+bool movie_ytdl_running = false;
+HANDLE movie_ytdl_process = 0;
 
 float GetWallClockSeconds()
 {
@@ -593,9 +595,10 @@ struct MovieProjector
 
     bool CreateAsycLoadingThread()
     {
-        // try waiting on this until we confirm it's a good path/file
-        // projector.state.bufferingOrLoading = true;
-        // projector.PauseMovie(false); // stop playing movie as well, we'll auto start the next one
+        // todo: we could check if it's the same path as we are currently loading and not restart in that case
+
+        // try waiting on this until we confirm it's a good path/file ?
+
         // SplashMessage("fetching...", 0xaaaaaaff);
 
         // // todo: move this into some parse subcall?
@@ -622,10 +625,10 @@ struct MovieProjector
         // and timestamp them or something so the most recent valid one is loaded?
 
         // stop previous thread if already loading
-        // todo: audit this, are we ok to stop this thread at any time? couldn't there be issues?
         // maybe better would be to finish each thread but not use the movie it retrieves
         // unless it was the last thread started? (based on some unique identifier?)
-        // but is starting a thread each time we load a new movie really what we want? seems odd
+        // but is starting a thread each time we load a new movie really what we want? seems like overkill
+        // now that we guard against dangling ytdl, this seems to work decently well
         OutputDebugString("\n");
         if (global_asyn_load_thread != 0)
         {
@@ -633,6 +636,14 @@ struct MovieProjector
             GetExitCodeThread(global_asyn_load_thread, &exitCode);
             if (exitCode == STILL_ACTIVE)
             {
+                OutputDebugString("ytdl started, forcing it closed too...\n");
+                if (movie_ytdl_running)
+                {
+                    OutputDebugString("waiting for ytdl process handle...\n");
+                    while (!movie_ytdl_process); // wait for handle to process
+                    OutputDebugString("closing ytdl process...\n");
+                    TerminateProcess(movie_ytdl_process, 0); // kill youtube-dl if still running
+                }
                 OutputDebugString("forcing old thread to close\n");
                 TerminateThread(global_asyn_load_thread, exitCode);
             }
@@ -687,7 +698,6 @@ struct MovieProjector
 };
 
 
-
 // todo: consider a sep file / lib for a yotube-dl interface/wrapper?
 bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe_dir)
 {
@@ -729,22 +739,30 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sprintf(args, "%syoutube-dl.exe %s %s", exe_dir, options, url);
     // MsgBox(args);
 
-    if (!CreateProcess(
-        youtube_dl_path,
-        //"youtube-dl.exe",
-        args,  // todo: UNSAFE
-        0, 0, TRUE,
-        CREATE_NEW_CONSOLE,
-        0, 0,
-        &si, &pi))
+    // try a guard like this so we don't force this thread closed while ytdl is running
+    movie_ytdl_running = true;       // this actually shouldn't be needed since we close the prev thread
     {
-        LogError("youtube-dl: CreateProcess() error");
-        return false;
-    }
+        if (!CreateProcess(
+            youtube_dl_path,
+            args,  // todo: UNSAFE
+            0, 0, TRUE,
+            CREATE_NEW_CONSOLE,
+            0, 0,
+            &si, &pi))
+        {
+            LogError("youtube-dl: CreateProcess() error");
+            return false;
+        }
+        // <-- if we close here, between these two commands, we could spawn a ytdl proc that doesn't get closed
+        // so we use the movie_ytdl_running as a guard against closing this thread until it's ready
+        movie_ytdl_process = pi.hProcess;
 
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
-    // todo: what happens if main process is forced closed while youtube-dl is running? how to close ytdl?
+        WaitForSingleObject(pi.hProcess, INFINITE);
+        TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+        // todo: what happens if main process is forced closed while youtube-dl is running? how to close ytdl?
+    }
+    movie_ytdl_running = false;
+    movie_ytdl_process = 0;
 
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
