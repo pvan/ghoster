@@ -7,17 +7,23 @@
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
 
-// for set pixel format.. maybe only needed if using gdi to render to wallpaper window??
+// for set pixel format on wallpaper window.. maybe only needed if using gdi to render??
 // #include <Wingdi.h>
 // #pragma comment(lib, "Gdi32.lib")
 
 
-
-#include "utils.h"
-
 #include "icon/icon.h"
 
 #include "hwnd.h"
+
+
+
+// basically just for parsing command line args.. if we drop that we can drop this
+bool glass_string_starts_with(const char *str, const char *front) // case sensitive
+{
+    while (*front && *str) { if (*front++ != *str++) return false; }
+    return true;
+}
 
 
 
@@ -327,7 +333,7 @@ struct glass_window
             if (!wallpaper_window) { MessageBox(0,"wallpaper mode failed!",0,0); }
 
             // // set dc format to be same as our main dc
-            // // (i'm not sure this is needed??) TODO
+            // // (i'm not sure this is needed??) maybe only if using gdi to render?
             // PIXELFORMATDESCRIPTOR pf = {};
             // pf.nSize = sizeof(pf);
             // pf.nVersion = 1;
@@ -1066,45 +1072,45 @@ void glass_create_window_from_args_string(HINSTANCE hinstance, wchar_t **argList
         // if (strcmp(nextArg, "-inky") == 0) icon = GetIconByInt(randomInt(4) + 4*0);
         // if (strcmp(nextArg, "-clyde") == 0) icon = GetIconByInt(randomInt(4) + 4*3);
 
-        if (StringBeginsWith(nextArg, "-opac"))
+        if (glass_string_starts_with(nextArg, "-opac"))
         {
             char *opacNum = nextArg + 5; // 5 = length of "-opac"
             glass.opacity = (double)atoi(opacNum) / 100.0;
         }
 
-        // if (StringBeginsWith(nextArg, "-vol"))
+        // if (glass_string_starts_with(nextArg, "-vol"))
         // {
         //     char *volNum = nextArg + 4; // 4 = length of "-vol"
         //     volume = (double)atoi(volNum) / 100.0;
         // }
 
-        if (StringBeginsWith(nextArg, "-x"))
+        if (glass_string_starts_with(nextArg, "-x"))
         {
             char *xNum = nextArg + 2; // 2 = length of "-x"
             startX = (double)atoi(xNum);
         }
-        if (StringBeginsWith(nextArg, "-y"))
+        if (glass_string_starts_with(nextArg, "-y"))
         {
             char *yNum = nextArg + 2; // 2 = length of "-y"
             startY = (double)atoi(yNum);
         }
-        if (StringBeginsWith(nextArg, "-w"))
+        if (glass_string_starts_with(nextArg, "-w"))
         {
             char *wNum = nextArg + 2; // 2 = length of "-w"
             startW = (double)atoi(wNum);
         }
-        if (StringBeginsWith(nextArg, "-h"))
+        if (glass_string_starts_with(nextArg, "-h"))
         {
             char *hNum = nextArg + 2; // 2 = length of "-h"
             startH = (double)atoi(hNum);
         }
 
-        if (StringBeginsWith(nextArg, "-tl")) nest = 1;
-        if (StringBeginsWith(nextArg, "-tr")) nest = 2;
-        if (StringBeginsWith(nextArg, "-bl")) nest = 3;
-        if (StringBeginsWith(nextArg, "-br")) nest = 4;
-        if (StringBeginsWith(nextArg, "-Bl")) nest = 5;  // todo: better name for above/below taskbar
-        if (StringBeginsWith(nextArg, "-Br")) nest = 6;
+        if (glass_string_starts_with(nextArg, "-tl")) nest = 1;
+        if (glass_string_starts_with(nextArg, "-tr")) nest = 2;
+        if (glass_string_starts_with(nextArg, "-bl")) nest = 3;
+        if (glass_string_starts_with(nextArg, "-br")) nest = 4;
+        if (glass_string_starts_with(nextArg, "-Bl")) nest = 5;  // todo: better name for above/below taskbar
+        if (glass_string_starts_with(nextArg, "-Br")) nest = 6;
     }
 
     glass_create_window(hinstance, startX, startY, startW, startH, nest);
