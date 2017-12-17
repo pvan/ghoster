@@ -44,24 +44,25 @@ REM  -FC             full paths in errors (for sublime error regex)
 
 REM debug build folder....
 
-set build_folder=debug
+set build_folder=..\debug
 
 IF NOT EXIST %build_folder% mkdir %build_folder%
 
 REM  better way?
-xcopy /s /y /q lib\ffmpeg-3.3.3-win64-shared\bin\*.dll %build_folder%
-xcopy /s /y /q lib\ffmpeg-3.3.3-win64-shared\bin\*.exe %build_folder%
-xcopy /s /y /q lib\SDL2-2.0.5\lib\x64\*.dll %build_folder%
-xcopy /s /y /q lib\youtube-dl.exe %build_folder%
+set lib_folder=..\lib
+xcopy /s /y /q %lib_folder%\ffmpeg-3.3.3-win64-shared\bin\*.dll %build_folder%
+xcopy /s /y /q %lib_folder%\ffmpeg-3.3.3-win64-shared\bin\*.exe %build_folder%
+xcopy /s /y /q %lib_folder%\SDL2-2.0.5\lib\x64\*.dll %build_folder%
+xcopy /s /y /q %lib_folder%\youtube-dl.exe %build_folder%
 
 pushd %build_folder%
-cl -nologo %CompilerFlags% %WarningFlags% ..\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\glass\icon\resource.res
+cl -nologo %CompilerFlags% %WarningFlags% ..\code\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\code\glass\icon\resource.res
 popd
 
 
 REM copy to release folder....
 
-set release_folder=ghoster
+set release_folder=..\ghoster
 
 IF NOT EXIST %release_folder% mkdir %release_folder%
 xcopy /s /y /q %build_folder%\*.dll %release_folder%>NUL

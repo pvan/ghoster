@@ -1,6 +1,6 @@
 @echo off
 
-set filesToOpen=ghoster.cpp
+set filesToOpen=code\app.cpp
 
 
 if not defined DevEnvDir (
