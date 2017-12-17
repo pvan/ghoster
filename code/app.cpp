@@ -38,7 +38,7 @@ void render()
     if (!glass.loop_running) return;  // kinda smells
 
     if (GetKeyState(0x31) & 0x8000)  // 1
-        projector.QueueLoadFromPath(TEST_FILES[1]);
+        projector.QueueLoadFromPath(TEST_FILES[2]);
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
@@ -49,8 +49,21 @@ void render()
     d3d_resize_if_change(sw, sh, glass.target_window());
 
 
-    if (projector.rolling_movie.reel.vid_buffer)
-        screen.fill_tex_with_mem(projector.rolling_movie.reel.vid_buffer, 960, 720);
+    if (projector.front_buffer && projector.front_buffer->mem)
+    {
+        u8 *src = projector.front_buffer->mem;
+        int w = projector.front_buffer->wid;
+        int h = projector.front_buffer->hei;
+        screen.fill_tex_with_mem(src, w, h);
+    }
+
+    // if (projector.rolling_movie.reel.vid_buffer)
+    // {
+    //     u8 *src = projector.rolling_movie.reel.vid_buffer;
+    //     int w = projector.rolling_movie.reel.vid_width;
+    //     int h = projector.rolling_movie.reel.vid_height;
+    //     screen.fill_tex_with_mem(src, w, h);
+    // }
 
 
     // if (msg && *msg)

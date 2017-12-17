@@ -160,38 +160,8 @@ struct ffmpeg_source
     {
         FreeEverything();
 
-        vfc = other->vfc;
-        afc = other->afc;
-        video = other->video;
-        audio = other->audio;
-        sws_context = other->sws_context;
-        frame_output = other->frame_output;
-        vid_buffer = other->vid_buffer;
-        strcpy(title, other->title);
-        strcpy(path, other->path);
-        fps             = other->fps;
-        durationSeconds = other->durationSeconds;
-        totalFrameCount = other->totalFrameCount;
-        width           = other->width;
-        height          = other->height;
-        aspect_ratio    = other->aspect_ratio;
-
-        // destroy other so we don't have two reels all pointing to the same source
-        other->vfc = 0;
-        other->afc = 0;
-        other->video = {0,0};
-        other->audio = {0,0};
-        other->sws_context = 0;
-        other->frame_output = 0;
-        other->vid_buffer = 0;
-        strcpy(other->title, "[empty]");
-        strcpy(other->path, "");
-        other->fps = 0;
-        other->durationSeconds = 0;
-        other->totalFrameCount = 0;
-        other->width = 0;
-        other->height = 0;
-        other->aspect_ratio = 0;
+        *this = *other;
+        *other = {0}; // destroy original copies
     }
 
 
@@ -244,6 +214,9 @@ struct ffmpeg_source
 
     void SetupFrameOutput()
     {
+        int w = 960;  // todo: variable
+        int h = 720;
+
         if (frame_output) av_frame_free(&frame_output);
         frame_output = av_frame_alloc();  // just metadata
 
@@ -254,7 +227,7 @@ struct ffmpeg_source
         }
 
         // actual mem for frame
-        int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, 960,720);
+        int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, w,h);
         if (vid_buffer) av_free(vid_buffer);
         vid_buffer = (u8*)av_malloc(numBytes);
 
@@ -264,9 +237,10 @@ struct ffmpeg_source
             frame_output->linesize,
             vid_buffer,
             AV_PIX_FMT_RGB32,
-            960,
-            720,
-            1);
+            w, h, 1);
+
+        vid_width = w;
+        vid_height = h;
     }
 
     bool IsAudioAvailable()

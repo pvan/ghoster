@@ -29,6 +29,27 @@ float GetWallClockSeconds()
 }
 
 
+struct frame_buffer
+{
+    u8 *mem;
+    int wid;
+    int hei;
+    int get_size() { return mem ? wid*hei*sizeof(u32) : 0; }
+    void alloc_mem(int w, int h) {
+        free_if_needed();
+        mem = (u8*)malloc(w*h*sizeof(u32));
+        wid=w;
+        hei=h;
+    }
+    void free_if_needed() {
+        if (mem)
+            free(mem);
+    }
+    void resize_if_needed(int w, int h) {
+        if (w!=wid || h!=hei)
+            alloc_mem(w,h);
+    }
+};
 
 
 // basically a movie source with a time component
@@ -59,7 +80,7 @@ struct RollingMovie
     // todo: what to do with this, hmmm
     // what about a ffmpeg_rolling_movie ?
     // called "hard" because we flush the buffers and may have to grab a few frames to get the right one
-    void hard_seek_to_timestamp(double seconds, double msAudioLatencyEstimate)
+    void hard_seek_to_timestamp(double seconds)
     {
         ffmpeg_source *source = &reel;
 
@@ -105,6 +126,20 @@ struct RollingMovie
             seconds * 1000.0,
             &ptsOfLastAudio);
         free(dummyBufferJunkData.data);
+    }
+
+    // TODO: move audio latency to this class???
+    void load_new_source(ffmpeg_source *new_source, double startAt)
+    {
+        if (!new_source->vfc) MessageBox(0,"problem outside",0,0);
+
+        reel.TransferFromReel(new_source);
+
+
+        elapsed = startAt;
+
+        // get first frame even if startAt is 0 because we could be paused
+        hard_seek_to_timestamp(startAt);
     }
 
 };
@@ -209,6 +244,13 @@ struct MovieProjector
     RollingMovie rolling_movie;
 
 
+    // for now just copy v output to this every frame
+    frame_buffer fb1;
+    frame_buffer fb2;
+    frame_buffer *front_buffer = 0;
+    frame_buffer *back_buffer = 0;
+
+
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
 
@@ -259,41 +301,6 @@ struct MovieProjector
         message.load_new_file = true;
     }
 
-    void LoadNewMovieSource(ffmpeg_source *new_source)
-    {
-        OutputDebugString("Ready to load new movie...\n");
-
-        // ClearCurrentSplash();
-
-
-        // swap reels
-        rolling_movie.reel.TransferFromReel(new_source);
-
-
-        // SDL, for sound atm
-        if (rolling_movie.reel.audio.codecContext)
-        {
-            SetupSDLSoundFor(rolling_movie.reel.audio.codecContext, &sdl_stuff, rolling_movie.reel.fps);
-            ffmpeg_to_sdl_buffer.setup(rolling_movie.reel.audio.codecContext);
-            volume_adjusted_buffer.setup(rolling_movie.reel.audio.codecContext);
-        }
-
-
-
-        state.targetSecPerFrame = 1.0 / rolling_movie.reel.fps;
-
-
-
-        rolling_movie.elapsed = message.startAtSeconds;
-
-        // get first frame even if startAt is 0 because we could be paused
-        rolling_movie.hard_seek_to_timestamp(message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
-
-
-        state.bufferingOrLoading = false;
-        PlayMovie();
-    }
-
 
     // something like this to replace "percent" etc?
     double _elapsed_time_at_last_audio_decode() { return rolling_movie.secondsFromAudioPTS(); }
@@ -308,6 +315,10 @@ struct MovieProjector
         state.exe_directory = exedir;
 
         state.targetSecPerFrame = 1.0/30.0; // for before video loads
+
+        front_buffer = &fb1;
+        back_buffer = &fb2;
+
     }
 
 
@@ -317,7 +328,21 @@ struct MovieProjector
         if (message.new_source_ready)
         {
             message.new_source_ready = false;
-            LoadNewMovieSource(&message.new_reel);
+            OutputDebugString("Ready to load new movie...\n");
+            // LoadNewMovieSource(&message.new_reel);
+            rolling_movie.load_new_source(&message.new_reel, message.startAtSeconds);
+
+            // SDL, for sound atm (todo: move sound playing out of projector and into calling application?)
+            if (rolling_movie.reel.audio.codecContext)
+            {
+                SetupSDLSoundFor(rolling_movie.reel.audio.codecContext, &sdl_stuff, rolling_movie.reel.fps);
+                ffmpeg_to_sdl_buffer.setup(rolling_movie.reel.audio.codecContext);
+                volume_adjusted_buffer.setup(rolling_movie.reel.audio.codecContext);
+            }
+
+            state.targetSecPerFrame = 1.0 / rolling_movie.reel.fps;
+            state.bufferingOrLoading = false;
+            PlayMovie();
         }
 
         double percent; // make into method?
@@ -338,7 +363,7 @@ struct MovieProjector
                 int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
 
                 double seconds = message.seekProportion*rolling_movie.reel.vfc->duration;
-                rolling_movie.hard_seek_to_timestamp(seconds, sdl_stuff.estimated_audio_latency_ms);
+                rolling_movie.hard_seek_to_timestamp(seconds);
             }
 
 
@@ -529,6 +554,21 @@ struct MovieProjector
                 //         vid_seconds, aud_seconds, delta_ms, delta_with_correction);
                 // OutputDebugString(ptsbuf);
 
+
+
+                // "RENDER" basically (to an offscreen buffer)
+
+                u8 *src = rolling_movie.reel.vid_buffer;
+                int bw = rolling_movie.reel.vid_width;
+                int bh = rolling_movie.reel.vid_height;
+                back_buffer->resize_if_needed(bw, bh);
+                assert(back_buffer->get_size() == bw*bh*sizeof(u32));
+                memcpy(back_buffer->mem, src, back_buffer->get_size());
+
+                frame_buffer *old_front = front_buffer;
+                front_buffer = back_buffer;
+                back_buffer = old_front;
+
             }
         }
 
@@ -536,7 +576,7 @@ struct MovieProjector
         // REPEAT
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
-            rolling_movie.hard_seek_to_timestamp(0, sdl_stuff.estimated_audio_latency_ms);
+            rolling_movie.hard_seek_to_timestamp(0);
         }
 
 
