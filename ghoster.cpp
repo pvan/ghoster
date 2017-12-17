@@ -116,9 +116,11 @@ struct AppMessages
 
 
 
+DWORD WINAPI RunMainLoop( LPVOID lpParam );
 
 
-struct GhosterWindow
+
+struct MovieProjector
 {
 
     AppState state;
@@ -513,12 +515,16 @@ struct GhosterWindow
 
     }
 
+    void StartLoop()
+    {
+        // MAIN APP LOOP
+        CreateThread(0, 0, RunMainLoop, 0, 0, 0);
+    }
 
 };
 
 
-static GhosterWindow global_ghoster;
-
+static MovieProjector projector;
 
 
 
@@ -557,10 +563,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
     si.wShowWindow = SW_HIDE;
 
     char youtube_dl_path[MAX_PATH];  // todo: replace this with something else.. malloc perhaps
-    sprintf(youtube_dl_path, "%syoutube-dl.exe", global_ghoster.state.exe_directory);
+    sprintf(youtube_dl_path, "%syoutube-dl.exe", projector.state.exe_directory);
 
     char args[MAX_PATH]; //todo: tempy
-    sprintf(args, "%syoutube-dl.exe %s %s", global_ghoster.state.exe_directory, options, url);
+    sprintf(args, "%syoutube-dl.exe %s %s", projector.state.exe_directory, options, url);
     // MsgBox(args);
 
     if (!CreateProcess(
@@ -609,9 +615,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString)
 }
 
 
+
+
 bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
 {
-
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
 
     // -g gets urls (seems like two: video then audio)
@@ -673,7 +680,6 @@ bool FindAudioAndVideoUrls(char *path, char *video, char *audio, char *outTitle)
     return true;
 
 }
-
 
 
 
@@ -748,6 +754,8 @@ bool LoadMovieReelFromPath(char *path, ffmpeg_source *newMovie)
 
 
 
+
+
 DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     char *path = (char*)lpParam;
@@ -756,7 +764,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // char *title = global_title_buffer;
 
     // MovieReel newMovie;
-    if (!LoadMovieReelFromPath(path, &global_ghoster.next_reel))
+    if (!LoadMovieReelFromPath(path, &projector.next_reel))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -767,35 +775,37 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     }
 
     // todo: better place for this? i guess it might be fine
-    // SetTitle(global_ghoster.system.window, global_ghoster.next_reel.title);
+    // SetTitle(projector.system.window, projector.next_reel.title);
 
-    // global_ghoster.message.newMovieToRun = DeepCopyMovieReel(newMovie);
-    global_ghoster.message.loadNewMovie = true;
+    // projector.message.newMovieToRun = DeepCopyMovieReel(newMovie);
+    projector.message.loadNewMovie = true;
 
     return 0;
 }
 
 
 
+
+
 bool CreateNewMovieFromPath(char *path)
 {
     // try waiting on this until we confirm it's a good path/file
-    // global_ghoster.state.bufferingOrLoading = true;
-    // global_ghoster.appPause(false); // stop playing movie as well, we'll auto start the next one
+    // projector.state.bufferingOrLoading = true;
+    // projector.appPause(false); // stop playing movie as well, we'll auto start the next one
     // SplashMessage("fetching...", 0xaaaaaaff);
 
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
     if (timestamp != 0) {
         int startSeconds = SecondsFromStringTimestamp(timestamp);
-        global_ghoster.message.startAtSeconds = startSeconds;
+        projector.message.startAtSeconds = startSeconds;
             // char buf[123];
             // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
             // OutputDebugString(buf);
     }
     else
     {
-        global_ghoster.message.startAtSeconds = 0; // so we don't inherit start time of prev video
+        projector.message.startAtSeconds = 0; // so we don't inherit start time of prev video
     }
 
     // todo: we should check for certain fails here
@@ -829,11 +839,12 @@ bool CreateNewMovieFromPath(char *path)
 
     // // save url for later (is rolling_movie the best place for cached_url?)
     // // is this the best place to set cached_url?
-    // strcpy_s(global_ghoster.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
+    // strcpy_s(projector.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
 
 
     return true;
 }
+
 
 
 
@@ -843,15 +854,15 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
 {
 
     // LOAD FILE
-    if (!global_ghoster.message.load_new_file)
+    if (!projector.message.load_new_file)
     {
-        // global_ghoster.message.QueuePlayRandom();
-        global_ghoster.message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
+        // projector.message.QueuePlayRandom();
+        projector.message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
     }
 
 
-    // global_ghoster.state.app_timer.Start();  // now started in ghoster.init
-    global_ghoster.state.app_timer.EndFrame();  // seed our first frame dt
+    // projector.state.app_timer.Start();  // now started in ghoster.init
+    projector.state.app_timer.EndFrame();  // seed our first frame dt
 
     while (running)
     {
@@ -859,22 +870,26 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
         // maybe have message_check function or something eventually?
         // i guess it's out here because it's not really about playing a movie?
         // the whole layout of ghoster / loading / system needs to be re-worked
-        if (global_ghoster.message.load_new_file)
+        if (projector.message.load_new_file)
         {
-            // global_ghoster.state.buffering = true;
-            CreateNewMovieFromPath(global_ghoster.message.file_to_load);
-            global_ghoster.message.load_new_file = false;
+            // projector.state.buffering = true;
+            CreateNewMovieFromPath(projector.message.file_to_load);
+            projector.message.load_new_file = false;
         }
 
-        global_ghoster.Update();
+        projector.Update();
     }
 
     // todo: sdl_cleanup() funciton;
-    SDL_PauseAudioDevice(global_ghoster.sdl_stuff.audio_device, (int)true);
-    SDL_CloseAudioDevice(global_ghoster.sdl_stuff.audio_device);
+    SDL_PauseAudioDevice(projector.sdl_stuff.audio_device, (int)true);
+    SDL_CloseAudioDevice(projector.sdl_stuff.audio_device);
 
     return 0;
 }
+
+
+
+
 
 
 
@@ -897,7 +912,7 @@ bool PasteClipboard()
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    global_ghoster.message.QueueLoadMovie(clipboardContents);
+    projector.message.QueueLoadMovie(clipboardContents);
     free(clipboardContents);
     return true; // todo: do we need a result from loadmovie?
 }
@@ -905,11 +920,11 @@ bool PasteClipboard()
 
 bool CopyUrlToClipboard(bool withTimestamp = false)
 {
-    char *url = global_ghoster.rolling_movie.reel.path;
+    char *url = projector.rolling_movie.reel.path;
 
     char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
     if (StringIsUrl(url) && withTimestamp) {
-        int secondsElapsed = global_ghoster.rolling_movie.elapsed;
+        int secondsElapsed = projector.rolling_movie.elapsed;
         sprintf(output, "%s&t=%i", url, secondsElapsed);
     }
     else

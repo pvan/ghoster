@@ -36,7 +36,7 @@ void render()
     int sh = dispRect.bottom - dispRect.top;
 
     // dest setup
-    void *dst = global_ghoster.rolling_movie.reel.vid_buffer;
+    void *dst = projector.rolling_movie.reel.vid_buffer;
     int dw = 960;
     int dh = 720;
 
@@ -127,10 +127,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wcstombs(exe_directory, argList[0], MAX_PATH);
     DirectoryFromPath(exe_directory);
 
-    global_ghoster.Init(exe_directory);
+    projector.Init(exe_directory);
 
-    // MAIN APP LOOP
-    CreateThread(0, 0, RunMainLoop, 0, 0, 0);
+    projector.StartLoop();
 
     // todo: have projector be running in background, so load is really "queue load" etc
     // // projector.start();
