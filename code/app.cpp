@@ -14,11 +14,7 @@
 
 #include "glass/glass.cpp"
 
-
-void LogError(char *str) { MessageBox(0,str,0,0); }
-void LogMessage(char *str) { OutputDebugString(str); }
-
-#include "movie/movie.h"
+#include "movie/movie.cpp"
 
 
 #include "urls.h"
