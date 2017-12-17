@@ -37,6 +37,9 @@ void render()
 {
     if (!glass.loop_running) return;  // kinda smells
 
+    if (GetKeyState(0x31) & 0x8000)  // 1
+        projector.QueueLoadFromPath(TEST_FILES[1]);
+
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
     int sh = winRect.bottom-winRect.top;
@@ -103,20 +106,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     projector.Init(exe_directory);
 
     projector.StartBackgroundChurn();
-
-    // todo: have projector be running in background, so load is really "queue load" etc
-    // // projector.start();
     // projector.load_from_url("D:\\Users\\phil\\Desktop\\test4.mp4");
 
 
-
+    // window msg pump...
     screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0.5);
     glass_run_msg_render_loop();
 
 
+    // cleanup....
     projector.KillBackgroundChurn();
-
-
     d3d_cleanup();
     OutputDebugString("Ending app process...\n");
     return 0;

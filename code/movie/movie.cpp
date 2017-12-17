@@ -55,6 +55,58 @@ struct RollingMovie
         return ffmpeg_seconds_from_pts(ptsOfLastAudio, reel.afc, reel.audio.index);
     }
 
+
+    // todo: what to do with this, hmmm
+    // what about a ffmpeg_rolling_movie ?
+    // called "hard" because we flush the buffers and may have to grab a few frames to get the right one
+    void hard_seek_to_timestamp(double seconds, double msAudioLatencyEstimate)
+    {
+        ffmpeg_source *source = &reel;
+
+        // todo: measure the time this function takes and debug output it
+
+        // not entirely sure if this flush usage is right
+        if (source->video.codecContext) avcodec_flush_buffers(source->video.codecContext);
+        if (source->audio.codecContext) avcodec_flush_buffers(source->audio.codecContext);
+
+        i64 seekPos = nearestI64((double)seconds * (double)AV_TIME_BASE);
+
+        // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
+        if (source->video.codecContext) av_seek_frame(source->vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+        if (source->audio.codecContext) av_seek_frame(source->afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
+
+
+        // step through video frames...
+        int frames_skipped;
+        source->GetNextVideoFrame(
+            // source->vfc,
+            // source->video.codecContext,
+            // source->sws_context,
+            // source->video.index,
+            // source->frame_output,
+            seconds * 1000.0,// - msAudioLatencyEstimate,
+            0,
+            true,
+            &ptsOfLastVideo,
+            &frames_skipped);
+
+
+        // step through audio frames...
+        // kinda awkward
+        ffmpeg_sound_buffer dummyBufferJunkData;
+        dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
+        dummyBufferJunkData.size_in_bytes = 1024 * 10;
+        int bytes_queued_up = source->GetNextAudioFrame(
+            // source->afc,
+            // source->audio.codecContext,
+            // source->audio.index,
+            dummyBufferJunkData,
+            1024,
+            seconds * 1000.0,
+            &ptsOfLastAudio);
+        free(dummyBufferJunkData.data);
+    }
+
 };
 
 
@@ -84,25 +136,14 @@ struct AppMessages
     bool setSeek = false;
     double seekProportion = 0;
 
-    bool loadNewMovie = false;
+    bool new_source_ready = false;
+    ffmpeg_source new_reel;
 
     int startAtSeconds = 0;
 
 
     char file_to_load[1024]; // todo what max
     bool load_new_file = false;
-    void QueueLoadMovie(char *path)
-    {
-        strcpy_s(file_to_load, 1024, path);
-        load_new_file = true;
-    }
-
-    // void QueuePlayRandom()
-    // {
-    //     int r = getUnplayedIndex();
-    //     QueueLoadMovie(RANDOM_ON_LAUNCH[r]);
-    // }
-
 
 };
 
@@ -167,8 +208,6 @@ struct MovieProjector
 
     RollingMovie rolling_movie;
 
-    ffmpeg_source next_reel;
-
 
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
@@ -214,8 +253,13 @@ struct MovieProjector
 
 
 
+    void QueueLoadFromPath(char *path)
+    {
+        strcpy_s(message.file_to_load, 1024, path);
+        message.load_new_file = true;
+    }
 
-    void LoadNewMovie(ffmpeg_source *new_source)
+    void LoadNewMovieSource(ffmpeg_source *new_source)
     {
         OutputDebugString("Ready to load new movie...\n");
 
@@ -243,7 +287,7 @@ struct MovieProjector
         rolling_movie.elapsed = message.startAtSeconds;
 
         // get first frame even if startAt is 0 because we could be paused
-        ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
+        rolling_movie.hard_seek_to_timestamp(message.startAtSeconds, sdl_stuff.estimated_audio_latency_ms);
 
 
         state.bufferingOrLoading = false;
@@ -270,10 +314,10 @@ struct MovieProjector
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
     void Update()
     {
-        if (message.loadNewMovie)
+        if (message.new_source_ready)
         {
-            message.loadNewMovie = false;
-            LoadNewMovie(&next_reel);
+            message.new_source_ready = false;
+            LoadNewMovieSource(&message.new_reel);
         }
 
         double percent; // make into method?
@@ -294,7 +338,7 @@ struct MovieProjector
                 int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
 
                 double seconds = message.seekProportion*rolling_movie.reel.vfc->duration;
-                ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, seconds, sdl_stuff.estimated_audio_latency_ms);
+                rolling_movie.hard_seek_to_timestamp(seconds, sdl_stuff.estimated_audio_latency_ms);
             }
 
 
@@ -492,7 +536,7 @@ struct MovieProjector
         // REPEAT
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
-            ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, 0, sdl_stuff.estimated_audio_latency_ms);
+            rolling_movie.hard_seek_to_timestamp(0, sdl_stuff.estimated_audio_latency_ms);
         }
 
 
@@ -817,7 +861,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     char *path = projector->message.file_to_load;
     char *exe_dir = projector->state.exe_directory;
 
-    if (!SlowCreateReelFromAnyPath(path, &projector->next_reel, exe_dir))
+    if (!SlowCreateReelFromAnyPath(path, &projector->message.new_reel, exe_dir))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
@@ -828,9 +872,9 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     }
 
     // todo: better place for this? i guess it might be fine
-    // SetTitle(projector.system.window, projector.next_reel.title);
+    // SetTitle(projector.system.window, projector.message.new_reel.title);
 
-    projector->message.loadNewMovie = true;
+    projector->message.new_source_ready = true;
 
     return 0;
 }
@@ -849,7 +893,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
     if (!projector->message.load_new_file)
     {
         // projector.message.QueuePlayRandom();
-        projector->message.QueueLoadMovie("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
+        projector->QueueLoadFromPath("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
     }
 
     double timeLastFrame = GetWallClockSeconds();
@@ -929,7 +973,7 @@ bool PasteClipboard(MovieProjector projector)
         char printit[MAX_PATH]; // should be +1
         sprintf(printit, "%s\n", (char*)clipboardContents);
         OutputDebugString(printit);
-    projector.message.QueueLoadMovie(clipboardContents);
+    projector.QueueLoadFromPath(clipboardContents);
     free(clipboardContents);
     return true; // todo: do we need a result from loadmovie?
 }

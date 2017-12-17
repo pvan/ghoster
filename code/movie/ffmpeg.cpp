@@ -836,61 +836,6 @@ struct ffmpeg_source
 
 
 
-
-
-
-// called "hard" because we flush the buffers and may have to grab a few frames to get the right one
-void ffmpeg_hard_seek_to_timestamp(ffmpeg_source *source, double seconds, double msAudioLatencyEstimate)
-{
-    // todo: measure the time this function takes and debug output it
-
-    // not entirely sure if this flush usage is right
-    if (source->video.codecContext) avcodec_flush_buffers(source->video.codecContext);
-    if (source->audio.codecContext) avcodec_flush_buffers(source->audio.codecContext);
-
-    i64 seekPos = nearestI64((double)seconds * (double)AV_TIME_BASE);
-
-    // AVSEEK_FLAG_BACKWARD = find first I-frame before our seek position
-    if (source->video.codecContext) av_seek_frame(source->vfc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-    if (source->audio.codecContext) av_seek_frame(source->afc, -1, seekPos, AVSEEK_FLAG_BACKWARD);
-
-
-    // step through video frames...
-    int frames_skipped;
-    i64 pts;
-    source->GetNextVideoFrame(
-        // source->vfc,
-        // source->video.codecContext,
-        // source->sws_context,
-        // source->video.index,
-        // source->frame_output,
-        seconds * 1000.0,// - msAudioLatencyEstimate,
-        0,
-        true,
-        &pts, //&movie->ptsOfLastVideo,
-        &frames_skipped);
-
-
-    // step through audio frames...
-    // kinda awkward
-    ffmpeg_sound_buffer dummyBufferJunkData;
-    dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
-    dummyBufferJunkData.size_in_bytes = 1024 * 10;
-    int bytes_queued_up = source->GetNextAudioFrame(
-        // source->afc,
-        // source->audio.codecContext,
-        // source->audio.index,
-        dummyBufferJunkData,
-        1024,
-        seconds * 1000.0,
-        &pts); //&movie->ptsOfLastAudio);
-    free(dummyBufferJunkData.data);
-}
-
-
-
-
-
 double ffmpeg_seconds_from_pts(i64 pts, AVFormatContext *fc, int streamIndex)
 {
     i64 base_num = fc->streams[streamIndex]->time_base.num;
