@@ -895,6 +895,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
 
+    // projector->message.new_source_ready = false; // feels like this should not be needed here
+
     char *path = projector->message.new_path_to_load;
     char *exe_dir = projector->state.exe_directory;
 
