@@ -34,7 +34,14 @@ const double MS_TO_DISPLAY_MSG = 3000;
 
 #include "sdl.cpp"
 
-#include "timer.cpp"
+
+float GetWallClockSeconds()
+{
+    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
+    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
+    return (float)counter.QuadPart / (float)freq.QuadPart;
+}
+
 
 
 
@@ -67,7 +74,6 @@ struct RollingMovie
 
 struct AppState
 {
-    Timer app_timer;
     char *exe_directory;
 
 
@@ -82,7 +88,7 @@ struct AppState
     bool is_paused = false;
     bool was_paused = false;
 
-    double targetMsPerFrame;
+    double targetSecPerFrame;
 };
 
 
@@ -121,8 +127,6 @@ struct AppMessages
 DWORD WINAPI AsyncMovieLoad( LPVOID lpParam );
 
 DWORD WINAPI RunMainLoop( LPVOID lpParam );
-
-
 
 
 // not crazy about the api for this
@@ -245,7 +249,7 @@ struct MovieProjector
 
 
 
-        state.targetMsPerFrame = 1000.0 / rolling_movie.reel.fps;
+        state.targetSecPerFrame = 1.0 / rolling_movie.reel.fps;
 
 
 
@@ -270,38 +274,22 @@ struct MovieProjector
 
         ffmpeg_init();  // basically just registers all codecs..
 
-        state.app_timer.Start();  // now started in ghoster.init
-
-
         state.exe_directory = exedir;
 
-
-        state.targetMsPerFrame = 30; // for before video loads
+        state.targetSecPerFrame = 1.0/30.0; // for before video loads
     }
 
 
     // now running this on a sep thread from our msg loop so it's independent of mouse events / captures
     void Update()
     {
-
-        // todo: replace this with the-one-dt-to-rule-them-all, maybe from app_timer
-        double temp_dt = state.app_timer.MsSinceStart() - msLastFrame;
-        msLastFrame = state.app_timer.MsSinceStart();
-
-
-
-
-
         if (message.loadNewMovie)
         {
             message.loadNewMovie = false;
             LoadNewMovie();
         }
 
-
-
         double percent; // make into method?
-
 
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
@@ -430,7 +418,7 @@ struct MovieProjector
                 double ts_video = rolling_movie.secondsFromVideoPTS();
                 double vid_seconds = ts_video;
 
-                double estimatedVidPTS = vid_seconds + state.targetMsPerFrame/1000.0;
+                double estimatedVidPTS = vid_seconds + state.targetSecPerFrame;
 
 
                 // better to have audio lag than lead, these based loosely on:
@@ -514,46 +502,12 @@ struct MovieProjector
         }
 
 
-
-
         // REPEAT
-
         if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
         {
             ffmpeg_hard_seek_to_timestamp(&rolling_movie.reel, 0, sdl_stuff.estimated_audio_latency_ms);
         }
 
-
-
-        // HIT FPS
-
-        // something seems off with this... ? i guess it's, it's basically ms since END of last frame
-        double dt = state.app_timer.MsSinceLastFrame();
-
-        // todo: we actually don't want to hit a certain fps like a game,
-        // but accurately track our continuous audio timer
-        // (eg if we're late one frame, go early the next?) hmm
-
-        if (dt < state.targetMsPerFrame)
-        {
-            double msToSleep = state.targetMsPerFrame - dt;
-            Sleep(msToSleep);
-            while (dt < state.targetMsPerFrame)  // is this weird?
-            {
-                dt = state.app_timer.MsSinceLastFrame();
-            }
-            // char msg[256]; sprintf(msg, "fps: %.5f\n", 1000/dt); OutputDebugString(msg);
-            // char msg[256]; sprintf(msg, "ms: %.5f\n", dt); OutputDebugString(msg);
-        }
-        else
-        {
-            // todo: seems to happen a lot with just clicking a bunch?
-            // missed fps target
-            char msg[256];
-            sprintf(msg, "!! missed fps !! target ms: %.5f, frame ms: %.5f\n", state.targetMsPerFrame, dt);
-            OutputDebugString(msg);
-        }
-        state.app_timer.EndFrame();  // make sure to call for MsSinceLastFrame() to work.. feels weird
 
     }
 
@@ -892,8 +846,7 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
     }
 
 
-    // projector.state.app_timer.Start();  // now started in ghoster.init
-    projector->state.app_timer.EndFrame();  // seed our first frame dt
+    double timeLastFrame = GetWallClockSeconds();
 
     while (running)  // todo: track this background running sep from app running
     {
@@ -908,10 +861,35 @@ DWORD WINAPI RunMainLoop( LPVOID lpParam )
             projector->message.load_new_file = false;
         }
 
+
         projector->Update();
+
+
+        // HIT FPS
+        // todo: do we actually want to hit a certain fps like a game?
+        // or accurately track our continuous audio timer...
+        // (eg if we're late one frame, go early the next?) hmm
+        double dt = GetWallClockSeconds() - timeLastFrame;
+        double targetSec = projector->state.targetSecPerFrame;
+        if (dt < targetSec)
+        {
+            Sleep(targetSec - dt);
+            while (dt < targetSec)  // is this weird?
+            {
+                dt = GetWallClockSeconds() - timeLastFrame;
+            }
+        }
+        else
+        {
+            // missed fps target
+            char msg[256];
+            sprintf(msg, "!! missed fps !! target ms: %.3f, actual ms: %.3f\n", targetSec*1000.0, dt*1000.0);
+            OutputDebugString(msg);
+        }
+        timeLastFrame = GetWallClockSeconds();
     }
 
-    // todo: sdl_cleanup() funciton;
+    // todo: sdl_cleanup() function?
     SDL_PauseAudioDevice(projector->sdl_stuff.audio_device, (int)true);
     SDL_CloseAudioDevice(projector->sdl_stuff.audio_device);
 
