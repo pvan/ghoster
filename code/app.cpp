@@ -39,12 +39,12 @@ void render()
 {
     if (!glass.loop_running) return;  // kinda smells
 
-    // if (GetKeyState(0x31) & 0x8000 && !keyD1) { keyD1=true; projector.QueueLoadFromPath(TEST_FILES[2]); }
-    // if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
-    // if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
-    // if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
-    if (GetKeyState(0x31) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[2]); }
-    if (GetKeyState(0x32) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[7]); }
+    if (GetKeyState(0x31) & 0x8000 && !keyD1) { keyD1=true; projector.QueueLoadFromPath(TEST_FILES[2]); }
+    if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
+    if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
+    if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
+    // if (GetKeyState(0x31) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[2]); }
+    // if (GetKeyState(0x32) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[7]); }
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;

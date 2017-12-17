@@ -379,6 +379,8 @@ struct ffmpeg_source
 
         PopulateMetadata();
 
+        // LogMessage("end of movie source creation\n");
+
         return true;
     }
 

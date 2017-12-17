@@ -872,6 +872,10 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
         char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
         if(ParseOutputFromYoutubeDL(path, video_url, audio_url, outTitle, exe_dir))
         {
+            // todo: sometimes fails in here somewhere when loading urls?
+            // maybe bad internet?
+            // LogMessage("PARSED CORRECTLY\n");
+            // if (!newMovie) PRINT("newMovie NULL??\n");
             if (!newMovie->SetFromPaths(video_url, audio_url))
             {
                 free(video_url);
