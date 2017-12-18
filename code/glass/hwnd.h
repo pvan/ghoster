@@ -49,15 +49,24 @@ double hwnd_set_opacity(HWND hwnd, double opac)   // 0-1
 }
 
 
-// void SetWindowSize(HWND hwnd, int wid, int hei)
-// {
-//     // UpdateWindowSize(wid, hei);
+void hwnd_set_to_aspect_ratio(HWND hwnd, double aspect_ratio)
+{
+    RECT winRect;
+    GetWindowRect(hwnd, &winRect);
+    int w = winRect.right - winRect.left;
+    int h = winRect.bottom - winRect.top;
 
-//     RECT winRect;
-//     GetWindowRect(hwnd, &winRect);
-//     MoveWindow(hwnd, winRect.left, winRect.top, wid, hei, true);
-// }
+    // which to adjust tho?
+    int nw = (int)((double)h * aspect_ratio);
+    int nh = (int)((double)w / aspect_ratio);
 
+    // this always makes smaller (not great)
+    // if (nw < w) MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+    // else MoveWindow(hwnd, winRect.left, winRect.top, w, nh, true);
+
+    // now always adjusting width
+    MoveWindow(hwnd, winRect.left, winRect.top, nw, h, true);
+}
 
 
 // void hwnd_set_ghostmode(HWND hwnd, bool enable)

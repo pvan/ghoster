@@ -259,6 +259,7 @@ struct MovieProjector
     // mostly flags, basic way to communicate between threads etc
     AppMessages message;
 
+    void (*on_load_callback)(int,int) = 0;  // notify app video is done loading
 
 
     void PlayMovie()
@@ -353,6 +354,8 @@ struct MovieProjector
             state.targetSecPerFrame = 1.0 / rolling_movie.reel.fps;
             state.bufferingOrLoading = false;
             PlayMovie();
+
+            if (on_load_callback) on_load_callback(rolling_movie.reel.width, rolling_movie.reel.height);
         }
 
         double percent; // make into method?

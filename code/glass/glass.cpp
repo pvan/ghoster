@@ -121,10 +121,10 @@ struct glass_window
     bool is_fullscreen = false;
     bool is_topmost = false;
     bool is_clickthrough = false;
-    bool is_ratiolocked = true;
+    bool is_ratiolocked = false;
     bool is_snappy = true;
     bool is_wallpaper = false;
-    double aspect_ratio;
+    double aspect_ratio = 1;
     double opacity = 1;
 
 
@@ -312,7 +312,14 @@ struct glass_window
                 0);
         }
     }
-
+    void set_ratiolocked(bool enable)
+    {
+        is_ratiolocked = enable;
+        if (is_ratiolocked)
+        {
+            hwnd_set_to_aspect_ratio(hwnd, aspect_ratio); // need to set wallpaper hwnd too? todo: other cases similar?
+        }
+    }
 
     bool registered_wallpaper_class_once = false;
     void set_wallpaper(bool enable)
@@ -640,6 +647,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 #define GLASS_ID_OPAC90       1011
 #define GLASS_ID_OPAC100      1012
 #define GLASS_ID_WALL         1013
+#define GLASS_ID_LOCKRATIO    1014
 
 void glass_open_menu_at(HWND hwnd, POINT point)
 {
@@ -648,6 +656,7 @@ void glass_open_menu_at(HWND hwnd, POINT point)
     UINT topm = glass.is_topmost         ? MF_CHECKED : MF_UNCHECKED;
     UINT full = glass.is_fullscreen      ? MF_CHECKED : MF_UNCHECKED;
     UINT wall = glass.is_wallpaper       ? MF_CHECKED : MF_UNCHECKED;
+    UINT rati = glass.is_ratiolocked     ? MF_CHECKED : MF_UNCHECKED;
 
     UINT op10 = glass.opacity == 0.10    ? MF_CHECKED : MF_UNCHECKED;
     UINT op15 = glass.opacity == 0.15    ? MF_CHECKED : MF_UNCHECKED;
@@ -671,6 +680,7 @@ void glass_open_menu_at(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | wall, GLASS_ID_WALL, L"Stick to wallpaper");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | snap, GLASS_ID_SNAP, L"Snap to edges");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | clic, GLASS_ID_CLICKTHRU, L"Cannot be clicked");
+    InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | rati, GLASS_ID_LOCKRATIO, L"Lock aspect ratio");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | topm, GLASS_ID_TOPMOST, L"Always on top");
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | full, GLASS_ID_FULLSCREEN, L"Fullscreen");
     SetForegroundWindow(hwnd);
@@ -771,46 +781,44 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             // return 0;
         }
 
-        // case WM_SIZING: {  // when dragging border
-        //     RECT rc = *(RECT*)lParam;
-        //     int w = rc.right - rc.left;
-        //     int h = rc.bottom - rc.top;
+        case WM_SIZING: {  // when dragging border
+            if (!wParam) break; // if no W, then our L seems to be no good (not sure why)
 
-        //     if (glass.is_ratiolocked)
-        //     {
-        //         double ratio = glass.aspect_ratio;
-        //         switch (wParam)
-        //         {
-        //             case WMSZ_LEFT:
-        //             case WMSZ_RIGHT:
-        //                 rc.bottom = rc.top + (int)((double)w / ratio);
-        //                 break;
+            RECT rc = *(RECT*)lParam;
+            int w = rc.right - rc.left;
+            int h = rc.bottom - rc.top;
 
-        //             case WMSZ_TOP:
-        //             case WMSZ_BOTTOM:
-        //                 rc.right = rc.left + (int)((double)h * ratio);
-        //                 break;
+            if (glass.is_ratiolocked)
+            {
+                double ratio = glass.aspect_ratio;
+                switch (wParam)
+                {
+                    case WMSZ_LEFT:
+                    case WMSZ_RIGHT:
+                        rc.bottom = rc.top + (int)((double)w / ratio);
+                        break;
 
-        //             case WMSZ_LEFT + WMSZ_TOP:
-        //             case WMSZ_LEFT + WMSZ_BOTTOM:
-        //                 rc.left = rc.right - (int)((double)h * ratio);
-        //                 break;
+                    case WMSZ_TOP:
+                    case WMSZ_BOTTOM:
+                        rc.right = rc.left + (int)((double)h * ratio);
+                        break;
 
-        //             case WMSZ_RIGHT + WMSZ_TOP:
-        //                 rc.top = rc.bottom - (int)((double)w / ratio);
-        //                 break;
+                    case WMSZ_LEFT + WMSZ_TOP:
+                    case WMSZ_LEFT + WMSZ_BOTTOM:
+                        rc.left = rc.right - (int)((double)h * ratio);
+                        break;
 
-        //             case WMSZ_RIGHT + WMSZ_BOTTOM:
-        //                 rc.bottom = rc.top + (int)((double)w / ratio);
-        //                 break;
-        //         }
-        //         *(RECT*)lParam = rc;
-        //     }
+                    case WMSZ_RIGHT + WMSZ_TOP:
+                        rc.top = rc.bottom - (int)((double)w / ratio);
+                        break;
 
-        //     // OPTION 1a (same as if done in WM_SIZE)
-        //     // r_resize(w, h); // flicker if we try this
-
-        // } break;
+                    case WMSZ_RIGHT + WMSZ_BOTTOM:
+                        rc.bottom = rc.top + (int)((double)w / ratio);
+                        break;
+                }
+                *(RECT*)lParam = rc;
+            }
+        } break;
 
 
         case WM_NCHITTEST: {
@@ -961,12 +969,13 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_COMMAND: {
             switch (LOWORD(wParam)) {
-                case GLASS_ID_EXIT:       glass.loop_running = false;                  break;
-                case GLASS_ID_CLICKTHRU:  glass.set_ghostmode(!glass.is_clickthrough); break;
-                case GLASS_ID_TOPMOST:    glass.set_topmost(!glass.is_topmost);        break;
-                case GLASS_ID_FULLSCREEN: glass.setFullscreen(!glass.is_fullscreen);   break;
-                case GLASS_ID_SNAP:       glass.set_snappy(!glass.is_snappy);          break;
-                case GLASS_ID_WALL:       glass.set_wallpaper(!glass.is_wallpaper);    break;
+                case GLASS_ID_EXIT:       glass.loop_running = false;                   break;
+                case GLASS_ID_CLICKTHRU:  glass.set_ghostmode(!glass.is_clickthrough);  break;
+                case GLASS_ID_TOPMOST:    glass.set_topmost(!glass.is_topmost);         break;
+                case GLASS_ID_FULLSCREEN: glass.setFullscreen(!glass.is_fullscreen);    break;
+                case GLASS_ID_SNAP:       glass.set_snappy(!glass.is_snappy);           break;
+                case GLASS_ID_WALL:       glass.set_wallpaper(!glass.is_wallpaper);     break;
+                case GLASS_ID_LOCKRATIO:  glass.set_ratiolocked(!glass.is_ratiolocked); break;
 
                 case GLASS_ID_OPAC10 : glass.set_opacity(0.10); break;
                 case GLASS_ID_OPAC15 : glass.set_opacity(0.15); break;
@@ -1006,7 +1015,6 @@ bool glass_create_window(HINSTANCE hInstance, int x, int y, int w, int h, int ne
     if (nest != 0)
     {
         MONITORINFO mi = { sizeof(mi) };
-        //todo can't get from window before window exists
         if (GetMonitorInfo(MonitorFromWindow(0, MONITOR_DEFAULTTOPRIMARY), &mi))
         {
             if (nest == 1)

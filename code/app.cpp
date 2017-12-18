@@ -77,10 +77,17 @@ void render()
     // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
+    // todo: seems we have still not completely eliminated flicker on resize.. hrmm
     screen.render();
     // hud.render();
     debug_quad.render();
     d3d_swap();
+}
+
+// other ways?
+void on_video_load(int w, int h)
+{
+    glass.aspect_ratio = (double)w / (double)h;
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -120,7 +127,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     projector.Init(exe_directory);
 
     projector.StartBackgroundChurn();
-    // projector.load_from_url("D:\\Users\\phil\\Desktop\\test4.mp4");
+    projector.on_load_callback = on_video_load;
 
 
     // window msg pump...
