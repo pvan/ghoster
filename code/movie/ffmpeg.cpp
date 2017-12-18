@@ -335,9 +335,12 @@ struct ffmpeg_source
         // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
         // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
         int open_result1 = avformat_open_input(&vfc, videopath, 0, 0);
+            PRINT("vfc loaded...\n");
         int open_result2 = avformat_open_input(&afc, audiopath, 0, 0);
+            PRINT("afc loaded...\n");
         if (open_result1 != 0 || open_result2 != 0)
         {
+            PRINT("Unable to load a format context...\n");
             char averr[1024];
             av_strerror(open_result1, averr, 1024);
             char msg[2048];

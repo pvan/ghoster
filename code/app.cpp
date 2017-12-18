@@ -88,6 +88,9 @@ void render()
 void on_video_load(int w, int h)
 {
     glass.aspect_ratio = (double)w / (double)h;
+
+    if (!glass.is_fullscreen) // not in this case though
+        glass.set_ratiolocked(glass.is_ratiolocked); // awkward way to set window size to aspect ratio if enabled
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
