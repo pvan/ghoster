@@ -72,11 +72,13 @@ void render()
     // static int count = 0;
     // sprintf(msg, "%i", count++);
     projector.rolling_movie.reel.MetadataToString(debug_string);
+    sprintf(debug_string+strlen(debug_string), "\n");
+    glass.ToString(debug_string+strlen(debug_string));
     if (debug_string && *debug_string)
     {
         debug_quad.destroy();
         // text = ttf_create(msg, 64, 255);
-        debug_quad = ttf_create(debug_string, 32, 255);
+        debug_quad = ttf_create(debug_string, 26, 255);
     }
 
     // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);

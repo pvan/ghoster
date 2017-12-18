@@ -157,7 +157,7 @@ struct ffmpeg_source
         "totalFrameCount: %f\n"
         "width: %i\n"
         "height: %i\n"
-        "aspect_ratio: %f",
+        "aspect_ratio: %f\n",
         vid_width,
         vid_height,
         title,

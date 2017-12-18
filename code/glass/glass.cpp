@@ -141,13 +141,55 @@ struct glass_window
     // mouse state
     POINT mDownPoint;
     bool mDown;
-    bool clickingOnProgressBar = false;
+    // bool clickingOnProgressBar = false;
     bool mouseHasMovedSinceDownL = false;
     double msOfLastMouseMove = -1000;
     bool next_mup_was_double_click = false;
     bool next_mup_was_closing_menu = false;
     UINT single_click_timer_id;
 
+
+
+    void ToString(char *out)
+    {
+        sprintf(out,
+        "loop_running: %s\n"
+        "sleep_ms: %i\n"
+        "is_fullscreen: %s\n"
+        "is_topmost: %s\n"
+        "is_clickthrough: %s\n"
+        "is_ratiolocked: %s\n"
+        "is_snappy: %s\n"
+        "is_wallpaper: %s\n"
+        "aspect_ratio: %f\n"
+        "opacity: %f\n"
+        "had_to_cache_opacity: %s\n"
+        "last_opacity: %f\n"
+        "mDownPoint: %i, %i\n"
+        "mDown: %s\n"
+        "mouseHasMovedSinceDownL: %s\n"
+        "msOfLastMouseMove: %f\n"
+        "next_mup_was_double_click: %s\n"
+        "next_mup_was_closing_menu: %s\n",
+        loop_running ? "true" : "false",
+        sleep_ms,
+        is_fullscreen ? "true" : "false",
+        is_topmost ? "true" : "false",
+        is_clickthrough ? "true" : "false",
+        is_ratiolocked ? "true" : "false",
+        is_snappy ? "true" : "false",
+        is_wallpaper ? "true" : "false",
+        aspect_ratio,
+        opacity,
+        had_to_cache_opacity ? "true" : "false",
+        last_opacity,
+        mDownPoint.x, mDownPoint.y,
+        mDown ? "true" : "false",
+        mouseHasMovedSinceDownL ? "true" : "false",
+        msOfLastMouseMove,
+        next_mup_was_double_click ? "true" : "false",
+        next_mup_was_closing_menu ? "true" : "false");
+    }
 
 
     HWND target_window() { return is_wallpaper ? wallpaper_window : hwnd; }
@@ -483,7 +525,7 @@ struct glass_window
         }
 
         mouseHasMovedSinceDownL = false;
-        clickingOnProgressBar = false;
+        // clickingOnProgressBar = false;
 
         if (next_mup_was_double_click)
         {
