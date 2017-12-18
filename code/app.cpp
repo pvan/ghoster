@@ -25,6 +25,7 @@ static MovieProjector projector;
 
 // char msg[1024*4];
 char *debug_string;
+bool show_debug = false;
 
 d3d_textured_quad screen;
 // d3d_textured_quad hud;
@@ -33,6 +34,7 @@ d3d_textured_quad debug_quad;
 
 bool keyD1;
 bool keyD2;
+bool keyD3;
 void render()
 {
     if (!glass.loop_running) return;  // kinda smells
@@ -41,8 +43,9 @@ void render()
     if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
     if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
     if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
-    // if (GetKeyState(0x31) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[2]); }
-    // if (GetKeyState(0x32) & 0x8000) { projector.QueueLoadFromPath(TEST_FILES[7]); }
+
+    if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
+    if (!(GetKeyState(VK_TAB) & 0x8000)) keyD3 = false;
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
@@ -62,15 +65,18 @@ void render()
 
 
 
-    projector.rolling_movie.reel.MetadataToString(debug_string);
-    sprintf(debug_string+strlen(debug_string), "\n");
-    glass.ToString(debug_string+strlen(debug_string));
-    if (debug_string && *debug_string)
+    if (show_debug)
     {
-        debug_quad.destroy();
-        debug_quad = ttf_create(debug_string, 26, 255);
+        projector.rolling_movie.reel.MetadataToString(debug_string);
+        sprintf(debug_string+strlen(debug_string), "\n");
+        glass.ToString(debug_string+strlen(debug_string));
+        if (debug_string && *debug_string)
+        {
+            debug_quad.destroy();
+            debug_quad = ttf_create(debug_string, 26, 255);
+        }
+        debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
     }
-    debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
 
 
     // text = ttf_create(msg, 64, 255);
@@ -80,7 +86,7 @@ void render()
     // todo: seems we have still not completely eliminated flicker on resize.. hrmm
     screen.render();
     // hud.render();
-    debug_quad.render();
+    if (show_debug) debug_quad.render();
     d3d_swap();
 }
 
