@@ -130,8 +130,8 @@ struct ffmpeg_source
     int vid_width;   //todo: get from source (and make buffer this size?)
     int vid_height;
 
-    char title[FFMPEG_TITLE_SIZE]; // todo: how big? todo: alloc this
-    char path[FFMEPG_PATH_SIZE]; // todo: how big? todo: alloc this
+    char title[FFMPEG_TITLE_SIZE]; // todo: how big? todo: alloc this?
+    char path[FFMEPG_PATH_SIZE]; // todo: how big? todo: alloc this?
 
 
     // metadata

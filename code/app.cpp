@@ -49,7 +49,6 @@ void render()
     int sh = winRect.bottom-winRect.top;
 
 
-    // d3d_set_hwnd_target(glass.target_window());
     d3d_resize_if_change(sw, sh, glass.target_window());
 
 
@@ -61,29 +60,21 @@ void render()
         screen.fill_tex_with_mem(src, w, h);
     }
 
-    // if (projector.rolling_movie.reel.vid_buffer)
-    // {
-    //     u8 *src = projector.rolling_movie.reel.vid_buffer;
-    //     int w = projector.rolling_movie.reel.vid_width;
-    //     int h = projector.rolling_movie.reel.vid_height;
-    //     screen.fill_tex_with_mem(src, w, h);
-    // }
 
-    // static int count = 0;
-    // sprintf(msg, "%i", count++);
+
     projector.rolling_movie.reel.MetadataToString(debug_string);
     sprintf(debug_string+strlen(debug_string), "\n");
     glass.ToString(debug_string+strlen(debug_string));
     if (debug_string && *debug_string)
     {
         debug_quad.destroy();
-        // text = ttf_create(msg, 64, 255);
         debug_quad = ttf_create(debug_string, 26, 255);
     }
-
-    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
     debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
 
+
+    // text = ttf_create(msg, 64, 255);
+    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
     screen.render();

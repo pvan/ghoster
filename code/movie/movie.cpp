@@ -761,7 +761,6 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         if (res==WAIT_TIMEOUT || res==WAIT_FAILED) return false; // todo: doublecheck that we want wait_failed
 
         TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
-        // todo: what happens if main process is forced closed while youtube-dl is running? how to close ytdl?
     }
     movie_ytdl_running = false;
     movie_ytdl_process = 0;
@@ -772,12 +771,6 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         LogError("youtube-dl: CloseHandle() error");
         return false;
     }
-
-
-    // // get the string out of the pipe...
-    // // char *result = path; // huh??
-    // int bigEnoughToHoldMessyUrlsFromYoutubeDL = 1024 * 30;
-    // char *result = (char*)malloc(bigEnoughToHoldMessyUrlsFromYoutubeDL); // todo: leak
 
     DWORD bytesRead;
     if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
@@ -878,7 +871,7 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
         {
             // todo: sometimes fails in here somewhere when loading urls?
             // maybe bad internet?
-            LogMessage("PARSED CORRECTLY\n"); // strangely this seems to cause us to succeed here more?
+            LogMessage("PARSED CORRECTLY\n");
             // if (!newMovie) PRINT("newMovie NULL??\n");
             if (!newMovie->SetFromPaths(video_url, audio_url))
             {
@@ -926,6 +919,9 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
         return false;
     }
 
+    // cache orig path for user to copy later if wanted
+    sprintf(newMovie->path, path);
+
     return true;
 }
 
@@ -955,11 +951,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
         return false;
     }
 
-    // todo: better place for this? i guess it might be fine
-    // SetTitle(projector.system.window, projector.message.new_reel.title);
-
     projector->message.new_source_ready = true;
-
     // ffmpeg_source *old_read = projector->message.new_read_reel;
     // projector->message.new_read_reel = projector->message.new_write_reel;
     // projector->message.new_write_reel = projector->message.new_read_reel;
