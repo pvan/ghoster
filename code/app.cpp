@@ -90,10 +90,9 @@ void render()
     d3d_swap();
 }
 
-void on_click()
-{
-    projector.TogglePause();
-}
+void on_clickL() { projector.TogglePause(); }
+void on_mdownL() { projector.SaveVideoPosition(); } // for undoing if this is going to be a double click
+void restore_vid_position() { projector.RestoreVideoPosition(); }
 
 // other ways?
 bool first_video = true;
@@ -119,7 +118,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
-    glass.on_single_lclick = on_click;
+    glass.on_single_clickL = on_clickL;
+    glass.on_mdownL = on_mdownL;
+    glass.on_oops_that_was_a_double_click = restore_vid_position;
 
 
     assert(d3d_load());

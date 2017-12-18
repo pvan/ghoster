@@ -185,6 +185,10 @@ struct AppMessages
     char new_path_to_load[1024]; // todo what max
     bool new_load_path_queued = false;
 
+
+    bool savestate_is_saved = false; // basically save everything that could be messed up by a slow double click
+    // bool savestate_paused = false; // were we paused when mdown?
+
 };
 
 
@@ -291,6 +295,38 @@ struct MovieProjector
 
 
 
+    // basically for undoing the effects of a slow doubleclick...
+
+    // todo: if we have a "videostate" struct we could just copy/restore it for these functions? hmm
+    // note we're saving this every time we click down (since it could be the start of a double click)
+    // so don't make this too crazy
+    void SaveVideoPosition()
+    {
+        message.savestate_is_saved = true;
+        // message.savestate_paused = state.is_paused;
+
+        // todo: this won't be sub-frame accurate (elapsed is really "elapsed at last decoder call")
+        // but i guess if we're pausing for a split second it won't be exact anyway
+        double percent = rolling_movie.elapsed / rolling_movie.reel.durationSeconds;
+        message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
+    }
+    void RestoreVideoPosition()
+    {
+        if (message.savestate_is_saved)
+        {
+            message.savestate_is_saved = false;
+            message.setSeek = true;
+
+            // if (message.savestate_paused) PlayMovie();
+            // else PauseMovie();
+        }
+
+        // // cancel any play/pause messages (todo: could cancel other valid msgs)
+        // global_ghoster.ClearCurrentSplash();
+    }
+
+
+
 
     void SetVolume(double volume)
     {
@@ -370,12 +406,12 @@ struct MovieProjector
 
             if (message.setSeek)
             {
+                message.setSeek = false;
+
                 SDL_ClearQueuedAudio(sdl_stuff.audio_device);
 
-                message.setSeek = false;
-                int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
-
-                double seconds = message.seekProportion*rolling_movie.reel.vfc->duration;
+                // int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
+                double seconds = message.seekProportion * rolling_movie.reel.durationSeconds;
                 rolling_movie.hard_seek_to_timestamp(seconds);
             }
 

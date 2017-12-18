@@ -115,7 +115,10 @@ struct glass_window
     UINT render_timer_id;
 
     void (*render)() = 0;  // application-defined render function
-    void (*on_single_lclick)() = 0;
+    void (*on_single_clickL)() = 0;
+    void (*on_mdownL)() = 0;
+    void (*on_oops_that_was_a_double_click)() = 0;
+    // not sure if i'm crazy about all these, but maybe they're a decent way to do it?
 
 
     // settings / state
@@ -529,7 +532,9 @@ struct glass_window
                     if (registeredLastSingleClick)
                     {
                         if (DEBUG_MCLICK_MSGS) OutputDebugString("undo that click\n");
-                        // appTogglePause();
+
+                        // doesn't this kind of assume the application L clicks undo each other?
+                        if (on_single_clickL) on_single_clickL(); //todo: pass click position?
                     }
                 }
             // }
@@ -549,6 +554,7 @@ struct glass_window
             if (registeredLastSingleClick)
             {
                 if (DEBUG_MCLICK_MSGS) OutputDebugString("restore our vid seek position\n");
+                if (on_oops_that_was_a_double_click) on_oops_that_was_a_double_click();
                 // restoreVideoPositionAfterDoubleClick();
             }
             else
@@ -573,9 +579,6 @@ struct glass_window
 
         setFullscreen(!is_fullscreen);
 
-        // note we actually have to do this in mouse up because that's where the vid gets paused
-        // restoreVideoPositionAfterDoubleClick();
-
         // instead make a note to restore in mouseUp
         next_mup_was_double_click = true;
 
@@ -583,7 +586,7 @@ struct glass_window
 
     void onMouseDownL(int clientX, int clientY)
     {
-        // OutputDebugString("LDOWN\n");
+        if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOWN\n");
 
         // i think we can just ignore if context menu is open
         // if (contextMenuOpen)
@@ -602,8 +605,9 @@ struct glass_window
         // }
         // else
         // {
-        //     // note this works because onMouseDownL doesn't trigger on the second click of a double click
-        //     saveVideoPositionForAfterDoubleClick();
+            // note this only works because onMouseDownL doesn't trigger on the second click of a double click
+            // saveVideoPositionForAfterDoubleClick();
+            if (on_mdownL) on_mdownL();
         // }
     }
 
@@ -720,7 +724,7 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     // KillTimer(0, glass.single_click_timer_id);
     KillTimer(0, idEvent); // this way we're sure to kill it
     {
-        if (glass.on_single_lclick) glass.on_single_lclick(); //todo: pass click position?
+        if (glass.on_single_clickL) glass.on_single_clickL(); //todo: pass click position?
 
         // we have to track whether get here or not
         // so we know if we've toggled pause between our double click or not
