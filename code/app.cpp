@@ -73,7 +73,7 @@ void render()
         if (debug_string && *debug_string)
         {
             debug_quad.destroy();
-            debug_quad = ttf_create(debug_string, 26, 255);
+            debug_quad = ttf_create(debug_string, 26, 255, 125);
         }
         debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
     }

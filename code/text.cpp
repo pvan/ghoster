@@ -104,7 +104,7 @@ d3d_textured_quad ttf_create(char *text, int fsize, float alpha, int bgA = 0)
             *g = *(gray_bitmap + ((py*bitmapW)+px));
             *b = *(gray_bitmap + ((py*bitmapW)+px));
             *a = *(gray_bitmap + ((py*bitmapW)+px));
-            if (bgA != 0) *a = bgA;
+            if (bgA != 0) *a = bgA;  // todo: a bit janky, should blend with a background probably
             // *a = 255;
         }
     }
