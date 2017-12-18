@@ -13,6 +13,8 @@ void LogMessage(char *str) { OutputDebugString(str); }
 #include "sdl.cpp"
 
 
+const int YTDL_TIMEOUT_MS = 5000;  // give up after this if taking too long to get urls (probably shoddy net)
+
 
 // todo: support multiple threads launched?
 // and use results from the most recent working one?
@@ -755,7 +757,9 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         // so we use the movie_ytdl_running as a guard against closing this thread until it's ready
         movie_ytdl_process = pi.hProcess;
 
-        WaitForSingleObject(pi.hProcess, INFINITE);
+        DWORD res = WaitForSingleObject(pi.hProcess, YTDL_TIMEOUT_MS);
+        if (res==WAIT_TIMEOUT || res==WAIT_FAILED) return false; // todo: doublecheck that we want wait_failed
+
         TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
         // todo: what happens if main process is forced closed while youtube-dl is running? how to close ytdl?
     }
@@ -804,8 +808,10 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
         return false;
     }
 
-    char *segments[3];
+    if (StringBeginsWith(tempString, "ERROR")) return false; // probably no internet
+    // todo: check for other possible error outcomes here? bad urls, etc?
 
+    char *segments[3];
     int count = 0;
     segments[count++] = tempString;
     for (char *c = tempString; *c; c++)
