@@ -144,6 +144,33 @@ struct ffmpeg_source
     double aspect_ratio;
 
 
+    void MetadataToString(char *out)
+    {
+        if (!loaded) { sprintf(out, "not loaded"); return; }
+        sprintf(out,
+        "vid_width: %i\n"
+        "vid_height: %i\n"
+        "title: %s\n"
+        "path: %s\n"
+        "fps: %f\n"
+        "durationSeconds: %f\n"
+        "totalFrameCount: %f\n"
+        "width: %i\n"
+        "height: %i\n"
+        "aspect_ratio: %f",
+        vid_width,
+        vid_height,
+        title,
+        path,
+        fps,
+        durationSeconds,
+        totalFrameCount,
+        width,
+        height,
+        aspect_ratio);
+    }
+
+
     void FreeEverything()
     {
         if (vfc) avformat_close_input(&vfc);
@@ -294,6 +321,9 @@ struct ffmpeg_source
         // free current video if exists
         FreeEverything();
 
+        if (strcmp(videopath, audiopath) == 0) sprintf(path, videopath);
+        else sprintf(path, "various");
+
         // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
         // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
         int open_result1 = avformat_open_input(&vfc, videopath, 0, 0);
@@ -384,7 +414,7 @@ struct ffmpeg_source
 
         loaded = true;
 
-        // LogMessage("end of movie source creation\n");
+        LogMessage("end of movie source creation\n");
         return true;
     }
 

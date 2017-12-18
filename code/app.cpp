@@ -23,11 +23,12 @@ static MovieProjector projector;
 
 
 
-char msg[1024*4];
+// char msg[1024*4];
+char *debug_string;
 
 d3d_textured_quad screen;
 // d3d_textured_quad hud;
-d3d_textured_quad text;
+d3d_textured_quad debug_quad;
 
 
 bool keyD1;
@@ -68,22 +69,24 @@ void render()
     //     screen.fill_tex_with_mem(src, w, h);
     // }
 
-    static int count = 0;
-    sprintf(msg, "%i", count++);
-    if (msg && *msg)
+    // static int count = 0;
+    // sprintf(msg, "%i", count++);
+    projector.rolling_movie.reel.MetadataToString(debug_string);
+    if (debug_string && *debug_string)
     {
-        text.destroy();
-        text = ttf_create(msg, 64, 255, true, true);
-        // text = ttf_create(msg, 32, 255, false, false);
+        debug_quad.destroy();
+        // text = ttf_create(msg, 64, 255);
+        debug_quad = ttf_create(debug_string, 32, 255);
     }
 
-    text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
+    debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
 
     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
     screen.render();
     // hud.render();
-    text.render();
+    debug_quad.render();
     d3d_swap();
 }
 
@@ -101,7 +104,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     ttf_init();
 
-
+    debug_string = (char*)malloc(0x8000);
 
 
     // should we have each module parse this themselves?

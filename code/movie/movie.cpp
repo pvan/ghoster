@@ -1026,7 +1026,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
 
     // might be a good idea to make sure we see this message on exit or ending churn?
     // to make sure everything gets cleaned up right
-    OutputDebugString("Ending churn process...\n");
+    OutputDebugString("Ending churn thread...\n");
     return 0;
 }
 
