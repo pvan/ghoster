@@ -853,14 +853,14 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
 
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_dir)
+bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char *exe_dir)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
     OutputDebugString(loadingMsg);
 
     // todo: check limits on title before writing here and below
-    char *outTitle = newMovie->title;
+    char *outTitle = newSource->title;
     strcpy_s(outTitle, FFMPEG_TITLE_SIZE, "[no title]");
 
     if (StringIsUrl(path))
@@ -872,8 +872,8 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
             // todo: sometimes fails in here somewhere when loading urls?
             // maybe bad internet?
             LogMessage("PARSED CORRECTLY\n");
-            // if (!newMovie) PRINT("newMovie NULL??\n");
-            if (!newMovie->SetFromPaths(video_url, audio_url))
+            if (!newSource) PRINT("newSource NULL??\n");
+            if (!newSource->SetFromPaths(video_url, audio_url))
             {
                 free(video_url);
                 free(audio_url);
@@ -895,8 +895,8 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
     }
     else if (path[1] == ':')
     {
-        // *newMovie = OpenMovieReel(path, path);
-        if (!newMovie->SetFromPaths(path, path))
+        // *newSource = OpenMovieReel(path, path);
+        if (!newSource->SetFromPaths(path, path))
         {
             // SplashMessage("invalid file");
             return false;
@@ -920,7 +920,7 @@ bool SlowCreateReelFromAnyPath(char *path, ffmpeg_source *newMovie, char *exe_di
     }
 
     // cache orig path for user to copy later if wanted
-    sprintf(newMovie->path, path);
+    sprintf(newSource->path, path);
 
     return true;
 }
@@ -940,8 +940,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     char *path = projector->message.new_path_to_load;
     char *exe_dir = projector->state.exe_directory;
 
-    // if (!SlowCreateReelFromAnyPath(path, projector->message.new_write_reel, exe_dir))
-    if (!SlowCreateReelFromAnyPath(path, &projector->message.new_source, exe_dir))
+    // if (!SlowCreateMovieSourceFromAnyPath(path, projector->message.new_write_reel, exe_dir))
+    if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)

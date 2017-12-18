@@ -309,6 +309,9 @@ struct ffmpeg_source
 
     bool SetFromPaths(char *videopath, char *audiopath)
     {
+        PRINT("Creating new source from paths...\n");
+
+        PRINT("Checking if just a text file...\n");
 
         // special case to skip text files for now,
         // ffmpeg likes to eat these up and then our code doesn't know what to do with them
@@ -318,11 +321,16 @@ struct ffmpeg_source
             return false;
         }
 
+        PRINT("Freeing old pointers...\n");
+
         // free current video if exists
         FreeEverything();
 
-        if (strcmp(videopath, audiopath) == 0) sprintf(path, videopath);
-        else sprintf(path, "various");
+        PRINT("Opening format contexts...\n");
+
+        // now set from calling code so we get url correctly
+        // if (strcmp(videopath, audiopath) == 0) sprintf(path, videopath);
+        // else sprintf(path, "various");
 
         // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
         // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
@@ -339,6 +347,8 @@ struct ffmpeg_source
         }
 
 
+        PRINT("Opening streams...\n");
+
         // todo: need to call avformat_close_input() at some point after avformat_open_input
         // (when no longer using the file maybe?)
 
@@ -353,6 +363,7 @@ struct ffmpeg_source
         // this must be sending to stdout or something? (not showing up anywhere)
         // av_dump_format(vfc, 0, videopath, 0);
 
+        PRINT("Searching for streams...\n");
 
         // find first video and audio stream
         // todo: use av_find_best_stream?
@@ -407,14 +418,16 @@ struct ffmpeg_source
             return false;
         }
 
+        PRINT("Populating metadata...\n");
         PopulateMetadata();
 
+        PRINT("Setting up output frame...\n");
         SetupSwsContex(width, height);   // width/height here depend on metadata being populated first
         SetupFrameOutput(width, height);
 
         loaded = true;
 
-        LogMessage("end of movie source creation\n");
+        LogMessage("End of movie source creation\n");
         return true;
     }
 
