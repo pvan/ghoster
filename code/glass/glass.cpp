@@ -27,7 +27,7 @@ bool glass_string_starts_with(const char *str, const char *front) // case sensit
 
 
 
-const bool DEBUG_MCLICK_MSGS = true;
+const bool DEBUG_MCLICK_MSGS = false;
 
 
 

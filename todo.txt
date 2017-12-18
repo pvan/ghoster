@@ -1,4 +1,5 @@
 
+[ ] test the new timeout on loading urls if connection is flaky
 
 [ ] add a background "screen" with color/alpha to text overlay
 

@@ -1,0 +1,19 @@
+
+add debug text from projector
+
+sdl file conventions
+
+improve video player api, name?
+
+more input / function mapping?
+
+menu
+
+
+bugs still existing in sys renderer
+-uncommon flicker on resize
+-click and drag a little bit, then hold, freezes render
+ (impossible to avoid with sys render i think)
+
+
+
