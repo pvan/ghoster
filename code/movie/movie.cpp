@@ -275,7 +275,7 @@ struct MovieProjector
         state.is_paused = true;
     }
 
-    void TogglePlayPauseMovie()
+    void TogglePause()
     {
         state.is_paused = !state.is_paused;
         if (state.is_paused && !state.was_paused)

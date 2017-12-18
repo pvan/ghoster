@@ -84,13 +84,26 @@ void render()
     d3d_swap();
 }
 
+void on_click()
+{
+    projector.TogglePause();
+}
+
 // other ways?
+bool first_video = true;
 void on_video_load(int w, int h)
 {
     glass.aspect_ratio = (double)w / (double)h;
 
     if (!glass.is_fullscreen) // not in this case though
         glass.set_ratiolocked(glass.is_ratiolocked); // awkward way to set window size to aspect ratio if enabled
+
+    // something like this? (na, would be too long on urls)
+    if (first_video)
+    {
+        first_video = false;
+        // glass.ShowWindow();
+    }
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -100,6 +113,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
+    glass.on_single_lclick = on_click;
 
 
     assert(d3d_load());

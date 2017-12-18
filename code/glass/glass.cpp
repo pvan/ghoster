@@ -27,7 +27,7 @@ bool glass_string_starts_with(const char *str, const char *front) // case sensit
 
 
 
-const bool DEBUG_MCLICK_MSGS = false;
+const bool DEBUG_MCLICK_MSGS = true;
 
 
 
@@ -96,7 +96,7 @@ void SnapWinRectToMonitor(HWND hwnd, RECT in, RECT *out)
 // find the workerW for wallpaper mode
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam);
 
-
+VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 
 struct glass_window
@@ -115,13 +115,14 @@ struct glass_window
     UINT render_timer_id;
 
     void (*render)() = 0;  // application-defined render function
+    void (*on_single_lclick)() = 0;
 
 
     // settings / state
     bool is_fullscreen = false;
     bool is_topmost = false;
     bool is_clickthrough = false;
-    bool is_ratiolocked = false;
+    bool is_ratiolocked = true;
     bool is_snappy = true;
     bool is_wallpaper = false;
     double aspect_ratio = 1;
@@ -504,31 +505,31 @@ struct glass_window
         }
         else
         {
-            // // if (!clientPointIsOnProgressBar(
-            // //                 mDownPoint.x,
-            // //                 mDownPoint.y))
-            // // {
-            //     // since this could be the mouse up in between the two clicks of a double click,
-            //     // wait a little bit before we actually pause (should work with 0 delay as well)
+            // if (!clientPointIsOnProgressBar(
+            //                 mDownPoint.x,
+            //                 mDownPoint.y))
+            // {
+                // since this could be the mouse up in between the two clicks of a double click,
+                // wait a little bit before we actually pause (should work with 0 delay as well)
 
-            //     // don't queue up another pause if this is the end of a double click
-            //     // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
-            //     if (!next_mup_was_double_click)
-            //     {
-            //         toggledPauseOnLastSingleClick = false; // we haven't until the timer runs out
-            //         glass_single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
-            //     }
-            //     else
-            //     {
-            //         // if we are ending the click and we already registered the first click as a pause,
-            //         // toggle pause again to undo that
-            //         if (toggledPauseOnLastSingleClick)
-            //         {
-            //             // // OutputDebugString("undo that click\n");
-            //             // appTogglePause();
-            //         }
-            //     }
-            // // }
+                // don't queue up another pause if this is the end of a double click
+                // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
+                // if (!next_mup_was_double_click)
+                // {
+                //     registeredLastSingleClick = false; // we haven't until the timer runs out
+                    single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
+                // }
+                // else
+                // {
+                //     // if we are ending the click and we already registered the first click as a pause,
+                //     // toggle pause again to undo that
+                //     if (registeredLastSingleClick)
+                //     {
+                //         // // OutputDebugString("undo that click\n");
+                //         // appTogglePause();
+                //     }
+                // }
+            // }
         }
 
         mouseHasMovedSinceDownL = false;
@@ -542,7 +543,7 @@ struct glass_window
             KillTimer(0, single_click_timer_id); // todo: rare race condition here right?
 
             // // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
-            // if (toggledPauseOnLastSingleClick)
+            // if (registeredLastSingleClick)
             // {
             //     // OutputDebugString("restore our vid position\n");
             //     restoreVideoPositionAfterDoubleClick();
@@ -711,14 +712,17 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
 {
     if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
 
-    KillTimer(0, glass.single_click_timer_id);
+    // glass_window *glass = (glass_window*)___;  // todo: anyway to pass a pointer to this function?
+
+    // KillTimer(0, glass.single_click_timer_id);
+    KillTimer(0, idEvent); // this way we're sure to kill it
     {
-        // appTogglePause();
+        if (glass.on_single_lclick) glass.on_single_lclick(); //todo: pass click position?
 
         // // we have to track whether get here or not
         // // so we know if we've toggled pause between our double click or not
         // // (it could be either case now that we have a little delay in our pause)
-        // toggledPauseOnLastSingleClick = true;
+        // registeredLastSingleClick = true;
     }
 }
 
