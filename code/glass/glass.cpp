@@ -48,7 +48,7 @@ const bool GHOST_MODE_SETS_TOPMOST = false;
 // how long to wait before toggling pause when single click (which could be start of double click)
 // higher makes double click feel better (no audio stutter on fullscreen for slow double clicks)
 // lower makes single click feel better (less delay when clicking to pause/unpause)
-const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 150;  // slowest double click is 500ms by default
+const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 200;  // slowest double click is 500ms by default
 
 // snap to screen edge if this close
 const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
@@ -148,6 +148,7 @@ struct glass_window
     bool next_mup_was_double_click = false;
     bool next_mup_was_closing_menu = false;
     UINT single_click_timer_id;
+    bool registeredLastSingleClick = false;
 
 
 
@@ -171,7 +172,8 @@ struct glass_window
         "mouseHasMovedSinceDownL: %s\n"
         "msOfLastMouseMove: %f\n"
         "next_mup_was_double_click: %s\n"
-        "next_mup_was_closing_menu: %s\n",
+        "next_mup_was_closing_menu: %s\n"
+        "registeredLastSingleClick: %s\n",
         loop_running ? "true" : "false",
         sleep_ms,
         is_fullscreen ? "true" : "false",
@@ -189,7 +191,8 @@ struct glass_window
         mouseHasMovedSinceDownL ? "true" : "false",
         msOfLastMouseMove,
         next_mup_was_double_click ? "true" : "false",
-        next_mup_was_closing_menu ? "true" : "false");
+        next_mup_was_closing_menu ? "true" : "false",
+        registeredLastSingleClick ? "true" : "false");
     }
 
 
@@ -514,21 +517,21 @@ struct glass_window
 
                 // don't queue up another pause if this is the end of a double click
                 // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
-                // if (!next_mup_was_double_click)
-                // {
-                //     registeredLastSingleClick = false; // we haven't until the timer runs out
+                if (!next_mup_was_double_click)
+                {
+                    registeredLastSingleClick = false; // we haven't until the timer runs out
                     single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
-                // }
-                // else
-                // {
-                //     // if we are ending the click and we already registered the first click as a pause,
-                //     // toggle pause again to undo that
-                //     if (registeredLastSingleClick)
-                //     {
-                //         // // OutputDebugString("undo that click\n");
-                //         // appTogglePause();
-                //     }
-                // }
+                }
+                else
+                {
+                    // if we are ending the click and we already registered the first click as a pause,
+                    // toggle pause again to undo that
+                    if (registeredLastSingleClick)
+                    {
+                        if (DEBUG_MCLICK_MSGS) OutputDebugString("undo that click\n");
+                        // appTogglePause();
+                    }
+                }
             // }
         }
 
@@ -542,16 +545,16 @@ struct glass_window
             // cancel any pending single click effects lingering from the first mup of this dclick
             KillTimer(0, single_click_timer_id); // todo: rare race condition here right?
 
-            // // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
-            // if (registeredLastSingleClick)
-            // {
-            //     // OutputDebugString("restore our vid position\n");
-            //     restoreVideoPositionAfterDoubleClick();
-            // }
-            // else
-            // {
-            //     // OutputDebugString("that was a fast doubleclick! no stutter\n");
-            // }
+            // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
+            if (registeredLastSingleClick)
+            {
+                if (DEBUG_MCLICK_MSGS) OutputDebugString("restore our vid seek position\n");
+                // restoreVideoPositionAfterDoubleClick();
+            }
+            else
+            {
+                if (DEBUG_MCLICK_MSGS) OutputDebugString("that was a fast doubleclick! no stutter\n");
+            }
         }
     }
 
@@ -719,10 +722,10 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     {
         if (glass.on_single_lclick) glass.on_single_lclick(); //todo: pass click position?
 
-        // // we have to track whether get here or not
-        // // so we know if we've toggled pause between our double click or not
-        // // (it could be either case now that we have a little delay in our pause)
-        // registeredLastSingleClick = true;
+        // we have to track whether get here or not
+        // so we know if we've toggled pause between our double click or not
+        // (it could be either case now that we have a little delay in our pause)
+        glass.registeredLastSingleClick = true;
     }
 }
 
