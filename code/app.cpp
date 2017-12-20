@@ -30,6 +30,7 @@ bool show_debug = false;
 d3d_textured_quad screen;
 // d3d_textured_quad hud;
 d3d_textured_quad debug_quad;
+d3d_textured_quad progress_bar_quad;
 
 
 bool keyD1;
@@ -60,7 +61,7 @@ void render()
         u8 *src = projector.front_buffer->mem;
         int w = projector.front_buffer->wid;
         int h = projector.front_buffer->hei;
-        screen.fill_tex_with_mem(src, w, h);
+        screen.fill_tex_with_mem(src, w, h);  //this resizes if needed, todo: better name
     }
 
 
@@ -78,6 +79,15 @@ void render()
         debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
     }
 
+    // if (show_bar)
+    {
+        // progress_bar_quad.destroy();
+        // progress_bar_quad.move_to_pixel_coords(0, 0, sw, sh);
+        progress_bar_quad.set_TLquad_to_TLpixel_coords(0,sh/2-22,sw,sh, sw,sh); //todo: fix Y arg in defn
+
+        // progress_bar_quad.render(0.6);
+    }
+
 
     // text = ttf_create(msg, 64, 255);
     // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
@@ -87,6 +97,7 @@ void render()
     screen.render();
     // hud.render();
     if (show_debug) debug_quad.render();
+    progress_bar_quad.render(0.6);
     d3d_swap();
 }
 
@@ -154,8 +165,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     projector.on_load_callback = on_video_load;
 
 
+    // create d3d quads
+    u32 red = 0xffff0000;
+    // progress_bar_quad.create((u8*)&red,1,1, -1,-1,1,1,0);
+    progress_bar_quad.create((u8*)&red,1,1, 0,0,1,1,0);
+
     // window msg pump...
-    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0.5); //todo:update to new api
+    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0); //todo:update to new api
     glass_run_msg_render_loop();
 
 

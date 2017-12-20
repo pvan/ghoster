@@ -408,6 +408,8 @@ struct d3d_textured_quad
     void move_to_pixel_coords(int qx, int qy, int sw, int sh) { move_to_pixel_coords(qx, qy, texW, texH, sw, sh); }
     void move_to_pixel_coords_TL(int qx, int qy, int sw, int sh) { move_to_pixel_coords(qx, sh-texH-qy, texW, texH, sw, sh); }
     void move_to_pixel_coords_center(int qx, int qy, int sw, int sh) { move_to_pixel_coords(qx-texW/2, qy-texH/2, texW, texH, sw, sh); }
+    void set_TLquad_to_TLpixel_coords(int qx, int qy, int qw, int qh, int sw, int sh) { move_to_pixel_coords(qx, sh-qw-qy, qw, qh, sw, sh); }
+    // todo: improve this api
 
     void create(u8 *qmem, int qw, int qh, float dl, float dt, float dr, float db, float z)
     {

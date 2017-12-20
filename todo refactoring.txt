@@ -1,4 +1,13 @@
 
+progress bar
+
+random url loading
+
+way to handle input in app layer that window layer doesn't need to know about
+
+fullscreen letterbox
+
+
 add debug text from projector
 
 sdl file conventions
