@@ -76,7 +76,7 @@ void render()
             debug_quad.destroy();
             debug_quad = ttf_create(debug_string, 26, 255, 125);
         }
-        debug_quad.move_to_pixel_coords_TL(0, 0, sw, sh);
+        // debug_quad.move_to_pixel_coords_TL(0, 0);
     }
 
     // if (show_bar)
@@ -90,14 +90,14 @@ void render()
         // progress_bar_quad.render(0.6);
     }
 
-    // these should all work
-    // progress_bar_quad.set_to_pixel_coords_BL(50, 30, sw-50, sh-30, sw,sh);
-    // progress_bar_quad.set_to_pixel_coords_TL(50, 30, sw-50, sh-30, sw,sh);
-    // screen.move_to_pixel_coords_BL(50,30, sw,sh);  // note quad is source size here
-    // screen.move_to_pixel_coords_TL(50,30, sw,sh);
-    // screen.move_to_pixel_coords_center(50,30, sw,sh);
-    // screen.move_to_pixel_coords_center(sw/2,sh/2, sw,sh);
-    // screen.move_to_pixel_coords_center(sw/2,0, sw,sh);
+    // these should all be placed correctly
+    // progress_bar_quad.set_to_pixel_coords_BL(50, 30, sw-50, sh-30);
+    // progress_bar_quad.set_to_pixel_coords_TL(50, 30, sw-50, sh-30);
+    // screen.move_to_pixel_coords_BL(50,30);  // note quad is source size here
+    // screen.move_to_pixel_coords_TL(50,30);
+    // screen.move_to_pixel_coords_center(50,30);
+    // screen.move_to_pixel_coords_center(sw/2,sh/2);
+    // screen.move_to_pixel_coords_center(sw/2,0);
 
     // text = ttf_create(msg, 64, 255);
     // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
