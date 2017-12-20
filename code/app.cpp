@@ -83,21 +83,32 @@ void render()
     {
         // progress_bar_quad.destroy();
         // progress_bar_quad.move_to_pixel_coords(0, 0, sw, sh);
-        progress_bar_quad.set_TLquad_to_TLpixel_coords(0,sh/2-22,sw,sh, sw,sh); //todo: fix Y arg in defn
+        // progress_bar_quad.set_TLquad_to_CENTERpixel_coords(0,sh/2-22,sw,sh, sw,sh);
+        // progress_bar_quad.set_TLquad_to_TLpixel_coords(0,sh-22,sw,sh, sw,sh);
+        // progress_bar_quad.set_to_pixel_coords_BL(0,0,sw,22, sw,sh);
 
         // progress_bar_quad.render(0.6);
     }
 
+    // these should all work
+    // progress_bar_quad.set_to_pixel_coords_BL(50, 30, sw-50, sh-30, sw,sh);
+    // progress_bar_quad.set_to_pixel_coords_TL(50, 30, sw-50, sh-30, sw,sh);
+    // screen.move_to_pixel_coords_BL(50,30, sw,sh);  // note quad is source size here
+    // screen.move_to_pixel_coords_TL(50,30, sw,sh);
+    // screen.move_to_pixel_coords_center(50,30, sw,sh);
+    // screen.move_to_pixel_coords_center(sw/2,sh/2, sw,sh);
+    // screen.move_to_pixel_coords_center(sw/2,0, sw,sh);
 
     // text = ttf_create(msg, 64, 255);
     // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
     // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
     // todo: seems we have still not completely eliminated flicker on resize.. hrmm
-    screen.render();
+    d3d_clear(0, 0, 255);
+    screen.render(); // todo: strange bar on right
     // hud.render();
-    if (show_debug) debug_quad.render();
-    progress_bar_quad.render(0.6);
+    // if (show_debug) debug_quad.render();
+    // progress_bar_quad.render(1);
     d3d_swap();
 }
 
