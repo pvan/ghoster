@@ -144,6 +144,9 @@ struct glass_window
     HWND wallpaper_window;
 
 
+    bool menu_open = false;
+
+
     // mouse state
     POINT mDownPoint;
     bool mDown;
@@ -172,6 +175,7 @@ struct glass_window
         "opacity: %f\n"
         "had_to_cache_opacity: %s\n"
         "last_opacity: %f\n"
+        "menu_open: %s\n"
         "mDownPoint: %i, %i\n"
         "mDown: %s\n"
         "mouseHasMovedSinceDownL: %s\n"
@@ -191,6 +195,7 @@ struct glass_window
         opacity,
         had_to_cache_opacity ? "true" : "false",
         last_opacity,
+        menu_open ? "true" : "false",
         mDownPoint.x, mDownPoint.y,
         mDown ? "true" : "false",
         mouseHasMovedSinceDownL ? "true" : "false",
@@ -208,6 +213,7 @@ struct glass_window
 
     void main_update()
     {
+        // todo: add this back in, i think it's only possible with progress bar / menu clicks
         // // if we mouse up while not on window all our mdown etc flags will be wrong
         // // so we just force an "end of click" when we leave the window
         // system.mDown = false;
@@ -615,8 +621,8 @@ struct glass_window
         if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOWN\n");
 
         // i think we can just ignore if context menu is open
-        // if (contextMenuOpen)
-        //     return;
+        if (menu_open)
+            return;
 
         // mouse state / info about click...
         mDown = true;
@@ -720,7 +726,10 @@ void glass_open_menu_at(HWND hwnd, POINT point)
     SetForegroundWindow(hwnd);
 
     SetTimer(glass.hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
+    glass.menu_open = true;
+    glass.next_mup_was_closing_menu = true;
     TrackPopupMenu(hPopupMenu, TPM_TOPALIGN | TPM_LEFTALIGN, point.x, point.y, 0, hwnd, NULL);
+    glass.menu_open = false;
     KillTimer(glass.hwnd, glass.render_timer_id);
 }
 
