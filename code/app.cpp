@@ -43,21 +43,29 @@ d3d_textured_quad debug_quad;
 d3d_textured_quad progress_bar_gray;
 d3d_textured_quad progress_bar_red;
 
+void queue_random_url()
+{
+    int r = getUnplayedIndex();
+    projector.QueueLoadFromPath(RANDOM_ON_LAUNCH[r]);
+}
+
 
 bool keyD1;
 bool keyD2;
 bool keyD3;
+bool keyD4;
 void render()
 {
     if (!glass.loop_running) return;  // kinda smells
 
     if (GetKeyState(0x31) & 0x8000 && !keyD1) { keyD1=true; projector.QueueLoadFromPath(TEST_FILES[2]); }
     if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
+    if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
+    if (GetKeyState(VK_OEM_3) & 0x8000 && !keyD4) { queue_random_url(); }
     if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
     if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
-
-    if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
     if (!(GetKeyState(VK_TAB) & 0x8000)) keyD3 = false;
+    if (!(GetKeyState(VK_OEM_3) & 0x8000)) keyD4 = false;
 
     if (GetWallClockSeconds() - secOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
         show_bar = false;
