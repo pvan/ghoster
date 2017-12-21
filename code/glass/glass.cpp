@@ -201,7 +201,21 @@ struct glass_window
     }
 
 
+    // todo: where do we need to replace hwnd usage with this? if anywhere
     HWND target_window() { return is_wallpaper ? wallpaper_window : hwnd; }
+
+
+
+    void main_update()
+    {
+        // // if we mouse up while not on window all our mdown etc flags will be wrong
+        // // so we just force an "end of click" when we leave the window
+        // system.mDown = false;
+        // system.mouseHasMovedSinceDownL = false;
+        // system.clickingOnProgressBar = false;
+
+        if (render) render();
+    }
 
 
     WINDOWPLACEMENT last_win_pos;
@@ -429,20 +443,7 @@ struct glass_window
         // todo: special handling req anywhere else?
         POINT mPos;   GetCursorPos(&mPos);
         RECT winRect; GetWindowRect(hwnd, &winRect);
-        if (PtInRect(&winRect, mPos))
-        {
-            return true;
-            // // // OutputDebugString("mouse outside window\n");
-            // // drawProgressBar = false;
-
-            // todo: need to call these mouse flags somewhere?
-            // // if we mouse up while not on window all our mdown etc flags will be wrong
-            // // so we just force an "end of click" when we leave the window
-            // system.mDown = false;
-            // system.mouseHasMovedSinceDownL = false;
-            // system.clickingOnProgressBar = false;
-        }
-        return false;
+        return PtInRect(&winRect, mPos);
     }
 
 
@@ -803,7 +804,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
 
         case WM_TIMER: {
-            if (glass.render) glass.render();
+            glass.main_update();
         } break;
 
 
@@ -1227,7 +1228,7 @@ void glass_run_msg_render_loop()
             DispatchMessage(&Message);
         }
 
-        if (glass.render) glass.render();
+        glass.main_update();
 
         Sleep(glass.sleep_ms);
     }

@@ -127,7 +127,6 @@ void render()
 void on_clickL() { projector.TogglePause(); }
 void on_mdownL() { projector.SaveVideoPosition(); } // for undoing if this is going to be a double click
 void restore_vid_position() { projector.RestoreVideoPosition(); }
-// void on_mouse_exit_window() { show_bar = false; }
 void on_mouse_move() { show_bar = true; secOfLastMouseMove = GetWallClockSeconds(); } // only triggers in window
 
 
@@ -172,7 +171,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_mdownL = on_mdownL;
     glass.on_oops_that_was_a_double_click = restore_vid_position;
     glass.on_mouse_move = on_mouse_move;
-    // glass.on_mouse_exit_window = on_mouse_exit_window;
 
 
     assert(d3d_load());
