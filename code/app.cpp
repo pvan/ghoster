@@ -17,6 +17,13 @@
 #include "urls.h"
 
 
+// progress bar position
+const int PROGRESS_BAR_H = 22;
+// const int PROGRESS_BAR_B = 0;  // just hardcode bottom for now
+
+// hide progress bar after this many seconds
+const double PROGRESS_BAR_TIMEOUT = 1.0;
+
 
 static MovieProjector projector;
 
@@ -27,10 +34,14 @@ static MovieProjector projector;
 char *debug_string;
 bool show_debug = false;
 
+bool show_bar = false;
+double secOfLastMouseMove = -1;
+
 d3d_textured_quad screen;
 // d3d_textured_quad hud;
 d3d_textured_quad debug_quad;
-d3d_textured_quad progress_bar_quad;
+d3d_textured_quad progress_bar_gray;
+d3d_textured_quad progress_bar_red;
 
 
 bool keyD1;
@@ -47,6 +58,11 @@ void render()
 
     if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
     if (!(GetKeyState(VK_TAB) & 0x8000)) keyD3 = false;
+
+    if (GetWallClockSeconds() - secOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
+        show_bar = false;
+    if (!glass.is_mouse_in_window())
+        show_bar = false;
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
@@ -76,21 +92,17 @@ void render()
             debug_quad.destroy();
             debug_quad = ttf_create(debug_string, 26, 255, 125);
         }
-        // debug_quad.move_to_pixel_coords_TL(0, 0);
+        debug_quad.move_to_pixel_coords_TL(0, 0);
     }
 
-    // if (show_bar)
+    if (show_bar)
     {
-        // progress_bar_quad.destroy();
-        // progress_bar_quad.move_to_pixel_coords(0, 0, sw, sh);
-        // progress_bar_quad.set_TLquad_to_CENTERpixel_coords(0,sh/2-22,sw,sh, sw,sh);
-        // progress_bar_quad.set_TLquad_to_TLpixel_coords(0,sh-22,sw,sh, sw,sh);
-        // progress_bar_quad.set_to_pixel_coords_BL(0,0,sw,22, sw,sh);
-
-        // progress_bar_quad.render(0.6);
+        int progress_pixel = projector.rolling_movie.percent_elapsed() * (double)sw;
+        progress_bar_gray.set_to_pixel_coords_BL(progress_pixel, 0, sw-progress_pixel, PROGRESS_BAR_H);
+        progress_bar_red.set_to_pixel_coords_BL(0, 0, progress_pixel, PROGRESS_BAR_H);
     }
 
-    // these should all be placed correctly
+    // these should all be placed as indicated
     // progress_bar_quad.set_to_pixel_coords_BL(50, 30, sw-50, sh-30);
     // progress_bar_quad.set_to_pixel_coords_TL(50, 30, sw-50, sh-30);
     // screen.move_to_pixel_coords_BL(50,30);  // note quad is source size here
@@ -106,15 +118,31 @@ void render()
     // todo: seems we have still not completely eliminated flicker on resize.. hrmm
     d3d_clear(0, 0, 255);
     screen.render(); // todo: strange bar on right
-    // hud.render();
-    // if (show_debug) debug_quad.render();
-    // progress_bar_quad.render(1);
+    if (show_bar) progress_bar_gray.render(0.4);
+    if (show_bar) progress_bar_red.render(0.6);
+    if (show_debug) debug_quad.render();
     d3d_swap();
 }
 
 void on_clickL() { projector.TogglePause(); }
 void on_mdownL() { projector.SaveVideoPosition(); } // for undoing if this is going to be a double click
 void restore_vid_position() { projector.RestoreVideoPosition(); }
+// void on_mouse_exit_window() { show_bar = false; }
+void on_mouse_move() { show_bar = true; secOfLastMouseMove = GetWallClockSeconds(); } // only triggers in window
+
+
+// bool clientPointIsOnProgressBar(int x, int y)
+// {
+//     return y >= system.winHEI-PROGRESS_BAR_H &&
+//            y <= system.winHEI;
+// }
+// bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
+// {
+//     POINT newPoint = {x, y};
+//     ScreenToClient(hwnd, &newPoint);
+//     return global_ghoster.clientPointIsOnProgressBar(newPoint.x, newPoint.y);
+// }
+
 
 // other ways?
 bool first_video = true;
@@ -143,6 +171,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_single_clickL = on_clickL;
     glass.on_mdownL = on_mdownL;
     glass.on_oops_that_was_a_double_click = restore_vid_position;
+    glass.on_mouse_move = on_mouse_move;
+    // glass.on_mouse_exit_window = on_mouse_exit_window;
 
 
     assert(d3d_load());
@@ -177,12 +207,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
     // create d3d quads
+    u32 gray = 0xaaaaaaaa;
     u32 red = 0xffff0000;
-    // progress_bar_quad.create((u8*)&red,1,1, -1,-1,1,1,0);
-    progress_bar_quad.create((u8*)&red,1,1, 0,0,1,1,0);
+    progress_bar_gray.create((u8*)&gray,1,1, -1,-1,1,1,0);
+    progress_bar_red.create((u8*)&red,1,1, -1,-1,1,1,0);
 
     // window msg pump...
-    screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0); //todo:update to new api
+    u32 green = 0xff00ff00;
+    screen.create((u8*)&green,1,1, -1,-1,1,1,0); //todo:update to new api
+    // screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0); //todo:update to new api
     glass_run_msg_render_loop();
 
 

@@ -78,6 +78,12 @@ struct RollingMovie
         return ffmpeg_seconds_from_pts(ptsOfLastAudio, reel.afc, reel.audio.index);
     }
 
+    double percent_elapsed()
+    {
+        if (!reel.loaded) return 0;
+        return elapsed / reel.durationSeconds;
+    }
+
 
     // todo: what to do with this, hmmm
     // what about a ffmpeg_rolling_movie ?

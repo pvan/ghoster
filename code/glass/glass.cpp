@@ -118,6 +118,8 @@ struct glass_window
     void (*on_single_clickL)() = 0;
     void (*on_mdownL)() = 0;
     void (*on_oops_that_was_a_double_click)() = 0;
+    void (*on_mouse_move)() = 0;
+    // void (*on_mouse_exit_window)() = 0;
     // not sure if i'm crazy about all these, but maybe they're a decent way to do it?
 
 
@@ -147,7 +149,7 @@ struct glass_window
     bool mDown;
     // bool clickingOnProgressBar = false;
     bool mouseHasMovedSinceDownL = false;
-    double msOfLastMouseMove = -1000;
+    // double msOfLastMouseMove = -1000;
     bool next_mup_was_double_click = false;
     bool next_mup_was_closing_menu = false;
     UINT single_click_timer_id;
@@ -173,7 +175,7 @@ struct glass_window
         "mDownPoint: %i, %i\n"
         "mDown: %s\n"
         "mouseHasMovedSinceDownL: %s\n"
-        "msOfLastMouseMove: %f\n"
+        // "msOfLastMouseMove: %f\n"
         "next_mup_was_double_click: %s\n"
         "next_mup_was_closing_menu: %s\n"
         "registeredLastSingleClick: %s\n",
@@ -192,7 +194,7 @@ struct glass_window
         mDownPoint.x, mDownPoint.y,
         mDown ? "true" : "false",
         mouseHasMovedSinceDownL ? "true" : "false",
-        msOfLastMouseMove,
+        // msOfLastMouseMove,
         next_mup_was_double_click ? "true" : "false",
         next_mup_was_closing_menu ? "true" : "false",
         registeredLastSingleClick ? "true" : "false");
@@ -421,6 +423,28 @@ struct glass_window
 
 
 
+    bool is_mouse_in_window()
+    {
+        // todo: special handling of wallpaper needed here?
+        // todo: special handling req anywhere else?
+        POINT mPos;   GetCursorPos(&mPos);
+        RECT winRect; GetWindowRect(hwnd, &winRect);
+        if (PtInRect(&winRect, mPos))
+        {
+            return true;
+            // // // OutputDebugString("mouse outside window\n");
+            // // drawProgressBar = false;
+
+            // todo: need to call these mouse flags somewhere?
+            // // if we mouse up while not on window all our mdown etc flags will be wrong
+            // // so we just force an "end of click" when we leave the window
+            // system.mDown = false;
+            // system.mouseHasMovedSinceDownL = false;
+            // system.clickingOnProgressBar = false;
+        }
+        return false;
+    }
+
 
 
 
@@ -457,6 +481,7 @@ struct glass_window
     {
         // // this is for progress bar timeout.. rename/move?
         // msOfLastMouseMove = app_timer.MsSinceStart();
+        if (on_mouse_move) on_mouse_move();
 
         if (mDown)
         {
