@@ -15,8 +15,8 @@
 // kinda hacky... todo: way to drop this? or maybe just allow this override of glass
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 
-#include "glass/glass.cpp"
 #include "movie/movie.cpp"
+#include "glass/glass.cpp"
 #include "urls.h"
 
 
@@ -149,7 +149,7 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
 }
 void restore_vid_position() { projector.RestoreVideoPosition(); }
 
-void on_clickL(int x, int y) {
+void on_click(int x, int y) {
     // PRINT("%i, %i\n", x, y);
     if (clientPointIsOnProgressBar(x, y)) {
         // int sw = glass.get_win_width();
@@ -159,7 +159,7 @@ void on_clickL(int x, int y) {
     }
 }
 bool clickingOnProgressBar = false;
-void on_mdownL(int cx, int cy) {
+void on_mdown(int cx, int cy) {
     if (clientPointIsOnProgressBar(cx, cy)) {
         clickingOnProgressBar = true;
         int sw = glass.get_win_width();
@@ -170,9 +170,12 @@ void on_mdownL(int cx, int cy) {
         projector.SaveVideoPosition(); // for undoing if this is going to be a double click
     }
 }
+void on_mup() { clickingOnProgressBar = false; }
 void on_mouse_move(int cx, int cy) {   // only triggers in window
     show_bar = true;
     secOfLastMouseMove = GetWallClockSeconds();
+}
+void on_mouse_drag(int cx, int cy) {
     if (clickingOnProgressBar) {
         int sw = glass.get_win_width();
         projector.QueueSeekToPercent((double)cx/(double)sw);
@@ -182,7 +185,7 @@ void on_mouse_move(int cx, int cy) {   // only triggers in window
         glass.DragWindow(cx, cy);
     }
 }
-void on_mup_L() { clickingOnProgressBar = false; }
+void on_mouse_exit_window() { clickingOnProgressBar = false; }
 
 
 
@@ -210,11 +213,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
-    glass.on_single_clickL = on_clickL;
-    glass.on_mdownL = on_mdownL;
+    // should be able to comment these out to get default glass behavior
+    glass.on_click = on_click;
+    glass.on_mdown = on_mdown;
+    glass.on_mup = on_mup;
     glass.on_oops_that_was_a_double_click = restore_vid_position;
     glass.on_mouse_move = on_mouse_move;
-    glass.on_mup_L = on_mup_L;
+    glass.on_mouse_drag = on_mouse_drag;
+    glass.on_mouse_exit_window = on_mouse_exit_window;
 
 
     assert(d3d_load());

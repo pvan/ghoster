@@ -1,5 +1,8 @@
+// ideally a little stand-alone lib for creating a window that's
+// borderless, draggable, resizable, snappable, transparent
+
 #include <windows.h>
-#include <Windowsx.h> // SelectFont, GET_X_LPARAM
+#include <Windowsx.h> // GET_X_LPARAM
 #include <stdio.h>
 #include <assert.h>
 
@@ -27,16 +30,7 @@ bool glass_string_starts_with(const char *str, const char *front) // case sensit
 
 
 
-const bool DEBUG_MCLICK_MSGS = false;
-
-
-
-// HWND global_workerw;
-// HWND global_wallpaper_window;
-// LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-// const char *WALLPAPER_CLASS_NAME = "ghoster wallpaper window class";
-
-
+const bool DEBUG_MCLICK_MSGS = true;
 
 
 // disallow opacity greater than this when in ghost mode
@@ -96,7 +90,7 @@ void SnapWinRectToMonitor(HWND hwnd, RECT in, RECT *out)
 // find the workerW for wallpaper mode
 BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam);
 
-VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
+VOID CALLBACK SingleLClickCallback(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 
 struct glass_window
@@ -115,12 +109,13 @@ struct glass_window
     UINT render_timer_id;
 
     void (*render)() = 0;  // application-defined render function
-    void (*on_single_clickL)(int,int) = 0;
-    void (*on_mdownL)(int,int) = 0;
+    void (*on_click)(int,int) = 0;
+    void (*on_mdown)(int,int) = 0;
+    void (*on_mup)() = 0;
     void (*on_oops_that_was_a_double_click)() = 0;
     void (*on_mouse_move)(int,int) = 0;
-    void (*on_mup_L)() = 0;
-    // void (*on_mouse_exit_window)() = 0;
+    void (*on_mouse_drag)(int,int) = 0;
+    void (*on_mouse_exit_window)() = 0;
     // not sure if i'm crazy about all these, but maybe they're a decent way to do it?
 
 
@@ -165,13 +160,20 @@ struct glass_window
     int get_win_width() { RECT wr = get_win_rect(); return wr.right-wr.left; }
     int get_win_height() { RECT wr = get_win_rect(); return wr.bottom-wr.top; }
 
+    bool screen_point_in_window(int sx, int sy) { POINT p = {sx, sy}; return PtInRect(&get_win_rect(), p); }
+    bool mouse_in_window() { POINT p; GetCursorPos(&p); return screen_point_in_window(p.x,p.y); }
+
+    bool get_mdown() { return (GetKeyState(VK_LBUTTON) & 0x100) != 0; }
+
+
     void ToString(char *out)
     {
         RECT wr = get_win_rect();
         sprintf(out,
         "loop_running: %s\n"
-        "win_rect: %i, %i, %i, %i\n"
         "sleep_ms: %i\n"
+        "win_rect: %i, %i, %i, %i\n"
+        "mouse_in_window: %s\n"
         "is_fullscreen: %s\n"
         "is_topmost: %s\n"
         "is_clickthrough: %s\n"
@@ -191,8 +193,9 @@ struct glass_window
         "next_mup_was_closing_menu: %s\n"
         "registeredLastSingleClick: %s\n",
         loop_running ? "true" : "false",
-        wr.left, wr.top, get_win_width(), get_win_height(),
         sleep_ms,
+        wr.left, wr.top, get_win_width(), get_win_height(),
+        mouse_in_window() ? "true" : "false",
         is_fullscreen ? "true" : "false",
         is_topmost ? "true" : "false",
         is_clickthrough ? "true" : "false",
@@ -218,15 +221,23 @@ struct glass_window
     HWND target_window() { return is_wallpaper ? wallpaper_window : hwnd; }
 
 
-
     void main_update()
     {
         // todo: add this back in, i think it's only possible with progress bar / menu clicks
         // // if we mouse up while not on window all our mdown etc flags will be wrong
         // // so we just force an "end of click" when we leave the window
-        // system.mDown = false;
-        // system.mouseHasMovedSinceDownL = false;
-        // system.clickingOnProgressBar = false;
+        bool mouse_in_win = mouse_in_window();
+        static bool mouse_was_in_win = false;
+        if (!mouse_in_win)
+        {
+            // mDown = false;
+            mouseHasMovedSinceDownL = false;
+            if (mouse_was_in_win)
+            {
+                if (on_mouse_exit_window) on_mouse_exit_window();
+            }
+        }
+        mouse_was_in_win = mouse_in_win;
 
         if (render) render();
     }
@@ -462,14 +473,11 @@ struct glass_window
 
 
 
-    void default_on_mouse_move(int cx, int cy)
-    {
-        DragWindow(cx, cy);
-    }
-
 
     void DragWindow(int x, int y)
     {
+        if (DEBUG_MCLICK_MSGS) OutputDebugString("DRAG\n");
+
         if (is_fullscreen)
         {
             setFullscreen(false);  // this restores window size, sets not topmost (if needed) etc
@@ -498,10 +506,13 @@ struct glass_window
 
     void onMouseMove(HWND hwnd, int cx, int cy)
     {
+        // if (DEBUG_MCLICK_MSGS) OutputDebugString("MMOVE\n");
+
         // // this is for progress bar timeout.. rename/move?
         // msOfLastMouseMove = app_timer.MsSinceStart();
         if (on_mouse_move) on_mouse_move(cx, cy);
 
+        // if (get_mdown())
         if (mDown)
         {
             // need to determine if click or drag here, not in buttonup
@@ -511,6 +522,7 @@ struct glass_window
             double dy = (double)mPos.y - (double)mDownPoint.y;
             double distance = sqrt(dx*dx + dy*dy);
             double MOVEMENT_ALLOWED_IN_CLICK = 2.5;
+            if (DEBUG_MCLICK_MSGS) PRINT("moved %f\n", distance);
             if (distance <= MOVEMENT_ALLOWED_IN_CLICK)
             {
                 // we haven't moved enough to be considered a drag
@@ -520,8 +532,8 @@ struct glass_window
             {
                 mouseHasMovedSinceDownL = true;
 
-                if (on_mouse_move) on_mouse_move(cx, cy);
-                else default_on_mouse_move(cx, cy);
+                if (on_mouse_drag) on_mouse_drag(cx, cy);
+                else DragWindow(cx, cy); // default to a drag
             }
         }
     }
@@ -560,7 +572,7 @@ struct glass_window
                 {
                     registeredLastSingleClick = false; // we haven't until the timer runs out
                     mup_timer_point = {cx, cy};
-                    single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
+                    single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &SingleLClickCallback);
                 }
                 else
                 {
@@ -571,13 +583,13 @@ struct glass_window
                     {
                         if (DEBUG_MCLICK_MSGS) OutputDebugString("undo that click\n");
 
-                        if (on_single_clickL) on_single_clickL(cx, cy);
+                        if (on_click) on_click(cx, cy);
                     }
                 }
             // }
         }
 
-        if (on_mup_L) on_mup_L();
+        if (on_mup) on_mup();
 
         mouseHasMovedSinceDownL = false;
         // clickingOnProgressBar = false;
@@ -592,7 +604,7 @@ struct glass_window
             // only restore if we actually paused/unpaused, otherwise we can just keep everything rolling as is
             if (registeredLastSingleClick)
             {
-                if (DEBUG_MCLICK_MSGS) OutputDebugString("restore our vid seek position\n");
+                if (DEBUG_MCLICK_MSGS) OutputDebugString("oops that was a double click\n");
                 if (on_oops_that_was_a_double_click) on_oops_that_was_a_double_click();
                 // restoreVideoPositionAfterDoubleClick();
             }
@@ -646,7 +658,7 @@ struct glass_window
         // {
             // note this only works because onMouseDownL doesn't trigger on the second click of a double click
             // saveVideoPositionForAfterDoubleClick();
-            if (on_mdownL) on_mdownL(clientX, clientY);
+            if (on_mdown) on_mdown(clientX, clientY);
         // }
     }
 
@@ -757,7 +769,7 @@ void glass_open_menu_at(HWND hwnd, POINT point)
 
 
 
-VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+VOID CALLBACK SingleLClickCallback(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
     if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
 
@@ -768,7 +780,7 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     {
         int cx = glass.mup_timer_point.x;
         int cy = glass.mup_timer_point.y;
-        if (glass.on_single_clickL) glass.on_single_clickL(cx, cy);
+        if (glass.on_click) glass.on_click(cx, cy);
 
         // we have to track whether get here or not
         // so we know if we've toggled pause between our double click or not
