@@ -349,6 +349,12 @@ struct MovieProjector
         message.new_load_path_queued = true;
     }
 
+    void QueueSeekToPercent(double percent)
+    {
+        message.seekProportion = percent;
+        message.setSeek = true;
+    }
+
 
     // something like this to replace "percent" etc?
     double _elapsed_time_at_last_audio_decode() { return rolling_movie.secondsFromAudioPTS(); }

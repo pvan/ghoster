@@ -54,7 +54,7 @@ bool keyD1;
 bool keyD2;
 bool keyD3;
 bool keyD4;
-void render()
+void render()  // os msg pump thread
 {
     if (!glass.loop_running) return;  // kinda smells
 
@@ -132,23 +132,27 @@ void render()
     d3d_swap();
 }
 
-void on_clickL() { projector.TogglePause(); }
+
+bool clientPointIsOnProgressBar(int x, int y)
+{
+    int sh = glass.get_win_height();
+    return y >= sh-PROGRESS_BAR_H && y <= sh;
+}
+
+void on_clickL(int x, int y) {
+    PRINT("%i, %i\n", x, y);
+    if (clientPointIsOnProgressBar(x, y)) {
+        int sw = glass.get_win_width();
+        projector.QueueSeekToPercent((double)x/(double)sw);
+    } else {
+        projector.TogglePause();
+    }
+}
 void on_mdownL() { projector.SaveVideoPosition(); } // for undoing if this is going to be a double click
 void restore_vid_position() { projector.RestoreVideoPosition(); }
 void on_mouse_move() { show_bar = true; secOfLastMouseMove = GetWallClockSeconds(); } // only triggers in window
 
 
-// bool clientPointIsOnProgressBar(int x, int y)
-// {
-//     return y >= system.winHEI-PROGRESS_BAR_H &&
-//            y <= system.winHEI;
-// }
-// bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
-// {
-//     POINT newPoint = {x, y};
-//     ScreenToClient(hwnd, &newPoint);
-//     return global_ghoster.clientPointIsOnProgressBar(newPoint.x, newPoint.y);
-// }
 
 
 // other ways?

@@ -115,7 +115,7 @@ struct glass_window
     UINT render_timer_id;
 
     void (*render)() = 0;  // application-defined render function
-    void (*on_single_clickL)() = 0;
+    void (*on_single_clickL)(int,int) = 0;
     void (*on_mdownL)() = 0;
     void (*on_oops_that_was_a_double_click)() = 0;
     void (*on_mouse_move)() = 0;
@@ -156,14 +156,20 @@ struct glass_window
     bool next_mup_was_double_click = false;
     bool next_mup_was_closing_menu = false;
     UINT single_click_timer_id;
+    POINT mup_timer_point;
     bool registeredLastSingleClick = false;
 
 
+    RECT get_win_rect() { RECT winRect; GetWindowRect(hwnd,&winRect); return winRect; }
+    int get_win_width() { RECT wr = get_win_rect(); return wr.right-wr.left; }
+    int get_win_height() { RECT wr = get_win_rect(); return wr.bottom-wr.top; }
 
     void ToString(char *out)
     {
+        RECT wr = get_win_rect();
         sprintf(out,
         "loop_running: %s\n"
+        "win_rect: %i, %i, %i, %i\n"
         "sleep_ms: %i\n"
         "is_fullscreen: %s\n"
         "is_topmost: %s\n"
@@ -184,6 +190,7 @@ struct glass_window
         "next_mup_was_closing_menu: %s\n"
         "registeredLastSingleClick: %s\n",
         loop_running ? "true" : "false",
+        wr.left, wr.top, get_win_width(), get_win_height(),
         sleep_ms,
         is_fullscreen ? "true" : "false",
         is_topmost ? "true" : "false",
@@ -522,7 +529,7 @@ struct glass_window
         }
     }
 
-    void onMouseUpL()
+    void onMouseUpL(int cx, int cy)
     {
         if (DEBUG_MCLICK_MSGS) OutputDebugString("LUP\n");
 
@@ -555,18 +562,19 @@ struct glass_window
                 if (!next_mup_was_double_click)
                 {
                     registeredLastSingleClick = false; // we haven't until the timer runs out
+                    mup_timer_point = {cx, cy};
                     single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &onSingleClickL);
                 }
                 else
                 {
                     // if we are ending the click and we already registered the first click as a pause,
                     // toggle pause again to undo that
+                    // doesn't this kind of assume the application L clicks undo each other?
                     if (registeredLastSingleClick)
                     {
                         if (DEBUG_MCLICK_MSGS) OutputDebugString("undo that click\n");
 
-                        // doesn't this kind of assume the application L clicks undo each other?
-                        if (on_single_clickL) on_single_clickL(); //todo: pass click position?
+                        if (on_single_clickL) on_single_clickL(cx, cy);
                     }
                 }
             // }
@@ -759,7 +767,9 @@ VOID CALLBACK onSingleClickL(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTim
     // KillTimer(0, glass.single_click_timer_id);
     KillTimer(0, idEvent); // this way we're sure to kill it
     {
-        if (glass.on_single_clickL) glass.on_single_clickL(); //todo: pass click position?
+        int cx = glass.mup_timer_point.x;
+        int cy = glass.mup_timer_point.y;
+        if (glass.on_single_clickL) glass.on_single_clickL(cx, cy);
 
         // we have to track whether get here or not
         // so we know if we've toggled pause between our double click or not
@@ -911,9 +921,13 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             glass.onMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         } break;
 
-        case WM_LBUTTONUP:
+        case WM_LBUTTONUP: {
+            glass.onMouseUpL(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+        } break;
         case WM_NCLBUTTONUP: {
-            glass.onMouseUpL();
+            POINT newPoint = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            ScreenToClient(hwnd, &newPoint);
+            glass.onMouseUpL(newPoint.x, newPoint.y);
         } break;
 
         case WM_RBUTTONDOWN: {    // rclicks in client area (HTCLIENT)
