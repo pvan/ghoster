@@ -116,9 +116,10 @@ struct glass_window
 
     void (*render)() = 0;  // application-defined render function
     void (*on_single_clickL)(int,int) = 0;
-    void (*on_mdownL)() = 0;
+    void (*on_mdownL)(int,int) = 0;
     void (*on_oops_that_was_a_double_click)() = 0;
-    void (*on_mouse_move)() = 0;
+    void (*on_mouse_move)(int,int) = 0;
+    void (*on_mup_L)() = 0;
     // void (*on_mouse_exit_window)() = 0;
     // not sure if i'm crazy about all these, but maybe they're a decent way to do it?
 
@@ -461,6 +462,10 @@ struct glass_window
 
 
 
+    void default_on_mouse_move(int cx, int cy)
+    {
+        DragWindow(cx, cy);
+    }
 
 
     void DragWindow(int x, int y)
@@ -491,17 +496,17 @@ struct glass_window
 
 
 
-    void onMouseMove(HWND hwnd, int clientX, int clientY)
+    void onMouseMove(HWND hwnd, int cx, int cy)
     {
         // // this is for progress bar timeout.. rename/move?
         // msOfLastMouseMove = app_timer.MsSinceStart();
-        if (on_mouse_move) on_mouse_move();
+        if (on_mouse_move) on_mouse_move(cx, cy);
 
         if (mDown)
         {
             // need to determine if click or drag here, not in buttonup
             // because mousemove will trigger (i think) at the first pixel of movement
-            POINT mPos = { clientX, clientY };
+            POINT mPos = { cx, cy };
             double dx = (double)mPos.x - (double)mDownPoint.x;
             double dy = (double)mPos.y - (double)mDownPoint.y;
             double distance = sqrt(dx*dx + dy*dy);
@@ -515,16 +520,8 @@ struct glass_window
             {
                 mouseHasMovedSinceDownL = true;
 
-                // if (clientPointIsOnProgressBar(
-                //         mDownPoint.x,
-                //         mDownPoint.y))
-                // {
-                //     appSetProgressBar(clientX, clientY);
-                // }
-                // else
-                {
-                    DragWindow(clientX, clientY);
-                }
+                if (on_mouse_move) on_mouse_move(cx, cy);
+                else default_on_mouse_move(cx, cy);
             }
         }
     }
@@ -579,6 +576,8 @@ struct glass_window
                 }
             // }
         }
+
+        if (on_mup_L) on_mup_L();
 
         mouseHasMovedSinceDownL = false;
         // clickingOnProgressBar = false;
@@ -647,7 +646,7 @@ struct glass_window
         // {
             // note this only works because onMouseDownL doesn't trigger on the second click of a double click
             // saveVideoPositionForAfterDoubleClick();
-            if (on_mdownL) on_mdownL();
+            if (on_mdownL) on_mdownL(clientX, clientY);
         // }
     }
 
@@ -891,8 +890,9 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             bool top    = pos.y < win.top    + pad.y;
             bool bottom = pos.y > win.bottom - pad.y -1;
 
-            // // little hack to allow us to use progress bar all the way out to the edge
-            // if (screenPointIsOnProgressBar(hwnd, pos.x, pos.y) && !bottom) { left = false; right = false; }
+            // little hack to allow us to use progress bar all the way out to the edge
+            // todo: way to remove this from this layer?
+            if (screenPointIsOnProgressBar(hwnd, pos.x, pos.y) && !bottom) { left = false; right = false; }
 
             if (top && left)     return HTTOPLEFT;
             if (top && right)    return HTTOPRIGHT;

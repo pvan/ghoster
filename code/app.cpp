@@ -12,6 +12,9 @@
 #include "directx.cpp"
 #include "text.cpp"
 
+// kinda hacky... todo: way to drop this? or maybe just allow this override of glass
+bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
+
 #include "glass/glass.cpp"
 #include "movie/movie.cpp"
 #include "urls.h"
@@ -138,20 +141,48 @@ bool clientPointIsOnProgressBar(int x, int y)
     int sh = glass.get_win_height();
     return y >= sh-PROGRESS_BAR_H && y <= sh;
 }
+bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
+{
+    POINT newPoint = {x, y};
+    ScreenToClient(hwnd, &newPoint);
+    return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
+}
+void restore_vid_position() { projector.RestoreVideoPosition(); }
 
 void on_clickL(int x, int y) {
-    PRINT("%i, %i\n", x, y);
+    // PRINT("%i, %i\n", x, y);
     if (clientPointIsOnProgressBar(x, y)) {
-        int sw = glass.get_win_width();
-        projector.QueueSeekToPercent((double)x/(double)sw);
+        // int sw = glass.get_win_width();
+        // projector.QueueSeekToPercent((double)x/(double)sw);
     } else {
         projector.TogglePause();
     }
 }
-void on_mdownL() { projector.SaveVideoPosition(); } // for undoing if this is going to be a double click
-void restore_vid_position() { projector.RestoreVideoPosition(); }
-void on_mouse_move() { show_bar = true; secOfLastMouseMove = GetWallClockSeconds(); } // only triggers in window
-
+bool clickingOnProgressBar = false;
+void on_mdownL(int cx, int cy) {
+    if (clientPointIsOnProgressBar(cx, cy)) {
+        clickingOnProgressBar = true;
+        int sw = glass.get_win_width();
+        projector.QueueSeekToPercent((double)cx/(double)sw);
+    }
+    else
+    {
+        projector.SaveVideoPosition(); // for undoing if this is going to be a double click
+    }
+}
+void on_mouse_move(int cx, int cy) {   // only triggers in window
+    show_bar = true;
+    secOfLastMouseMove = GetWallClockSeconds();
+    if (clickingOnProgressBar) {
+        int sw = glass.get_win_width();
+        projector.QueueSeekToPercent((double)cx/(double)sw);
+    }
+    else
+    {
+        glass.DragWindow(cx, cy);
+    }
+}
+void on_mup_L() { clickingOnProgressBar = false; }
 
 
 
@@ -183,6 +214,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_mdownL = on_mdownL;
     glass.on_oops_that_was_a_double_click = restore_vid_position;
     glass.on_mouse_move = on_mouse_move;
+    glass.on_mup_L = on_mup_L;
 
 
     assert(d3d_load());
