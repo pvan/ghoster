@@ -230,7 +230,7 @@ struct glass_window
         static bool mouse_was_in_win = false;
         if (!mouse_in_win)
         {
-            // mDown = false;
+            mDown = false;
             mouseHasMovedSinceDownL = false;
             if (mouse_was_in_win)
             {
@@ -672,6 +672,10 @@ struct glass_window
 };
 
 
+// we won't need this singleton-like usage if there is
+// a way to determine what instance we're in when wndproc is called
+// could create map of hwnd to instance, but that seems like overkill
+// todo: is there a way to pass a pointer to wndproc? maybe when registering?
 glass_window glass;
 
 
@@ -773,7 +777,12 @@ VOID CALLBACK SingleLClickCallback(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD
 {
     if (DEBUG_MCLICK_MSGS) OutputDebugString("DELAYED M LUP\n");
 
-    // glass_window *glass = (glass_window*)___;  // todo: anyway to pass a pointer to this function?
+    // todo: anyway to pass a pointer to this function?
+    // update: yes, only by co-opting the idEvent (timer id) int as a pointer
+    // but if we try to start two timers with the same pointer... what happens?
+    // maybe that's ok? each instance is only calling one of these at a time right?
+    // (because otherwise it would be a double click?)
+    // glass_window *glass = (glass_window*)___;
 
     // KillTimer(0, glass.single_click_timer_id);
     KillTimer(0, idEvent); // this way we're sure to kill it
@@ -791,7 +800,7 @@ VOID CALLBACK SingleLClickCallback(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD
 
 
 
-
+// for snapping
 static int sys_moving_anchor_x;
 static int sys_moving_anchor_y;
 

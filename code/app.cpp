@@ -13,6 +13,7 @@
 #include "text.cpp"
 
 // kinda hacky... todo: way to drop this? or maybe just allow this override of glass
+// maybe make progress bar into a child window?
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 
 #include "movie/movie.cpp"
