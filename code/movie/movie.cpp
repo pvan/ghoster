@@ -406,8 +406,6 @@ struct MovieProjector
             if (on_load_callback) on_load_callback(rolling_movie.reel.width, rolling_movie.reel.height);
         }
 
-        double percent; // make into method?
-
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
@@ -516,10 +514,6 @@ struct MovieProjector
                     ts_audio = rolling_movie.secondsFromVideoPTS();
                 }
 
-                // use ts audio to get track bar position
-                rolling_movie.elapsed = ts_audio;
-                percent = rolling_movie.elapsed/rolling_movie.reel.durationSeconds;
-
                 // assuming we've filled the sdl buffer, we are 1 second ahead
                 // but is that actually accurate? should we instead use SDL_GetQueuedAudioSize again to est??
                 // and how consistently do we pull audio data? is it sometimes more than others?
@@ -617,25 +611,33 @@ struct MovieProjector
 
 
 
-                // "RENDER" basically (to an offscreen buffer)
-
-                u8 *src = rolling_movie.reel.vid_buffer;
-                int bw = rolling_movie.reel.vid_width;
-                int bh = rolling_movie.reel.vid_height;
-                back_buffer->resize_if_needed(bw, bh);
-                assert(back_buffer->size() == bw*bh*sizeof(u32));
-                memcpy(back_buffer->mem, src, back_buffer->size());
-
-                frame_buffer *old_front = front_buffer;
-                front_buffer = back_buffer;
-                back_buffer = old_front;
-
             }
         }
 
 
+        // update trackbar position
+        if (rolling_movie.reel.IsAudioAvailable())
+            rolling_movie.elapsed = rolling_movie.secondsFromAudioPTS();
+        else if (rolling_movie.reel.vfc) // "IsVideoAVailable()"?
+            rolling_movie.elapsed = rolling_movie.secondsFromVideoPTS();
+
+
+        // "RENDER" basically (to an offscreen buffer)
+
+        u8 *src = rolling_movie.reel.vid_buffer;
+        int bw = rolling_movie.reel.vid_width;
+        int bh = rolling_movie.reel.vid_height;
+        back_buffer->resize_if_needed(bw, bh);
+        assert(back_buffer->size() == bw*bh*sizeof(u32));
+        memcpy(back_buffer->mem, src, back_buffer->size());
+
+        frame_buffer *old_front = front_buffer;
+        front_buffer = back_buffer;
+        back_buffer = old_front;
+
+
         // REPEAT
-        if (state.repeat && percent > 1.0)  // note percent will keep ticking up even after vid is done
+        if (state.repeat && rolling_movie.percent_elapsed() > 1.0)  // note percent will keep ticking up even after vid is done
         {
             rolling_movie.hard_seek_to_timestamp(0);
         }
