@@ -1,7 +1,7 @@
 
-progress bar
+x progress bar
 
-random url loading
+x random url loading
 
 way to handle input in app layer that window layer doesn't need to know about
 

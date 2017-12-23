@@ -13,7 +13,8 @@ void LogMessage(char *str) { OutputDebugString(str); }
 #include "sdl.cpp"
 
 
-const int YTDL_TIMEOUT_MS = 5000;  // give up after this if taking too long to get urls (probably shoddy net)
+// const int YTDL_TIMEOUT_MS = 5000;  // give up after this if taking too long to get urls (probably shoddy net)
+const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to get urls (probably shoddy net)
 
 
 // todo: support multiple threads launched?
@@ -157,7 +158,7 @@ struct AppState
 
     double volume = 1.0;
 
-    bool bufferingOrLoading = true;
+    bool bufferingOrLoading = true; // i think right now this is only ever set on creation?
 
 
     bool is_paused = false;
@@ -264,9 +265,13 @@ struct MovieProjector
 
 
     // mostly flags, basic way to communicate between threads etc
+    // todo: make a proper msg queue system?? maybe not
     AppMessages message;
 
     void (*on_load_callback)(int,int) = 0;  // notify app video is done loading
+
+
+    bool IsMovieLoaded() { return !state.bufferingOrLoading; }
 
 
     void PlayMovie()
@@ -424,7 +429,7 @@ struct MovieProjector
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
-            PauseMovie();
+            PauseMovie();  // i think pretty much just to stop sound
         }
         else
         {
@@ -768,11 +773,12 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle = TRUE;
 
+    PRINT("Creating pipe...\n");
 
     HANDLE outRead, outWrite;
     if (!CreatePipe(&outRead, &outWrite, &sa, 0))
     {
-        OutputDebugString("Error with CreatePipe()");
+        LogError("Error with CreatePipe()");
         return false;
     }
 
@@ -798,6 +804,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sprintf(args, "%syoutube-dl.exe %s %s", exe_dir, options, url);
     // MsgBox(args);
 
+    PRINT("Starting youtube-dl process...\n");
+
     // try a guard like this so we don't force this thread closed while ytdl is running
     movie_ytdl_running = true;       // this actually shouldn't be needed since we close the prev thread
     {
@@ -816,13 +824,20 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         // so we use the movie_ytdl_running as a guard against closing this thread until it's ready
         movie_ytdl_process = pi.hProcess;
 
+        PRINT("Waiting for youtube-dl process...\n");
+
         DWORD res = WaitForSingleObject(pi.hProcess, YTDL_TIMEOUT_MS);
-        if (res==WAIT_TIMEOUT || res==WAIT_FAILED) return false; // todo: doublecheck that we want wait_failed
+        if (res==WAIT_TIMEOUT) { LogError("Youtube-dl process timeout"); return false; }
+        if (res==WAIT_FAILED) { LogError("Youtube-dl process WAIT_FAILED"); return false; }
+
+        PRINT("Terminating youtube-dl process...\n");
 
         TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
     }
     movie_ytdl_running = false;
     movie_ytdl_process = 0;
+
+    PRINT("Closing handle...\n");
 
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
@@ -830,6 +845,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         LogError("youtube-dl: CloseHandle() error");
         return false;
     }
+
+    PRINT("Reading from pipe...\n");
 
     DWORD bytesRead;
     if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
@@ -853,6 +870,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
 bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTitle, char *exe_dir)
 {
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
+
+    PRINT("Calling youtube-dl...\n");
 
     // -g gets urls (seems like two: video then audio)
     if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))

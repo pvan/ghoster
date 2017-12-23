@@ -75,6 +75,8 @@ void render()  // os msg pump thread
         show_bar = false;
     if (!glass.is_mouse_in_window())
         show_bar = false;
+    if (!projector.IsMovieLoaded())
+        show_bar = false;
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
@@ -192,7 +194,7 @@ void on_mouse_exit_window() { clickingOnProgressBar = false; }
 
 
 
-// other ways?
+// other ways? could poll IsMovieLoaded each loop?
 bool first_video = true;
 void on_video_load(int w, int h)
 {
