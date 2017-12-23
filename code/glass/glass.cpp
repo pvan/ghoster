@@ -290,6 +290,14 @@ struct glass_window
             // unset our temp topmost from fullscreening if we aren't actually set that way
             if (!is_topmost) SetWindowPos(hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
         }
+
+        // need to recreate wallpaper window if mode is set
+        if (is_wallpaper)
+        {
+            // just do this for now
+            set_wallpaper(false);
+            set_wallpaper(true);
+        }
     }
 
 
