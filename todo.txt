@@ -32,7 +32,7 @@ bugs:
     (window resized before display buffer i guess)
 
 [ ] intermittent repeat-frame loop? maybe after seeking?
-    -happened in dutch and manups vids
+    -happened in dutch and manups and brick.. is it maybe a CODEC_CAP_DELAY thing?
 
 [x] loaded vid using previous vid timestamp if none
 

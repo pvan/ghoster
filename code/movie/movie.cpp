@@ -92,7 +92,10 @@ struct RollingMovie
     {
         ffmpeg_source *source = &reel;
 
-        // todo: measure the time this function takes and debug output it
+        // todo: improve the time for urls here by dling lowest qual to start
+        // and adaptively improving quality
+        // PRINT("hard seeking...\n");
+        // double start = GetWallClockSeconds();
 
         // not entirely sure if this flush usage is right
         if (source->video.codecContext) avcodec_flush_buffers(source->video.codecContext);
@@ -126,6 +129,8 @@ struct RollingMovie
             seconds * 1000.0,
             &ptsOfLastAudio);
         free(dummyBufferJunkData.data);
+
+        // PRINT("..seeking took %f seconds\n", GetWallClockSeconds()-start);
     }
 
     // TODO: move audio latency to this class???
@@ -567,11 +572,13 @@ struct MovieProjector
                         &rolling_movie.ptsOfLastVideo,
                         &frames_skipped);
 
-                    if (frames_skipped > 0) {  // todo: just add this to the string below
+
+                    if (frames_skipped > 0) {
                         char skipbuf[64];
                         sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
                         OutputDebugString(skipbuf);
                     }
+                    // note above is tracking frames SKIPPED, below is tracking frames REPEATED
                     if (repeatedLastFrame)
                     {
                         char buf[123];
@@ -584,8 +591,9 @@ struct MovieProjector
                 else
                 {
                     repeatCount++;
+                    if (!repeatedLastFrame)
+                        OutputDebugString("repeating a frame... ");
                     repeatedLastFrame = true;
-                    OutputDebugString("repeating a frame... ");
                 }
 
 
