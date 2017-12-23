@@ -54,6 +54,24 @@ void queue_random_url()
 }
 
 
+// assuming a canvas of 0, 0, dw, dh, returns subrect filling that space but with aspect_ratio
+RECT calc_pixel_letterbox_subrect(int dw, int dh, double aspect_ratio)
+{
+    int calcW = (int)((double)dh * aspect_ratio);
+    int calcH = (int)((double)dw / aspect_ratio);
+
+    if (calcW > dw)  // letterbox
+        calcW = dw;
+    else
+        calcH = dh;  // pillarbox
+
+    int posX = (int)(((double)dw - (double)calcW) / 2.0);
+    int posY = (int)(((double)dh - (double)calcH) / 2.0);
+
+    return {posX, posY, posX+calcW, posY+calcH};
+}
+
+
 bool keyD1;
 bool keyD2;
 bool keyD3;
@@ -91,11 +109,14 @@ void render()  // os msg pump thread
         u8 *src = projector.front_buffer->mem;
         int w = projector.front_buffer->wid;
         int h = projector.front_buffer->hei;
-        screen.fill_tex_with_mem(src, w, h);  //this resizes if needed, todo: better name
+        screen.fill_tex_with_mem(src, w, h);  //this resizes tex if needed, todo: better name
 
         if (glass.is_fullscreen && glass.is_ratiolocked) {
             // todo: need to stretch to screen actually
-            screen.move_to_pixel_coords_center(sw/2,sh/2);  // keep texture size
+
+            RECT subrect = calc_pixel_letterbox_subrect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+            screen.set_to_pixel_coords_BL(subrect.left, subrect.top, subrect.right-subrect.left, subrect.bottom-subrect.top);
+            // screen.set_to_pixel_coords_BL(0, subrect.top, subrect.right, subrect.bottom);
         } else {
             screen.fill_vb_with_rect(-1,-1,1,1,0);  // fill screen
         }

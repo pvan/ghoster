@@ -874,6 +874,7 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
     PRINT("Calling youtube-dl...\n");
 
     // -g gets urls (seems like two: video then audio)
+    // todo: look into format options, eg -f worst (test on cmd)
     if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))
     {
         return false;

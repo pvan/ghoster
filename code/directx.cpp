@@ -396,28 +396,29 @@ struct d3d_textured_quad
         memcpy(where_to_copy_to, verts, 5*4*sizeof(float));
         vb->Unlock();
     }
-    void set_to_pixel_coords_BL(int qx, int qy, int qw, int qh)
+    void set_to_pixel_coords_BL(int qx, int qy, int qw, int qh, float z = 0) // todo? z is never used when calling
     {
         if (!created) return;
 
         int sw = d3d_cached_w; // use bb values now
-        int sh = d3d_cached_h;
+        int sh = d3d_cached_h; // todo: pass to shader on draw call?
 
+        // todo: convert to ndc in shader?
         float verts[] = {
         //  x                      y            z   u  v
-            px2ndc(qx   ,sw), px2ndc(qy   ,sh), 0,  0, 1,
-            px2ndc(qx   ,sw), px2ndc(qy+qh,sh), 0,  0, 0,
-            px2ndc(qx+qw,sw), px2ndc(qy   ,sh), 0,  1, 1,
-            px2ndc(qx+qw,sw), px2ndc(qy+qh,sh), 0,  1, 0,
+            px2ndc(qx   ,sw), px2ndc(qy   ,sh), z,  0, 1,
+            px2ndc(qx   ,sw), px2ndc(qy+qh,sh), z,  0, 0,
+            px2ndc(qx+qw,sw), px2ndc(qy   ,sh), z,  1, 1,
+            px2ndc(qx+qw,sw), px2ndc(qy+qh,sh), z,  1, 0,
         };
         update_custom_verts(verts);
     }
 
-    // move_to's use tex size as quad size, TL's use cached bb h to swap origin point
+    // move_tos use tex size as quad size, TLs use cached bb h to swap origin point
     void set_to_pixel_coords_TL(int qx, int qy, int qw, int qh) { set_to_pixel_coords_BL(qx, d3d_cached_h-(qy+qh), qw, qh); }
     void move_to_pixel_coords_BL(int qx, int qy) { set_to_pixel_coords_BL(qx, qy, texW, texH); }
     void move_to_pixel_coords_TL(int qx, int qy) { set_to_pixel_coords_BL(qx, d3d_cached_h-texH-qy, texW, texH); }
-    void move_to_pixel_coords_center(int qx, int qy) { set_to_pixel_coords_BL(qx-texW/2, qy-texH/2, texW, texH); }
+    void move_to_pixel_coords_center(int cx, int cy) { set_to_pixel_coords_BL(cx-texW/2, cy-texH/2, texW, texH); }
 
     void create(u8 *qmem, int qw, int qh, float dl, float dt, float dr, float db, float z)
     {

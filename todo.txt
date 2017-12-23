@@ -1,4 +1,6 @@
 
+[ ] don't save/restore vid position and try to correct after doubleclick if vid is url
+
 [ ] test the new timeout on loading urls if connection is flaky
 
 [ ] add a background "screen" with color/alpha to text overlay

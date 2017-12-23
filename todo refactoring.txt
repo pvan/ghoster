@@ -7,6 +7,8 @@ way to handle input in app layer that window layer doesn't need to know about
 
 fullscreen letterbox
 
+icons
+
 
 add debug text from projector
 
