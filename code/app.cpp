@@ -92,6 +92,13 @@ void render()  // os msg pump thread
         int w = projector.front_buffer->wid;
         int h = projector.front_buffer->hei;
         screen.fill_tex_with_mem(src, w, h);  //this resizes if needed, todo: better name
+
+        if (glass.is_fullscreen && glass.is_ratiolocked) {
+            // todo: need to stretch to screen actually
+            screen.move_to_pixel_coords_center(sw/2,sh/2);  // keep texture size
+        } else {
+            screen.fill_vb_with_rect(-1,-1,1,1,0);  // fill screen
+        }
     }
 
 
