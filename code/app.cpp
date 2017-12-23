@@ -72,22 +72,10 @@ RECT calc_pixel_letterbox_subrect(int dw, int dh, double aspect_ratio)
 }
 
 
-bool keyD1;
-bool keyD2;
-bool keyD3;
-bool keyD4;
 void render()  // os msg pump thread
 {
     if (!glass.loop_running) return;  // kinda smells
 
-    if (GetKeyState(0x31) & 0x8000 && !keyD1) { keyD1=true; projector.QueueLoadFromPath(TEST_FILES[2]); }
-    if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
-    if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
-    if (GetKeyState(VK_OEM_3) & 0x8000 && !keyD4) { keyD4=true; queue_random_url(); }
-    if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
-    if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
-    if (!(GetKeyState(VK_TAB) & 0x8000)) keyD3 = false;
-    if (!(GetKeyState(VK_OEM_3) & 0x8000)) keyD4 = false;
 
     if (GetWallClockSeconds() - secOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
         show_bar = false;
@@ -233,7 +221,8 @@ void on_video_load(int w, int h)
 
     if (glass.is_fullscreen)
     {
-        glass.setFullscreen(false);  // kind of hacky solution
+        // awkward, you can see it flicker
+        glass.setFullscreen(false);
         glass.set_ratiolocked(glass.is_ratiolocked);
         glass.setFullscreen(true);
     }
@@ -246,6 +235,84 @@ void on_video_load(int w, int h)
         first_video = false;
         // glass.ShowWindow();
     }
+}
+
+
+
+bool paste_clipboard()
+{
+    HANDLE h;
+    if (!OpenClipboard(0))
+    {
+        OutputDebugString("Can't open clipboard.");
+        return false;
+    }
+    h = GetClipboardData(CF_TEXT);
+    if (!h) return false;
+    int bigEnoughToHoldTypicalUrl = 1024 * 10; // todo: what max to use here?
+    char *clipboardContents = (char*)malloc(bigEnoughToHoldTypicalUrl);
+    sprintf(clipboardContents, "%s", (char*)h);
+    CloseClipboard();
+        char printit[MAX_PATH]; // should be +1
+        sprintf(printit, "Clipboard: %s\n", (char*)clipboardContents);
+        OutputDebugString(printit);
+    projector.QueueLoadFromPath(clipboardContents);
+    free(clipboardContents);
+    return true;
+}
+
+bool copy_url_to_clipboard(bool withTimestamp = false)
+{
+    char *url = projector.rolling_movie.reel.path;
+
+    char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
+    if (StringIsUrl(url) && withTimestamp) {
+        int secondsElapsed = projector.rolling_movie.seconds_elapsed_at_last_decode;
+        sprintf(output, "%s&t=%i", url, secondsElapsed);
+    } else { sprintf(output, "%s", url); }
+
+    const size_t len = strlen(output) + 1;
+    HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
+    memcpy(GlobalLock(hMem), output, len);
+    GlobalUnlock(hMem);
+    OpenClipboard(0);
+    EmptyClipboard();
+    SetClipboardData(CF_TEXT, hMem);
+    CloseClipboard();
+
+    return true;
+}
+
+
+WNDPROC origWndProc;
+LRESULT CALLBACK appWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+    switch(message)
+    {
+        case WM_KEYDOWN: {
+            if (wParam == 0x56 &&  // V
+                GetKeyState(VK_CONTROL) & 0x8000)  // ctrl
+            {
+                paste_clipboard();
+            }
+        } break;
+
+        case WM_KEYUP: {
+            if (wParam >= 0x30 && wParam <= 0x39) // 0-9
+            {
+                projector.QueueLoadFromPath(TEST_FILES[wParam - 0x30]);
+            }
+            if (wParam == VK_OEM_3) // ~
+            {
+                queue_random_url();
+            }
+            if (wParam == VK_TAB)
+            {
+                show_debug = !show_debug;
+            }
+        } break;
+    }
+    return origWndProc(hwnd, message, wParam, lParam);
 }
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
@@ -263,6 +330,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_mouse_move = on_mouse_move;
     glass.on_mouse_drag = on_mouse_drag;
     glass.on_mouse_exit_window = on_mouse_exit_window;
+
+    origWndProc = SubclassWindow(glass.hwnd, appWndProc);
 
 
     assert(d3d_load());

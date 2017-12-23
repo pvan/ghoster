@@ -982,11 +982,6 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_SYSKEYDOWN:  // req for alt?
         case WM_KEYDOWN: {
-            if (wParam == 0x56 &&  // V
-                GetKeyState(VK_CONTROL) & 0x8000)  // ctrl
-            {
-                // PasteClipboard();
-            }
             if (wParam == VK_RETURN) // enter
             {
                 if ((HIWORD(lParam) & KF_ALTDOWN)) // +alt
@@ -995,22 +990,6 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
                 }
             }
         } break;
-
-        case WM_KEYUP: {
-            if (wParam >= 0x30 && wParam <= 0x39) // 0-9
-            {
-                // QueueLoadMovie(TEST_FILES[wParam - 0x30]);
-            }
-            if (wParam == VK_OEM_3) // ~
-            {
-                // QueuePlayRandom();
-            }
-            if (wParam == VK_TAB)
-            {
-                // displayDebugText = !displayDebugText;
-            }
-        } break;
-
 
 
         // can also implement IDropTarget, but who wants to do that?

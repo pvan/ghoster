@@ -347,6 +347,7 @@ struct MovieProjector
 
     void QueueLoadFromPath(char *path)
     {
+        PRINT("load new movie in queue");
         strcpy_s(message.new_path_to_load, 1024, path);
         message.new_load_path_queued = true;
     }
@@ -1116,54 +1117,6 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
 
 
 
-bool PasteClipboard(MovieProjector projector)
-{
-    HANDLE h;
-    if (!OpenClipboard(0))
-    {
-        OutputDebugString("Can't open clipboard.");
-        return false;
-    }
-    h = GetClipboardData(CF_TEXT);
-    if (!h) return false;
-    int bigEnoughToHoldTypicalUrl = 1024 * 10; // todo: what max to use here?
-    char *clipboardContents = (char*)malloc(bigEnoughToHoldTypicalUrl);
-    sprintf(clipboardContents, "%s", (char*)h);
-    CloseClipboard();
-        char printit[MAX_PATH]; // should be +1
-        sprintf(printit, "%s\n", (char*)clipboardContents);
-        OutputDebugString(printit);
-    projector.QueueLoadFromPath(clipboardContents);
-    free(clipboardContents);
-    return true;
-}
-
-
-bool CopyUrlToClipboard(MovieProjector projector, bool withTimestamp = false)
-{
-    char *url = projector.rolling_movie.reel.path;
-
-    char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
-    if (StringIsUrl(url) && withTimestamp) {
-        int secondsElapsed = projector.rolling_movie.seconds_elapsed_at_last_decode;
-        sprintf(output, "%s&t=%i", url, secondsElapsed);
-    }
-    else
-    {
-        sprintf(output, "%s", url);
-    }
-
-    const size_t len = strlen(output) + 1;
-    HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
-    memcpy(GlobalLock(hMem), output, len);
-    GlobalUnlock(hMem);
-    OpenClipboard(0);
-    EmptyClipboard();
-    SetClipboardData(CF_TEXT, hMem);
-    CloseClipboard();
-
-    return true;
-}
 
 
 

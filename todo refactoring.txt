@@ -9,6 +9,9 @@ fullscreen letterbox
 
 icons
 
+check cpu
+check mem leaks
+
 
 add debug text from projector
 
