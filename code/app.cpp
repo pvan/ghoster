@@ -228,8 +228,17 @@ void on_video_load(int w, int h)
 {
     glass.aspect_ratio = (double)w / (double)h;
 
-    if (!glass.is_fullscreen) // not in this case though
-        glass.set_ratiolocked(glass.is_ratiolocked); // awkward way to set window size to aspect ratio if enabled
+    if (!glass.is_fullscreen)
+        glass.set_ratiolocked(glass.is_ratiolocked);
+
+    if (glass.is_fullscreen)
+    {
+        glass.setFullscreen(false);  // kind of hacky solution
+        glass.set_ratiolocked(glass.is_ratiolocked);
+        glass.setFullscreen(true);
+    }
+
+    // may need to recreate wallpaper window here?
 
     // something like this? (na, would be too long on urls)
     if (first_video)
