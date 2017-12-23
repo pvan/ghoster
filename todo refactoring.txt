@@ -3,9 +3,9 @@ x progress bar
 
 x random url loading
 
-way to handle input in app layer that window layer doesn't need to know about
+x way to handle input in app layer that window layer doesn't need to know about
 
-fullscreen letterbox
+x fullscreen letterbox
 
 icons
 
