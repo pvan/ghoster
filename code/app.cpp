@@ -19,6 +19,7 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 #include "movie/movie.cpp"
 #include "glass/glass.cpp"
 #include "urls.h"
+#include "icons.h"
 
 
 // progress bar position
@@ -31,6 +32,8 @@ const double PROGRESS_BAR_TIMEOUT = 1.0;
 
 static MovieProjector projector;
 
+
+// #include "menu.cpp"
 
 
 
@@ -321,6 +324,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     timeBeginPeriod(1); // set resolution of sleep
 
 
+
+    LoadIcons(hInstance);
+
+
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
     // should be able to comment these out to get default glass behavior
@@ -332,8 +339,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_mouse_drag = on_mouse_drag;
     glass.on_mouse_exit_window = on_mouse_exit_window;
     glass.on_dragdrop_file = on_dragdrop_file;
+    glass.set_icon(RandomIcon());
+    glass.ghost_icon = global_icon_w;
 
     origWndProc = SubclassWindow(glass.hwnd, appWndProc);
+
 
 
     assert(d3d_load());

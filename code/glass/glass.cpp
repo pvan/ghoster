@@ -101,6 +101,8 @@ struct glass_window
     HWND hwnd;
     HINSTANCE hInstance;
     HICON icon = 0;
+    HICON ghost_icon = 0;
+
 
 
     bool loop_running = true;
@@ -301,6 +303,11 @@ struct glass_window
     }
 
 
+    void set_icon(HICON new_icon)
+    {
+        icon = new_icon;
+        icon_set(hwnd, icon);
+    }
 
     void set_topmost(bool enable)
     {
@@ -330,6 +337,7 @@ struct glass_window
         if (enable)
         {
             // SetIcon(this_icon);
+            if (ghost_icon) icon_set(hwnd, ghost_icon);
             if (GHOST_MODE_SETS_TOPMOST) set_topmost(true);
             if (opacity > GHOST_MODE_MAX_OPACITY)
             {
@@ -346,6 +354,7 @@ struct glass_window
         else
         {
             // SetIcon(hwnd, this_icon);
+            if (ghost_icon) icon_set(hwnd, icon);
             if (had_to_cache_opacity && opacity != last_opacity)
             {
                 opacity = last_opacity;
