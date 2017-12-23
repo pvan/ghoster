@@ -33,7 +33,10 @@ const double PROGRESS_BAR_TIMEOUT = 1.0;
 static MovieProjector projector;
 
 
-// #include "menu.cpp"
+bool paste_clipboard();
+bool copy_url_to_clipboard(bool withTimestamp = false);
+void queue_random_url();
+#include "menu.cpp"
 
 
 
@@ -265,7 +268,7 @@ bool paste_clipboard()
     return true;
 }
 
-bool copy_url_to_clipboard(bool withTimestamp = false)
+bool copy_url_to_clipboard(bool withTimestamp)
 {
     char *url = projector.rolling_movie.reel.path;
 

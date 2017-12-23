@@ -306,7 +306,7 @@ struct glass_window
     void set_icon(HICON new_icon)
     {
         icon = new_icon;
-        icon_set(hwnd, icon);
+        if (!is_clickthrough) icon_set(hwnd, icon);
     }
 
     void set_topmost(bool enable)
