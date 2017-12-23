@@ -65,7 +65,7 @@ void render()  // os msg pump thread
     if (GetKeyState(0x31) & 0x8000 && !keyD1) { keyD1=true; projector.QueueLoadFromPath(TEST_FILES[2]); }
     if (GetKeyState(0x32) & 0x8000 && !keyD2) { keyD2=true; projector.QueueLoadFromPath(TEST_FILES[7]); }
     if (GetKeyState(VK_TAB) & 0x8000 && !keyD3) { keyD3=true; show_debug=!show_debug; }
-    if (GetKeyState(VK_OEM_3) & 0x8000 && !keyD4) { queue_random_url(); }
+    if (GetKeyState(VK_OEM_3) & 0x8000 && !keyD4) { keyD4=true; queue_random_url(); }
     if (!(GetKeyState(0x31) & 0x8000)) keyD1 = false;
     if (!(GetKeyState(0x32) & 0x8000)) keyD2 = false;
     if (!(GetKeyState(VK_TAB) & 0x8000)) keyD3 = false;
