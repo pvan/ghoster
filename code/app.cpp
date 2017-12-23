@@ -250,9 +250,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     DirectoryFromPath(exe_directory);
 
     projector.Init(exe_directory);
+    projector.on_load_callback = on_video_load;
 
     projector.StartBackgroundChurn();
-    projector.on_load_callback = on_video_load;
+    queue_random_url();
 
 
     // create d3d quads

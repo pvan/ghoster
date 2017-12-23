@@ -62,7 +62,7 @@ struct RollingMovie
     // ffmpeg_source medq;
     // ffmpeg_source highq;
 
-    double elapsed;
+    double seconds_elapsed_at_last_decode;
 
     i64 ptsOfLastVideo; // "ptsOfLastVideoFrameDecoded" too verbose?
     i64 ptsOfLastAudio;
@@ -81,7 +81,7 @@ struct RollingMovie
     double percent_elapsed()
     {
         if (!reel.loaded) return 0;
-        return elapsed / reel.durationSeconds;
+        return seconds_elapsed_at_last_decode / reel.durationSeconds;
     }
 
 
@@ -141,7 +141,7 @@ struct RollingMovie
     {
         reel.TransferFromReel(new_source);
 
-        elapsed = startAt;
+        // seconds_elapsed_at_last_decode = startAt; // should be set by seek now
 
         // get first frame even if startAt is 0 because we could be paused
         hard_seek_to_timestamp(startAt);
@@ -313,8 +313,8 @@ struct MovieProjector
 
         // todo: this won't be sub-frame accurate (elapsed is really "elapsed at last decoder call")
         // but i guess if we're pausing for a split second it won't be exact anyway
-        double percent = rolling_movie.elapsed / rolling_movie.reel.durationSeconds;
-        message.seekProportion = percent; // todo: make new variable rather than co-opt this one?
+        // double percent = rolling_movie.seconds_elapsed_at_last_decode / rolling_movie.reel.durationSeconds;
+        message.seekProportion = rolling_movie.percent_elapsed(); // todo: make new variable rather than co-opt this one?
     }
     void RestoreVideoPosition()
     {
@@ -406,6 +406,23 @@ struct MovieProjector
             if (on_load_callback) on_load_callback(rolling_movie.reel.width, rolling_movie.reel.height);
         }
 
+
+        if (message.setSeek)
+        {
+            message.setSeek = false;
+
+            SDL_ClearQueuedAudio(sdl_stuff.audio_device);
+
+            // int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
+            double seconds = message.seekProportion * rolling_movie.reel.durationSeconds;
+
+            // update trackbar position immediately
+            rolling_movie.seconds_elapsed_at_last_decode = seconds;
+
+            rolling_movie.hard_seek_to_timestamp(seconds);
+        }
+
+
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
@@ -413,18 +430,6 @@ struct MovieProjector
         }
         else
         {
-
-            if (message.setSeek)
-            {
-                message.setSeek = false;
-
-                SDL_ClearQueuedAudio(sdl_stuff.audio_device);
-
-                // int seekPos = message.seekProportion * rolling_movie.reel.vfc->duration;
-                double seconds = message.seekProportion * rolling_movie.reel.durationSeconds;
-                rolling_movie.hard_seek_to_timestamp(seconds);
-            }
-
 
             if (!state.is_paused)
             {
@@ -461,7 +466,6 @@ struct MovieProjector
                         -1,
                         &rolling_movie.ptsOfLastAudio);
 
-
                     if (bytes_queued_up > 0)
                     {
                         // remix to adjust volume
@@ -491,14 +495,12 @@ struct MovieProjector
                            //         (double)bytes_queued_up / (double)sdl_stuff.bytes_per_second);
                            // OutputDebugString(msg2);
                     }
+
                 }
 
 
 
-
                 // TIMINGS / SYNC
-
-
 
                 int bytes_left = SDL_GetQueuedAudioSize(sdl_stuff.audio_device);
                 double seconds_left_in_queue = (double)bytes_left / (double)sdl_stuff.bytes_per_second;
@@ -547,6 +549,7 @@ struct MovieProjector
                 double allowableAudioLead = idealMaxAudioLead + estimatedSDLAudioLag;
 
 
+
                 // VIDEO
 
                 // seems like all the skipping/repeating/seeking/starting etc sync code is a bit scattered...
@@ -571,7 +574,7 @@ struct MovieProjector
                         &rolling_movie.ptsOfLastVideo,
                         &frames_skipped);
 
-                    if (frames_skipped > 0) {
+                    if (frames_skipped > 0) {  // todo: just add this to the string below
                         char skipbuf[64];
                         sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
                         OutputDebugString(skipbuf);
@@ -610,16 +613,18 @@ struct MovieProjector
                 // OutputDebugString(ptsbuf);
 
 
+                // update trackbar position
+                if (rolling_movie.reel.IsAudioAvailable())
+                    rolling_movie.seconds_elapsed_at_last_decode = rolling_movie.secondsFromAudioPTS();
+                else if (rolling_movie.reel.IsVideoAvailable())
+                    rolling_movie.seconds_elapsed_at_last_decode = rolling_movie.secondsFromVideoPTS();
 
-            }
-        }
+
+            } // not paused
+
+        } // not loading
 
 
-        // update trackbar position
-        if (rolling_movie.reel.IsAudioAvailable())
-            rolling_movie.elapsed = rolling_movie.secondsFromAudioPTS();
-        else if (rolling_movie.reel.vfc) // "IsVideoAVailable()"?
-            rolling_movie.elapsed = rolling_movie.secondsFromVideoPTS();
 
 
         // "RENDER" basically (to an offscreen buffer)
@@ -1021,12 +1026,13 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
 {
     MovieProjector *projector = (MovieProjector*)lpParam;
 
-    // LOAD FILE
-    if (!projector->message.new_load_path_queued)
-    {
-        // projector.message.QueuePlayRandom();
-        projector->QueueLoadFromPath("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
-    }
+    // leave no file loaded on start for now
+    // // LOAD FILE
+    // if (!projector->message.new_load_path_queued)
+    // {
+    //     // projector.message.QueuePlayRandom();
+    //     projector->QueueLoadFromPath("D:\\~phil\\projects\\ghoster\\test-vids\\test.mp4");
+    // }
 
     double timeLastFrame = GetWallClockSeconds();
 
@@ -1118,7 +1124,7 @@ bool CopyUrlToClipboard(MovieProjector projector, bool withTimestamp = false)
 
     char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
     if (StringIsUrl(url) && withTimestamp) {
-        int secondsElapsed = projector.rolling_movie.elapsed;
+        int secondsElapsed = projector.rolling_movie.seconds_elapsed_at_last_decode;
         sprintf(output, "%s&t=%i", url, secondsElapsed);
     }
     else

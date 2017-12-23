@@ -275,11 +275,8 @@ struct ffmpeg_source
         vid_height = h;
     }
 
-    bool IsAudioAvailable()
-    {
-        if (afc && audio.codecContext) return true;
-        else return false;
-    }
+    bool IsAudioAvailable() { return afc && audio.codecContext; }
+    bool IsVideoAvailable() { return vfc && video.codecContext; }
 
     void DebugPrintInfo()
     {
