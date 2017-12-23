@@ -116,6 +116,7 @@ struct glass_window
     void (*on_mouse_move)(int,int) = 0;
     void (*on_mouse_drag)(int,int) = 0;
     void (*on_mouse_exit_window)() = 0;
+    void (*on_dragdrop_file)(char*) = 0;
     // not sure if i'm crazy about all these, but maybe they're a decent way to do it?
 
 
@@ -1000,6 +1001,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             {
                 // OutputDebugString(filePath);
                 // QueueLoadMovie(filePath);
+                if (glass.on_dragdrop_file) glass.on_dragdrop_file(filePath);
             }
             else
             {

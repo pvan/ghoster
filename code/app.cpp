@@ -207,10 +207,11 @@ void on_mouse_drag(int cx, int cy) {
     }
 }
 void on_mouse_exit_window() { clickingOnProgressBar = false; }
+void on_dragdrop_file(char *path) { projector.QueueLoadFromPath(path); }
 
 
 
-// other ways? could poll IsMovieLoaded each loop?
+// other ways? could poll IsMovieLoaded each loop? this is prolly fine
 bool first_video = true;
 void on_video_load(int w, int h)
 {
@@ -330,6 +331,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_mouse_move = on_mouse_move;
     glass.on_mouse_drag = on_mouse_drag;
     glass.on_mouse_exit_window = on_mouse_exit_window;
+    glass.on_dragdrop_file = on_dragdrop_file;
 
     origWndProc = SubclassWindow(glass.hwnd, appWndProc);
 
