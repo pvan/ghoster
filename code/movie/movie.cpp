@@ -108,11 +108,6 @@ struct RollingMovie
         // step through video frames...
         int frames_skipped;
         source->GetNextVideoFrame(
-            // source->vfc,
-            // source->video.codecContext,
-            // source->sws_context,
-            // source->video.index,
-            // source->frame_output,
             seconds * 1000.0,// - msAudioLatencyEstimate,
             0,
             true,
@@ -126,9 +121,6 @@ struct RollingMovie
         dummyBufferJunkData.data = (u8*)malloc(1024 * 10);
         dummyBufferJunkData.size_in_bytes = 1024 * 10;
         int bytes_queued_up = source->GetNextAudioFrame(
-            // source->afc,
-            // source->audio.codecContext,
-            // source->audio.index,
             dummyBufferJunkData,
             1024,
             seconds * 1000.0,
@@ -417,6 +409,7 @@ struct MovieProjector
             double seconds = message.seekProportion * rolling_movie.reel.durationSeconds;
 
             // update trackbar position immediately
+            // (actually now also calling in app code to be even quicker, since this thread could hang dling vids)
             rolling_movie.seconds_elapsed_at_last_decode = seconds;
 
             rolling_movie.hard_seek_to_timestamp(seconds);
@@ -734,7 +727,7 @@ struct MovieProjector
 
     void Cleanup()
     {
-        // sometimes crash on exit when not calling this? todo: confirm
+        // sometimes crash on exit when not calling this? todo: confirm? update: seems completely fixed
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         SDL_CloseAudioDevice(sdl_stuff.audio_device);
     }

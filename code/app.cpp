@@ -149,12 +149,16 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
     return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
 }
 void restore_vid_position() { projector.RestoreVideoPosition(); }
+void set_progress_bar(double percent) {
+    double seconds = percent * projector.rolling_movie.reel.durationSeconds;
+    projector.rolling_movie.seconds_elapsed_at_last_decode = seconds; // just set this here so it's immediate
+    projector.QueueSeekToPercent(percent);
+}
 
 void on_click(int x, int y) {
     // PRINT("%i, %i\n", x, y);
     if (clientPointIsOnProgressBar(x, y)) {
-        // int sw = glass.get_win_width();
-        // projector.QueueSeekToPercent((double)x/(double)sw);
+        // doing this on mdown and mdrag now
     } else {
         projector.TogglePause();
     }
@@ -163,8 +167,7 @@ bool clickingOnProgressBar = false;
 void on_mdown(int cx, int cy) {
     if (clientPointIsOnProgressBar(cx, cy)) {
         clickingOnProgressBar = true;
-        int sw = glass.get_win_width();
-        projector.QueueSeekToPercent((double)cx/(double)sw);
+        set_progress_bar((double)cx/(double)glass.get_win_width());
     }
     else
     {
@@ -178,8 +181,7 @@ void on_mouse_move(int cx, int cy) {   // only triggers in window
 }
 void on_mouse_drag(int cx, int cy) {
     if (clickingOnProgressBar) {
-        int sw = glass.get_win_width();
-        projector.QueueSeekToPercent((double)cx/(double)sw);
+        set_progress_bar((double)cx/(double)glass.get_win_width());
     }
     else
     {
