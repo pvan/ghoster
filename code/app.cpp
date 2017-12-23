@@ -331,6 +331,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     LoadIcons(hInstance);
 
 
+    // would be great to make this into a proper lib
+    global_popup_window = InitPopupMenu(hInstance, menuItems, sizeof(menuItems)/sizeof(menuItem));
+
+
     glass_create_window(hInstance, 0,0,400,400);
     glass.render = render;
     // should be able to comment these out to get default glass behavior
@@ -344,6 +348,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_dragdrop_file = on_dragdrop_file;
     glass.set_icon(RandomIcon());
     glass.ghost_icon = global_icon_w;
+    glass_custom_open_menu_at = OpenRClickMenuAt;
 
     origWndProc = SubclassWindow(glass.hwnd, appWndProc);
 

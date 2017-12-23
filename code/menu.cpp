@@ -232,7 +232,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             projector.state.repeat = !projector.state.repeat;
             break;
         case ID_CLICKTHRU:
-            glass.set_clickthrough(!glass.is_clickthrough);
+            glass.set_ghostmode(!glass.is_clickthrough);
             break;
         case ID_RANDICON:
             glass.set_icon(RandomIcon());

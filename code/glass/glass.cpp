@@ -730,7 +730,7 @@ BOOL CALLBACK EnumWindowsProc(HWND hwnd, LPARAM lParam)
 #define GLASS_ID_WALL         1013
 #define GLASS_ID_LOCKRATIO    1014
 
-void glass_open_menu_at(HWND hwnd, POINT point)
+void glass_default_open_menu_at(HWND hwnd, POINT point)
 {
     UINT snap = glass.is_snappy          ? MF_CHECKED : MF_UNCHECKED;
     UINT clic = glass.is_clickthrough    ? MF_CHECKED : MF_UNCHECKED;
@@ -774,7 +774,12 @@ void glass_open_menu_at(HWND hwnd, POINT point)
     KillTimer(glass.hwnd, glass.render_timer_id);
 }
 
-
+void (*glass_custom_open_menu_at)(HWND, POINT) = 0;
+void glass_open_menu_at(HWND hwnd, POINT point)
+{
+    if (glass_custom_open_menu_at) glass_custom_open_menu_at(hwnd, point);
+    else glass_default_open_menu_at(hwnd, point);
+}
 
 
 
