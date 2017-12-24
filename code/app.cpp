@@ -52,10 +52,12 @@ bool show_bar = false;
 double secOfLastMouseMove = -1;
 
 char splash_msg[1024];
+u32 splash_color;
 double splash_sec_left = 0;
 
 d3d_textured_quad screen;
 d3d_textured_quad splash_quad;
+d3d_textured_quad overlay_quad;
 d3d_textured_quad debug_quad;
 d3d_textured_quad progress_bar_gray;
 d3d_textured_quad progress_bar_red;
@@ -63,6 +65,7 @@ d3d_textured_quad progress_bar_red;
 void SetSplash(char *msg, u32 col = 0xffffffff)
 {
     TransmogrifyTextInto(splash_msg, msg); // todo: check length somehow hmm...
+    splash_color = col;
     splash_sec_left = SEC_OF_SPLASH_MSG;
 }
 void ClearSplash() { splash_msg[0] = '\0'; splash_sec_left = 0; }
@@ -165,9 +168,11 @@ void render()  // os msg pump thread
         if (splash_msg && *splash_msg) // todo check if msg changed
         {
             splash_quad.destroy();
-            splash_quad = ttf_create(splash_msg, 42, 255);
+            splash_quad = ttf_create(splash_msg, 42, 0);
         }
         splash_quad.move_to_pixel_coords_center(sw/2, sh/2);
+
+        overlay_quad.update((u8*)&splash_color,1,1, -1,-1,1,1,0);
     }
 
     // these should all be placed as indicated
@@ -188,7 +193,7 @@ void render()  // os msg pump thread
     screen.render(); // todo: strange bar on right
     if (show_bar) progress_bar_gray.render(0.4);
     if (show_bar) progress_bar_red.render(0.6);
-    if (splash_sec_left > 0) splash_quad.render(splash_alpha);
+    if (splash_sec_left > 0) { overlay_quad.render(splash_alpha); splash_quad.render(splash_alpha); }
     if (show_debug) debug_quad.render();
     d3d_swap();
 }
