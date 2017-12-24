@@ -694,6 +694,7 @@ struct glass_window
 // a way to determine what instance we're in when wndproc is called
 // could create map of hwnd to instance, but that seems like overkill
 // todo: is there a way to pass a pointer to wndproc? maybe when registering?
+// todo: uh, do we need for menu stuff too?
 glass_window glass;
 
 
@@ -777,6 +778,7 @@ void glass_default_open_menu_at(HWND hwnd, POINT point)
 void (*glass_custom_open_menu_at)(HWND, POINT) = 0;
 void glass_open_menu_at(HWND hwnd, POINT point)
 {
+    glass.menu_open = true;
     if (glass_custom_open_menu_at) glass_custom_open_menu_at(hwnd, point);
     else glass_default_open_menu_at(hwnd, point);
 }

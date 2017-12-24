@@ -28,6 +28,12 @@ static int subMenuSelectedItem = -1;
 static bool global_is_submenu_shown = false;
 
 
+
+// for manually tracking if we click outside our menus
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
+
+
+
 #define ID_EXIT 1001
 #define ID_PAUSE 1002
 #define ID_ASPECT 1003
@@ -192,12 +198,7 @@ void CloseMenu()
     // probably want this right?
     HideSubMenu();
 
-    // now i think we can just set this false right away, no need for a timer
-    // global_ghoster.system.contextMenuOpen = false;
-
-    // i forget why we couldn't just set this closed right away with when using trackpopup
-    // maybe that same mouse event would trigger on the main window?
-    // global_ghoster.state.menuCloseTimer.Start();
+    glass.menu_open = false;
 }
 
 void onMenuItemClick(HWND hwnd, menuItem item)
@@ -835,6 +836,35 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
 
 
 
+static HHOOK mouseHook;
+LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam)
+{
+    // PKBDLLHOOKSTRUCT k = (PKBDLLHOOKSTRUCT)(lParam);
+
+    if (wParam == WM_RBUTTONDOWN || wParam == WM_LBUTTONDOWN)
+    {
+        // GetCursorPos(&p);
+        POINT point = ((MSLLHOOKSTRUCT*)(lParam))->pt;
+
+        RECT popupRect;
+        RECT submenuRect;
+        GetWindowRect(global_popup_window, &popupRect);
+        GetWindowRect(global_icon_menu_window, &submenuRect);
+        if (!PtInRect(&popupRect, point) && !PtInRect(&submenuRect, point))
+        {
+            if (glass.menu_open)
+            {
+                glass.next_mup_was_closing_menu = true;
+            }
+            HideSubMenu();
+            CloseMenu();
+        }
+    }
+
+    return CallNextHookEx(0, nCode, wParam, lParam);
+}
+
+
 HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
 {
 
@@ -885,5 +915,15 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
     if (!global_icon_menu_window) { LogError("Couldn't open global_icon_menu_window."); }
 
 
+    // install mouse hook so we know when we click outside of a menu (to close it)
+    // (could also use this to detect clicks on an owner-draw menu item)
+    // (probably would have been easier than redrawing our own entire menu)
+    // (but we'd have been stuck with an old non-themed menu that way i think)
+    mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
+
     return popup;
 }
+
+
+
+
