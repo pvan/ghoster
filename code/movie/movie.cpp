@@ -666,21 +666,6 @@ struct MovieProjector
 
         // SplashMessage("fetching...", 0xaaaaaaff);
 
-        // // todo: move this into some parse subcall?
-        // char *timestamp = strstr(path, "&t=");
-        // if (timestamp == 0) timestamp = strstr(path, "#t=");
-        // if (timestamp != 0) {
-        //     int startSeconds = SecondsFromStringTimestamp(timestamp);
-        //     message.startAtSeconds = startSeconds;
-        //         // char buf[123];
-        //         // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
-        //         // OutputDebugString(buf);
-        // }
-        // else
-        // {
-        //     message.startAtSeconds = 0; // so we don't inherit start time of prev video
-        // }
-
         // todo: we should check for certain fails here
         // so we don't cancel the loading thread if we don't have to
         // e.g. we could know right away if this is a text file,
@@ -714,19 +699,7 @@ struct MovieProjector
             }
         }
 
-        // TODO: any reason we don't just move this whole function into the async call?
-
         movie_asyn_load_thread = CreateThread(0, 0, AsyncMovieLoad, (void*)this, 0, 0);
-
-
-        // // strip off timestamp before caching path
-        // if (timestamp != 0)
-        //     timestamp[0] = '\0';
-
-        // // save url for later (is rolling_movie the best place for cached_url?)
-        // // is this the best place to set cached_url?
-        // strcpy_s(projector.rolling_movie.cached_url, URL_BUFFER_SIZE, path);
-
 
         return true;
     }
@@ -1019,6 +992,27 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 
     char *path = projector->message.new_path_to_load;
     char *exe_dir = projector->state.exe_directory;
+
+
+    // look for a timestamp on the url
+    char *timestamp = strstr(path, "&t=");
+    if (timestamp == 0) timestamp = strstr(path, "#t=");
+    if (timestamp != 0) {
+        int startSeconds = SecondsFromStringTimestamp(timestamp);
+        projector->message.startAtSeconds = startSeconds;
+            // char buf[123];
+            // sprintf(buf, "\n\n\nstart seconds: %i\n\n\n", startSeconds);
+            // OutputDebugString(buf);
+    }
+    else
+    {
+        projector->message.startAtSeconds = 0; // so we don't inherit start time of prev video
+    }
+
+    // strip off timestamp before further processing (dl works with it, but don't want it for caching)
+    if (timestamp != 0)
+        timestamp[0] = '\0';
+
 
     // if (!SlowCreateMovieSourceFromAnyPath(path, projector->message.new_write_reel, exe_dir))
     if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir))
