@@ -1,4 +1,8 @@
 
+timestamps
+
+text splash
+
 x progress bar
 
 x random url loading
@@ -7,7 +11,7 @@ x way to handle input in app layer that window layer doesn't need to know about
 
 x fullscreen letterbox
 
-icons
+x icons
 
 check cpu
 check mem leaks
@@ -19,13 +23,13 @@ sdl file conventions
 
 improve video player api, name?
 
-more input / function mapping?
+x more input / function mapping?
 
-menu
+x menu
 
 
 bugs still existing in sys renderer
--uncommon flicker on resize
+-uncommon flicker on resize (worse with text overlay)
 -click and drag a little bit, then hold, freezes render
  (impossible to avoid with sys render i think)
 

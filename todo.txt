@@ -1,5 +1,6 @@
 
-[ ] don't save/restore vid position and try to correct after doubleclick if vid is url
+[ ] weird bug after ctrl alt delete
+
 
 [ ] test the new timeout on loading urls if connection is flaky
 
@@ -13,7 +14,8 @@
 
 
 [ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
-    [ ] worse since removing real-time stopwatch for saving our seek position to "undo to"
+    -worse since removing real-time stopwatch for saving our seek position to "undo to"?
+    [ ] don't save/restore vid position and try to correct after doubleclick if vid is url
 
 
 [ ] add proper random lib
@@ -28,7 +30,7 @@
 bugs: 
 
 [ ] flickering when resizing introduced after adding overlay
-[ ] when resizing, black bars exist in the new space 
+[x] when resizing, black bars exist in the new space 
     (maybe render after resize, or always stretch render buffer to screen?)
 [ ] black bar when loading new video is different size 
     (window resized before display buffer i guess)
@@ -49,7 +51,8 @@ bugs:
 
 todo:
 
-[ ] handle fps, timing etc correctly when no video loaded
+[x] handle fps, timing etc correctly when no video loaded
+    [ ] not sure about audio or video only streams though
     [ ] always draw at 60+ fps and just update image at video fps?
 
 
@@ -66,7 +69,7 @@ todo:
 
 
 [ ] improve video resize quality (compare to vlc eg)
-    [ ] start with variable-size ffmpeg to screen buffer?
+    [x] start with variable-size ffmpeg to screen buffer?
     [ ] sharpen filter?
 
 
@@ -86,9 +89,9 @@ todo:
 
 [ ] needs a few abstraction cleanup passes
     [ ] menu windows
-    [ ] wallpaper window?
-    [ ] app/plat interface?
-    [ ] app/plat inter thread communication
+    [/] wallpaper window?
+    [x] app/plat interface?
+    [/] app/plat inter thread communication
     [ ] a sort of message system for update loop communication? load video, seek, etc
 
 
@@ -113,6 +116,7 @@ todo:
     since workerW is originally for fading between wallpapers
 
 [/] extra bar on right of some vids
+    -maybe padding from av_alloc?
     [x] temp fix by using a constant-size buffer
     [ ] use same size as overlay buffer?
 
