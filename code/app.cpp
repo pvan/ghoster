@@ -36,6 +36,7 @@ static MovieProjector projector;
 bool paste_clipboard();
 bool copy_url_to_clipboard(bool withTimestamp = false);
 void queue_random_url();
+void resize_win_to_native_res();
 #include "menu.cpp"
 
 
@@ -245,6 +246,20 @@ void on_video_load(int w, int h)
 }
 
 
+
+void resize_win_to_native_res()
+{
+    // char hwbuf[123];
+    // sprintf(hwbuf, "wid: %i  hei: %i\n",
+    //     global_ghoster.rolling_movie.reel.video.codecContext->width,
+    //     global_ghoster.rolling_movie.reel.video.codecContext->height);
+    // OutputDebugString(hwbuf);
+
+    RECT winRect = glass.get_win_rect();
+    int vw = projector.rolling_movie.reel.vid_width;
+    int vh = projector.rolling_movie.reel.vid_height;
+    MoveWindow(glass.hwnd, winRect.left, winRect.top, vw, vh, true);
+}
 
 bool paste_clipboard()
 {

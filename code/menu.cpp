@@ -226,8 +226,7 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             copy_url_to_clipboard(true);
             break;
         case ID_RESET_RES:
-            // todo
-            // SetWindowToNativeRes(global_ghoster.system.window, global_ghoster.rolling_movie);
+            resize_win_to_native_res();
             break;
         case ID_REPEAT:
             projector.state.repeat = !projector.state.repeat;
