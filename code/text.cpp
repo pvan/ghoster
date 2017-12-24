@@ -20,7 +20,7 @@ void ttf_init()
     ttf_initialized = true;
 }
 
-d3d_textured_quad ttf_create(char *text, int fsize, float alpha, int bgA = 0)
+d3d_textured_quad ttf_create(char *text, int fsize, int bgA = 0)
 {
     if (!ttf_initialized) { OutputDebugString("Don't forget to init stbtt!\n"); assert(false); }
 

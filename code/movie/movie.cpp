@@ -1,8 +1,8 @@
 
 
 
-void LogError(char *str) { MessageBox(0,str,0,0); }
-void LogMessage(char *str) { OutputDebugString(str); }
+void LogError(char *str);
+void LogMessage(char *str);
 
 
 #include "utils.h"

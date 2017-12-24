@@ -29,6 +29,9 @@ const int PROGRESS_BAR_H = 22;
 // hide progress bar after this many seconds
 const double PROGRESS_BAR_TIMEOUT = 1.0;
 
+// how long our splash messages last (fade included)
+const double SEC_OF_SPLASH_MSG = 2;
+
 
 static MovieProjector projector;
 
@@ -48,11 +51,21 @@ bool show_debug = false;
 bool show_bar = false;
 double secOfLastMouseMove = -1;
 
+char splash_msg[1024];
+double splash_sec_left = 0;
+
 d3d_textured_quad screen;
-// d3d_textured_quad hud;
+d3d_textured_quad splash_quad;
 d3d_textured_quad debug_quad;
 d3d_textured_quad progress_bar_gray;
 d3d_textured_quad progress_bar_red;
+
+void SetSplash(char *msg, u32 col = 0xffffffff)
+{
+    TransmogrifyTextInto(splash_msg, msg); // todo: check length somehow hmm...
+    splash_sec_left = SEC_OF_SPLASH_MSG;
+}
+void ClearSplash() { splash_msg[0] = '\0'; splash_sec_left = 0; }
 
 void queue_random_url()
 {
@@ -83,6 +96,7 @@ void render()  // os msg pump thread
 {
     if (!glass.loop_running) return;  // kinda smells
 
+    double temp_dt = glass.sleep_ms / 1000.0; // todo: get proper dt and lock it to framerate
 
     if (GetWallClockSeconds() - secOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
         show_bar = false;
@@ -127,7 +141,7 @@ void render()  // os msg pump thread
         if (debug_string && *debug_string)
         {
             debug_quad.destroy();
-            debug_quad = ttf_create(debug_string, 26, 255, 125);
+            debug_quad = ttf_create(debug_string, 26, 125);
         }
         debug_quad.move_to_pixel_coords_TL(0, 0);
     }
@@ -137,6 +151,23 @@ void render()  // os msg pump thread
         int progress_pixel = projector.rolling_movie.percent_elapsed() * (double)sw;
         progress_bar_gray.set_to_pixel_coords_BL(progress_pixel, 0, sw-progress_pixel, PROGRESS_BAR_H);
         progress_bar_red.set_to_pixel_coords_BL(0, 0, progress_pixel, PROGRESS_BAR_H);
+    }
+
+
+    double splash_alpha = 0;
+    if (splash_sec_left > 0)
+    {
+        splash_sec_left -= temp_dt;
+
+        double maxA = 0.65; // implicit min of 0
+        splash_alpha = ((-cos(splash_sec_left*M_PI / SEC_OF_SPLASH_MSG) + 1.0) / 2.0) * maxA;
+
+        if (splash_msg && *splash_msg) // todo check if msg changed
+        {
+            splash_quad.destroy();
+            splash_quad = ttf_create(splash_msg, 42, 255);
+        }
+        splash_quad.move_to_pixel_coords_center(sw/2, sh/2);
     }
 
     // these should all be placed as indicated
@@ -157,6 +188,7 @@ void render()  // os msg pump thread
     screen.render(); // todo: strange bar on right
     if (show_bar) progress_bar_gray.render(0.4);
     if (show_bar) progress_bar_red.render(0.6);
+    if (splash_sec_left > 0) splash_quad.render(splash_alpha);
     if (show_debug) debug_quad.render();
     d3d_swap();
 }
@@ -185,7 +217,9 @@ void on_click(int x, int y) {
     if (clientPointIsOnProgressBar(x, y)) {
         // doing this on mdown and mdrag now
     } else {
-        projector.TogglePause();
+        if (projector.state.is_paused) { SetSplash("Play", 0x7cec7aff); projector.PlayMovie(); }
+        else { SetSplash("Pause", 0xfa8686ff); projector.PauseMovie(); }
+        // projector.TogglePause();
     }
 }
 bool clickingOnProgressBar = false;
@@ -420,3 +454,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     OutputDebugString("Ending app process...\n");
     return 0;
 }
+
+
+void LogError(char *str) { SetSplash(str, 0xffff0000); }
+void LogMessage(char *str) { OutputDebugString(str); }
