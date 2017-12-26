@@ -140,7 +140,13 @@ void render()  // os msg pump thread
     {
         projector.rolling_movie.reel.MetadataToString(debug_string);
         sprintf(debug_string+strlen(debug_string), "\n");
+
         glass.ToString(debug_string+strlen(debug_string));
+        sprintf(debug_string+strlen(debug_string), "\n");
+
+        sprintf(debug_string+strlen(debug_string), "secOfLastMouseMove: %f\n", secOfLastMouseMove);
+        sprintf(debug_string+strlen(debug_string), "sec now: %f\n", GetWallClockSeconds());
+
         if (debug_string && *debug_string)
         {
             debug_quad.destroy();
