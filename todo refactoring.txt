@@ -13,8 +13,8 @@ x fullscreen letterbox
 
 x icons
 
-check cpu
-check mem leaks
+x check cpu
+x check mem leaks
 
 
 add debug text from projector

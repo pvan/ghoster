@@ -1079,7 +1079,7 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
         double targetSec = projector->state.targetSecPerFrame;
         if (dt < targetSec && targetSec != 0)
         {
-            Sleep(targetSec - dt);
+            Sleep((targetSec - dt) * 1000.0);
             while (dt < targetSec)  // is this weird?
             {
                 dt = GetWallClockSeconds() - timeLastFrame;
