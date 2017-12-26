@@ -217,7 +217,12 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
     ScreenToClient(hwnd, &newPoint);
     return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
 }
-void restore_vid_position() { projector.RestoreVideoPosition(); }
+void restore_vid_position() {
+    // only do this if local file, otherwise the seeking will be too slow
+    if (!StringIsUrl(projector.rolling_movie.reel.path))
+        projector.RestoreVideoPosition();
+    ClearSplash();  // either way clear this
+}
 void set_progress_bar(double percent) {
     double seconds = percent * projector.rolling_movie.reel.durationSeconds;
     projector.rolling_movie.seconds_elapsed_at_last_decode = seconds; // just set this here so it's immediate

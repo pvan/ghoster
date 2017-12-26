@@ -36,9 +36,8 @@ before done enough for this dev cycle:
 
 [ ] drag drop onto sys tray icon?
 
-[ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
-    [ ] don't save/restore vid position and try to correct after doubleclick if vid is url
-        (long-term soln is apative dling plan)
+[x] don't save/restore vid position and try to correct after doubleclick if vid is url
+    (long-term soln is apative dling plan)
 
 [ ] narrow down what dlls we actually need?
 
