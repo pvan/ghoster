@@ -665,6 +665,7 @@ struct MovieProjector
         // try waiting on this until we confirm it's a good path/file ?
 
         // SplashMessage("fetching...", 0xaaaaaaff);
+        SetSplash("Fetching", 0xaaaaaaaa);
 
         // todo: we should check for certain fails here
         // so we don't cancel the loading thread if we don't have to

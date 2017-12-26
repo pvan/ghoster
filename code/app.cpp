@@ -15,6 +15,7 @@
 // kinda hacky... todo: way to drop this? or maybe just allow this override of glass
 // maybe make progress bar into a child window?
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
+void SetSplash(char *msg, u32 col = 0xffffffff);
 
 #include "movie/movie.cpp"
 #include "glass/glass.cpp"
@@ -62,7 +63,7 @@ d3d_textured_quad debug_quad;
 d3d_textured_quad progress_bar_gray;
 d3d_textured_quad progress_bar_red;
 
-void SetSplash(char *msg, u32 col = 0xffffffff)
+void SetSplash(char *msg, u32 col)
 {
     TransmogrifyTextInto(splash_msg, msg); // todo: check length somehow hmm...
     splash_color = col;
@@ -228,8 +229,8 @@ void on_click(int x, int y) {
     if (clientPointIsOnProgressBar(x, y)) {
         // doing this on mdown and mdrag now
     } else {
-        if (projector.state.is_paused) { SetSplash("Play", 0x7cec7aff); projector.PlayMovie(); }
-        else { SetSplash("Pause", 0xfa8686ff); projector.PauseMovie(); }
+        if (projector.state.is_paused) { SetSplash("Play", 0xaaaaaaaa/*0x7cec7aff*/); projector.PlayMovie(); }
+        else { SetSplash("Pause", 0xaaaaaaaa/*0xfa8686ff*/); projector.PauseMovie(); }
         // projector.TogglePause();
     }
 }
