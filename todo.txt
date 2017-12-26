@@ -4,26 +4,29 @@ before done enough to use:
 
 [ ] weird bug after ctrl alt delete
 
-[ ] add debug text from projector
+[x] add debug text from projector
 
 [ ] sync system render loop to decoding loop
 
 [ ] figure out extra bar on right since allowing resize ffmpeg buffer 
     [wrong res in file? padded alloc?]
+    https://www.youtube.com/watch?v=aia3bqQfXNk
 
 [ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
 
-[ ] resize before done loading, window disappears
+[x] resize before done loading, window disappears
 
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
-[ ] don't let failed load attempt cancel a previous but good load attempt
+[?] don't let failed load attempt cancel a previous but good load attempt?
 
 [ ] black bar when loading new video is different size 
     (window resized before display buffer i guess)
 
 [ ] test files with just audio or just video
 
+[ ] laggy playback on hi res? maybe a slow frame copy somewhere? or slow dl?
+    https://www.youtube.com/watch?v=dzUNFqOwjfA
 
 
 before done enough for this dev cycle:
@@ -43,6 +46,8 @@ before done enough for this dev cycle:
 
 
 as it comes up / later:
+
+[ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 
 [ ] test the new timeout on loading urls if connection is flaky
 
