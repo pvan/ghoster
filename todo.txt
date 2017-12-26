@@ -1,65 +1,52 @@
 
-[ ] sync system render loop to decoding loop
+
+before done enough to use:
 
 [ ] weird bug after ctrl alt delete
 
+[ ] add debug text from projector
 
-[ ] test the new timeout on loading urls if connection is flaky
+[ ] sync system render loop to decoding loop
 
-[x] add a background "screen" with color/alpha to text overlay
-
-[ ] add option to overflow screen edges instead of just letterbox
-    -maybe allow letterbox/overflow in windowed mode too?
-
-
-[ ] drag drop onto sys tray icon?
-
-
-[ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
-    -worse since removing real-time stopwatch for saving our seek position to "undo to"?
-    [ ] don't save/restore vid position and try to correct after doubleclick if vid is url
-
-
-[ ] add proper random lib
-
-
-[ ] encapsulate submenu / menu [instance in ghoster class?]
-
-[x] proper render layer / api, eg drawTexturedQuad
-    [x] try swapping in directx to avoid opengl/nvidia/windows bug
-
-
-bugs: 
-
-[ ] flickering when resizing introduced after adding overlay
-[x] when resizing, black bars exist in the new space 
-    (maybe render after resize, or always stretch render buffer to screen?)
-[ ] black bar when loading new video is different size 
-    (window resized before display buffer i guess)
-
-[ ] intermittent repeat-frame loop? maybe after seeking?
-    -happened in dutch and manups and brick.. is it maybe a CODEC_CAP_DELAY thing?
-
-[x] loaded vid using previous vid timestamp if none
+[ ] figure out extra bar on right since allowing resize ffmpeg buffer 
+    [wrong res in file? padded alloc?]
 
 [ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
 
 [ ] resize before done loading, window disappears
 
-[ ] intermittent progress bar not hiding when mouse is still
+[ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
 [ ] don't let failed load attempt cancel a previous but good load attempt
 
+[ ] black bar when loading new video is different size 
+    (window resized before display buffer i guess)
 
-todo:
+[ ] test files with just audio or just video
 
-[x] handle fps, timing etc correctly when no video loaded
-    [ ] not sure about audio or video only streams though
-    [ ] always draw at 60+ fps and just update image at video fps?
 
+
+before done enough for this dev cycle:
+
+[ ] add option to overflow screen edges instead of just letterbox
+    -maybe allow letterbox/overflow in windowed mode too?
+
+[ ] drag drop onto sys tray icon?
+
+[ ] since slow seek on urls, the "slow" doubleclick to fullscreen feels pretty bad
+    [ ] don't save/restore vid position and try to correct after doubleclick if vid is url
+        (long-term soln is apative dling plan)
 
 [ ] narrow down what dlls we actually need?
 
+
+
+
+as it comes up / later:
+
+[ ] test the new timeout on loading urls if connection is flaky
+
+[ ] add proper random lib
 
 [ ] playlist support
     [ ] drop in folder
@@ -69,44 +56,62 @@ todo:
     [ ] view to-play list somehow
     [ ] re-arrange / shuffle / random
 
-
 [ ] improve video resize quality (compare to vlc eg)
     [x] start with variable-size ffmpeg to screen buffer?
     [ ] sharpen filter?
 
 
-
-[x] command line options
-    [x] menu options
-    [x] positioning/sizing options [add checkmark when done]
-    [ ] option for just left/right/top/bottom docking individually ?
-
-[/] overlay display: play/pause feedback, etc
-    [x] basic single messages
-    [ ] icon/bitmaps (esp play/pause)
-    [x] multiple messages
-    [x] display scrolling log?
+bugs inherent to rendering on the sys msg loop thread:
+[ ] click and drag a little bit, then hold, freezes render 
+    (impossible to avoid with sys render i think)
 
 
 
-[ ] needs a few abstraction cleanup passes
-    [ ] menu windows
-    [/] wallpaper window?
-    [x] app/plat interface?
-    [/] app/plat inter thread communication
-    [ ] a sort of message system for update loop communication? load video, seek, etc
+----bigger projects----
 
 
-[ ] decouple display from frames decoded so we can decode from network easier? 
-    [ ] with caching
-    [ ] and buffering
+--CODEC_CAP_DELAY thing--
 
-[ ] look into how ffmpeg dls videos -- cache anywhere?
+[ ] handle these example cases with CODEC_CAP_DELAY
+https://www.youtube.com/watch?v=nUWur-T598s
+https://www.youtube.com/watch?v=gZo1BLYcMJ4
+https://www.youtube.com/watch?v=KH4NrUxcsYs
+    [ ] check if there is any data or it's just the flag is set
+    [ ] use the remaining data if there
+    [ ] or replace with new send/receive api which i don't think needs a special case for this
 
-[ ] need to dl a low quality version first or we'll lag on large files??
-    (definite delay but maybe not correlated to vid size)
+[ ] intermittent repeat-frame loop? maybe after seeking?
+    -happened in dutch and manups and brick.. is it maybe a CODEC_CAP_DELAY thing?
 
 
+--code cleanup--
+[ ] api/naming improvements
+    [ ] window class "glass"
+    [ ] movie decoder "projector"
+
+[ ] file conventions
+    [ ] menu
+    [ ] sdl
+    [ ] etc
+
+[ ] limited to singleton usage
+    [ ] glass
+    [ ] menu
+    [ ] others?
+
+
+--dl buffering--
+[ ] dl low qual first (faster seeking / faster start)
+[ ] dl multiple quality versions in background? (adaptively improve quality?)
+[ ] dl entire file in background? (faster seeking / what about very large files?)
+
+
+--rendering improvements--
+[ ] batch quads for one draw call (fix the not-too-terrible flicker on resize with debug text?)
+
+
+
+*/
 
 
 
@@ -117,46 +122,26 @@ todo:
     could maybe do something funny with workerW to get it to work, 
     since workerW is originally for fading between wallpapers
 
-[/] extra bar on right of some vids
-    -maybe padding from av_alloc?
-    [x] temp fix by using a constant-size buffer
-    [ ] use same size as overlay buffer?
-
 [/] lose transparency on full screen
     [x] temp workaround by keeping 1 pixel smaller than monitor size
-    [ ] problem is we now have to be set topmost when fullscreen to get over the taskbar
-
+    [/] problem is we now have to be set topmost when fullscreen to get over the taskbar
+        [x] set and unset when toggling fullscreen
+        [ ] "back way" into fullscreen maybe iffy.. eg wallpaper->fullscreen->nonwallpaper
 
 [ ] more than one audio stream
 [?] more than one video stream??
     [x] give us a message if we ever see these
     [ ] just get a big collection of different videos to test at some point
 
-
-[x] window controls are laggy on second ghoster window
-    -switching to directx fixed this
-    this is starting to feel like an nvidia driver bug
-    [x] .bat file workaround
-    [-] "launcher" exe workaround?
-
-
-[/] seems like mem leak on loading files
-    [ ] looks like small one still there
-    [x] big one fixed
-
-
-[ ] handle these example cases with CODEC_CAP_DELAY
-https://www.youtube.com/watch?v=nUWur-T598s
-https://www.youtube.com/watch?v=gZo1BLYcMJ4
-https://www.youtube.com/watch?v=KH4NrUxcsYs
-    [ ] check if there is any data or it's just the flag is set
-    [ ] use the remaining data if there
-    [ ] or replace with new send/receive api which i don't think needs a special case for this
-
+[ ] check for small mem leaks
+    [ ] on loading
+    [ ] on continuous run 
 
 
 
 ---consider-----
+
+overlay display: icon/bitmaps (esp play/pause)?
 
 step forward and backwards by a single frame?
 
@@ -180,11 +165,11 @@ if we pre-process the file in parallel to display, we could seek much faster on 
 (and especially urls)
 
 
-write text on the image directly with ffmpeg?
-
 low vid framerate (eg maybe if audio only),
 things that we check each loop like if mouse leaves window will feel very slow
 their responsiveness is basically frame rate dependent
+always update at 60+ and just "render" at video fps?
+
 
 kind of annoying...
 if we are fullscreen ghost mode transparent and disable ghost mode, 
@@ -193,7 +178,7 @@ maybe disabling ghost mode should always reset opacity and topmost??
 and should it set our opacity much lower too? i guess not
 
 
-possible for youtube-dl to not clsoe if process forced close at the wrong time?
+possible for youtube-dl to not clsoe if process forced close at the wrong time? i think so
 
 in wallpaper mode check for clicks on our rect and open menu?
 check for file drags somehow even?
