@@ -10,11 +10,7 @@ before done enough to use:
 
 [ ] sync system render loop to decoding loop
 
-[ ] figure out extra bar on right since allowing resize ffmpeg buffer 
-    [wrong res in file? padded alloc?]
-    https://www.youtube.com/watch?v=aia3bqQfXNk
-    https://www.youtube.com/watch?v=T9hHKYfXIE0
-    https://www.youtube.com/watch?v=19r7ctge2lI
+[x] figure out extra bar on right since allowing resize ffmpeg buffer 
 
 [ ] loaded video using wrong aspect ratio if being dragged when loading
 

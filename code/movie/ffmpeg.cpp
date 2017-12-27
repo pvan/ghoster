@@ -234,6 +234,16 @@ struct ffmpeg_source
 
         if (video.codecContext)
         {
+            // add this workaround to bypass sws_scale's no-resize special case
+            // that seems to be causing extra band on right when width isn't multiple of 8
+            // can non-multiple of 8 height also cause this?
+            // more info here: https://lists.ffmpeg.org/pipermail/libav-user/2012-July/002451.html
+            // the other thing that seems to be unique to vids with the extra bar
+            // is a linesize[0] > width in the codecContext and the decoded frame linesize similarly larger
+            int non_multiple_of_8_workaround = 0;
+            if (w % 8 != 0)
+                non_multiple_of_8_workaround = SWS_ACCURATE_RND;
+
             sws_context = sws_getCachedContext(
                 sws_context,
                 video.codecContext->width,
@@ -242,6 +252,7 @@ struct ffmpeg_source
                 w,
                 h,
                 AV_PIX_FMT_RGB32,
+                non_multiple_of_8_workaround |
                 SWS_POINT,  // since src+dst should be the same size, just use linear
                 0, 0, 0);
         }
