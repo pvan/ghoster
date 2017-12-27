@@ -133,6 +133,12 @@ struct glass_window
     double opacity = 1;
 
 
+    // workaround for changing size while dragging window
+    bool cached_size_up_to_date = false; // basically only false on startup
+    int cached_w;
+    int cached_h;
+
+
     // for ghost mode
     bool had_to_cache_opacity;
     double last_opacity;
@@ -226,9 +232,8 @@ struct glass_window
 
     void main_update()
     {
-        // todo: add this back in, i think it's only possible with progress bar / menu clicks
-        // // if we mouse up while not on window all our mdown etc flags will be wrong
-        // // so we just force an "end of click" when we leave the window
+        // if we mouse up while not on window all our mdown etc flags will be wrong
+        // so we just force an "end of click" when we leave the window
         bool mouse_in_win = mouse_in_window();
         static bool mouse_was_in_win = false;
         if (!mouse_in_win)
@@ -244,6 +249,7 @@ struct glass_window
 
         if (render) render();
     }
+
 
 
     WINDOWPLACEMENT last_win_pos;
@@ -383,7 +389,8 @@ struct glass_window
         is_ratiolocked = enable;
         if (is_ratiolocked)
         {
-            hwnd_set_to_aspect_ratio(hwnd, aspect_ratio); // need to set wallpaper hwnd too? todo: other cases similar?
+            hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
+            // need to set wallpaper hwnd too? todo: other cases similar?
         }
     }
 
@@ -877,9 +884,9 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         } break;
 
         case WM_SIZE: {
-            // SetWindowSize(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
-
-            // return 0;
+            glass.cached_w = GET_X_LPARAM(lParam);
+            glass.cached_h = GET_Y_LPARAM(lParam);
+            glass.cached_size_up_to_date = true;
         }
 
         case WM_SIZING: {  // when dragging border
@@ -1002,6 +1009,13 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
                 positionIfNoSnap.bottom = positionIfNoSnap.top + height;
 
                 SnapWinRectToMonitor(hwnd, positionIfNoSnap, (RECT*)lParam);
+            }
+            if (glass.cached_size_up_to_date)
+            {
+                RECT winRect = *(RECT*)lParam;
+                winRect.right = winRect.left + glass.cached_w;
+                winRect.bottom = winRect.top + glass.cached_h;
+                *(RECT*)lParam = winRect;
             }
         } break;
 

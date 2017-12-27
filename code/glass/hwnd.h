@@ -49,6 +49,8 @@ double hwnd_set_opacity(HWND hwnd, double opac)   // 0-1
 }
 
 
+// does not appear to work when dragging the window around?
+// update: added workaround to cache w/h on SIZE and set rect to that on MOVING
 void hwnd_set_to_aspect_ratio(HWND hwnd, double aspect_ratio)
 {
     RECT winRect;

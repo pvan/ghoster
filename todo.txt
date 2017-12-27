@@ -2,6 +2,8 @@
 
 before done enough to use:
 
+[ ] set caption
+
 [ ] bug minimizing
 
 [ ] weird bug after ctrl alt delete
@@ -12,7 +14,7 @@ before done enough to use:
 
 [x] figure out extra bar on right since allowing resize ffmpeg buffer 
 
-[ ] loaded video using wrong aspect ratio if being dragged when loading
+[x] loaded video using wrong aspect ratio if being dragged when loading
 
 [x] resize before done loading, window disappears
 
@@ -20,8 +22,7 @@ before done enough to use:
 
 [?] don't let failed load attempt cancel a previous but good load attempt?
 
-[ ] black bar when loading new video is different size 
-    (window resized before display buffer i guess)
+[x] black bar when loading new video is different size 
 
 [ ] test files with just audio or just video
 

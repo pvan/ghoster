@@ -278,7 +278,7 @@ void on_video_load(int w, int h)
 
     if (glass.is_fullscreen)
     {
-        // awkward, you can see it flicker
+        // todo: awkward, you can see it flicker
         glass.setFullscreen(false);
         glass.set_ratiolocked(glass.is_ratiolocked);
         glass.setFullscreen(true);
