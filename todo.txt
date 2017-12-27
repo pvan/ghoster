@@ -2,7 +2,7 @@
 
 before done enough to use:
 
-[ ] set caption
+[x] set caption
 
 [ ] bug minimizing
 

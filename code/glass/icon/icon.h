@@ -51,31 +51,24 @@ NOTIFYICONDATA icon_build_info(HWND hwnd, HICON icon, char *text)
     return info;
 }
 
-// void icon_set_title(HWND hwnd, char *title)
-// {
-//     // system tray hover
-//     NOTIFYICONDATA info = icon_default_info(hwnd);
-//     assert(strlen(title) < 256);
-//     strcpy_s(info.szTip, 256, title); // todo: check length
-//     Shell_NotifyIcon(NIM_MODIFY, &info);
-
-//     // window titlebar (taskbar)
-//     SetWindowText(hwnd, title);
-// }
-
 bool icon_systray_added = false;
-
-void icon_update_systray(HWND hwnd, HICON icon, TCHAR *text)
-{
-    NOTIFYICONDATA info = icon_build_info(hwnd, icon, text);
-    Shell_NotifyIcon(NIM_MODIFY, &info);
-}
 
 void icon_add_systray(HWND hwnd, HICON icon, TCHAR *text)
 {
     NOTIFYICONDATA info = icon_build_info(hwnd, icon, text);
     Shell_NotifyIcon(NIM_ADD, &info);
     icon_systray_added = true;
+}
+
+void icon_update_systray(HWND hwnd, HICON icon, TCHAR *text)
+{
+    if (!icon_systray_added)  // auto add it not added already?
+    {
+        icon_add_systray(hwnd, icon, text);
+        return;
+    }
+    NOTIFYICONDATA info = icon_build_info(hwnd, icon, text);
+    Shell_NotifyIcon(NIM_MODIFY, &info);
 }
 
 void icon_remove_systray(HWND hwnd)

@@ -271,6 +271,8 @@ void on_dragdrop_file(char *path) { projector.QueueLoadFromPath(path); }
 bool first_video = true;
 void on_video_load(int w, int h)
 {
+    glass.set_title(projector.rolling_movie.reel.title);
+
     glass.aspect_ratio = (double)w / (double)h;
 
     if (!glass.is_fullscreen)

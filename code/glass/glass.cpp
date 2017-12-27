@@ -309,6 +309,12 @@ struct glass_window
     }
 
 
+    void set_title(char *title)  // sets hwnd title and sys tray hover text
+    {
+        icon_update_systray(hwnd, icon, title);
+        SetWindowText(hwnd, title);
+    }
+
     void set_icon(HICON new_icon)
     {
         icon = new_icon;
@@ -1097,7 +1103,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
 
 bool glass_create_window(HINSTANCE hInstance, int x, int y, int w, int h, int nest = 0,
-                         HICON icon = 0, char *title = "[no title]")
+                         HICON icon = 0, char *title = "[no video]")
 {
     glass.hInstance = hInstance;
 
