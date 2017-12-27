@@ -32,6 +32,8 @@ const double PROGRESS_BAR_TIMEOUT = 1.0;
 // how long our splash messages last (fade included)
 const double SEC_OF_SPLASH_MSG = 2;
 
+const bool D3D_DEBUG_MSG = false;
+
 
 static MovieProjector projector;
 
@@ -120,9 +122,10 @@ void render()  // os msg pump thread
 
     if (!d3d_device_is_ok()) // probably device lost from ctrl alt delete or something
     {
-        OutputDebugString("D3D NOT OK\n");
+        if (D3D_DEBUG_MSG) OutputDebugString("D3D NOT OK\n");
         if (d3d_device_can_be_reset())
         {
+            OutputDebugString("Resetting d3d entirely...\n");
 
             screen.destroy();
             splash_quad.destroy();
@@ -140,7 +143,7 @@ void render()  // os msg pump thread
         }
         else
         {
-            OutputDebugString("D3D CANNOT BE RESET\n");
+            if (D3D_DEBUG_MSG) OutputDebugString("D3D CANNOT BE RESET\n");
         }
     }
 
