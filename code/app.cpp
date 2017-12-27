@@ -13,7 +13,7 @@
 #include "text.cpp"
 
 // kinda hacky... todo: way to drop this? or maybe just allow this override of glass
-// maybe make progress bar into a child window?
+// what about making progress bar into a child window?
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 void SetSplash(char *msg, u32 col = 0xffffffff);
 
@@ -25,7 +25,6 @@ void SetSplash(char *msg, u32 col = 0xffffffff);
 
 // progress bar position
 const int PROGRESS_BAR_H = 22;
-// const int PROGRESS_BAR_B = 0;  // just hardcode bottom for now
 
 // hide progress bar after this many seconds
 const double PROGRESS_BAR_TIMEOUT = 1.0;
@@ -45,7 +44,6 @@ void resize_win_to_native_res();
 
 
 
-// char msg[1024*4];
 char *debug_string;
 bool show_debug = false;
 

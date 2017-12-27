@@ -113,7 +113,6 @@ void ffmpeg_output_duration(AVFormatContext *fc)
 
 
 // basically a static movie from ffmpeg source
-// would "MovieSource" be a better name?
 struct ffmpeg_source
 {
     bool loaded = false; // are our fields populated?
@@ -127,7 +126,7 @@ struct ffmpeg_source
     struct SwsContext *sws_context;
     AVFrame *frame_output;
     u8 *vid_buffer;
-    int vid_width;   //todo: get from source (and make buffer this size?)
+    int vid_width;
     int vid_height;
 
     char title[FFMPEG_TITLE_SIZE]; // todo: how big? todo: alloc this?
@@ -199,7 +198,7 @@ struct ffmpeg_source
             fps = ((double)video.codecContext->time_base.den /
                    (double)video.codecContext->time_base.num) /
                    (double)video.codecContext->ticks_per_frame;
-        } else if (audio.codecContext) { // todo: test this
+        } else if (audio.codecContext) { // todo: test this, might get some weird fps from audio
             fps = ((double)audio.codecContext->time_base.den /
                    (double)audio.codecContext->time_base.num) /
                    (double)audio.codecContext->ticks_per_frame;
@@ -243,7 +242,7 @@ struct ffmpeg_source
                 w,
                 h,
                 AV_PIX_FMT_RGB32,
-                SWS_BILINEAR,
+                SWS_POINT,  // since src+dst should be the same size, just use linear
                 0, 0, 0);
         }
     }
@@ -259,7 +258,8 @@ struct ffmpeg_source
         }
 
         // actual mem for frame
-        int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, w,h);
+        // int numBytes = avpicture_get_size(AV_PIX_FMT_RGB32, w,h); //deprecated
+        int numBytes = av_image_get_buffer_size(AV_PIX_FMT_RGB32, w,h,1);
         if (vid_buffer) av_free(vid_buffer);
         vid_buffer = (u8*)av_malloc(numBytes);
 
@@ -806,9 +806,7 @@ struct ffmpeg_source
                     //     LogMessage(skipbuf);
                     // }
 
-
                     *outPTS = av_frame_get_best_effort_timestamp(frame);
-
 
                     // char linebuf[123];
                     // sprintf(linebuf, "frame->linesize[0]: %i outFrame->linesize[0]: %i \n",
@@ -816,7 +814,6 @@ struct ffmpeg_source
                     //         outFrame->linesize[0]
                     //         );
                     // LogMessage(linebuf);
-
 
                     sws_scale(
                         sws,

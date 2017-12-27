@@ -2,6 +2,8 @@
 
 before done enough to use:
 
+[ ] bug minimizing
+
 [ ] weird bug after ctrl alt delete
 
 [x] add debug text from projector
@@ -11,8 +13,10 @@ before done enough to use:
 [ ] figure out extra bar on right since allowing resize ffmpeg buffer 
     [wrong res in file? padded alloc?]
     https://www.youtube.com/watch?v=aia3bqQfXNk
+    https://www.youtube.com/watch?v=T9hHKYfXIE0
+    https://www.youtube.com/watch?v=19r7ctge2lI
 
-[ ] loaded video using wrong aspect ratio?? happened with manups but can't repeat
+[ ] loaded video using wrong aspect ratio if being dragged when loading
 
 [x] resize before done loading, window disappears
 
