@@ -4,7 +4,7 @@ before done enough to use:
 
 [x] set caption
 
-[ ] bug minimizing
+[x] bug minimizing
 
 [ ] weird bug after ctrl alt delete
 

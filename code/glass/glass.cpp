@@ -897,6 +897,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_SIZING: {  // when dragging border
             if (!wParam) break; // if no W, then our L seems to be no good (not sure why)
+            if (!lParam) break; // no L when minimizing apparently
 
             RECT rc = *(RECT*)lParam;
             int w = rc.right - rc.left;
