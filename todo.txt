@@ -6,7 +6,7 @@ before done enough to use:
 
 [x] bug minimizing
 
-[ ] weird bug after ctrl alt delete
+[x] weird bug after ctrl alt delete
 
 [x] add debug text from projector
 
@@ -42,6 +42,9 @@ before done enough for this dev cycle:
 
 [ ] narrow down what dlls we actually need?
 
+[ ] cleanup pass
+    [ ] utils
+    [ ] others
 
 
 

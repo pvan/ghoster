@@ -118,9 +118,12 @@ char *pixel_shader = MULTILINE_STRING
     }
 );
 
-
+bool d3d_already_loaded = false;
 bool d3d_load()
 {
+    if (d3d_already_loaded) return true;
+    d3d_already_loaded = true;
+
     HINSTANCE dll = LoadLibrary("D3dcompiler_47.dll");
     if (!dll) { MessageBox(0, "Unable to load dll", 0, 0); return false; }
 
@@ -177,6 +180,7 @@ IDirect3DSwapChain9 *our_sc;
 int d3d_cached_w;
 int d3d_cached_h;
 HWND d3d_cached_hwnd;
+// D3DPRESENT_PARAMETERS cached_pp;
 void d3d_create_swapchain_and_depthbuffer(int w, int h, HWND new_hwnd = 0)
 {
     if (!device) { OutputDebugString("NO DEVICE: CREATE SWAPCHAIN\n"); return; }
@@ -185,6 +189,7 @@ void d3d_create_swapchain_and_depthbuffer(int w, int h, HWND new_hwnd = 0)
     device->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &cached_bb);
     device->GetDepthStencilSurface(&cached_db);
 
+    // todo: consolidate this with zxcf and find better way
     // get our current pp (better way?)
     D3DPRESENT_PARAMETERS pp;
     IDirect3DSwapChain9 *temp_sc;
@@ -194,6 +199,7 @@ void d3d_create_swapchain_and_depthbuffer(int w, int h, HWND new_hwnd = 0)
     pp.BackBufferHeight = h;
     if (new_hwnd) pp.hDeviceWindow = new_hwnd;
     temp_sc->Release();
+    // cached_pp = pp;
 
     // create new ones of the right size
     HRESULT res = device->CreateDepthStencilSurface(
@@ -268,7 +274,6 @@ void d3d_resize_if_change(int w, int h, HWND new_hwnd = 0)
     }
 }
 
-
 bool d3d_init(HWND win, int w, int h)
 {
     if (!win) { MessageBox(0,"No window for d3d init",0,0); return false; }
@@ -291,6 +296,7 @@ bool d3d_init(HWND win, int w, int h)
     params.Flags = 0;
     params.FullScreen_RefreshRateInHz = 0; // must be 0 for windowed
     params.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+    // cached_pp = params;
 
     context->CreateDevice(
         D3DADAPTER_DEFAULT,
@@ -511,3 +517,49 @@ void d3d_cleanup()
     if (vs) vs->Release();
     if (ps) ps->Release();
 }
+
+
+bool d3d_device_is_ok()
+{
+    HRESULT res = device->TestCooperativeLevel();
+    if (res != D3D_OK)
+    {
+        return false;
+    }
+    return true;
+}
+bool d3d_device_can_be_reset()
+{
+    HRESULT res = device->TestCooperativeLevel();
+    if (res == D3DERR_DEVICENOTRESET)
+    {
+        return true;
+    }
+    return false;
+}
+
+// // this did not seem to work, just re-creating from scratch for now
+// void d3d_reset(int w, int h, HWND hwnd)
+// {
+//     if (!device) { OutputDebugString("NO DEVICE: RESET\n"); return; }
+
+//     // // note make sure to get pp before destroying our main swap chain?
+//     // // todo: consolidate this with zxcf and find better way
+//     // // get our current pp (better way?)
+//     // D3DPRESENT_PARAMETERS pp;
+//     // IDirect3DSwapChain9 *temp_sc;
+//     // device->GetSwapChain(0, &temp_sc);
+//     // temp_sc->GetPresentParameters(&pp);
+//     // temp_sc->Release();
+
+//     // d3d_destroy_swapchain_and_depthbuffer();
+
+//     HRESULT res = device->Reset(&cached_pp);
+//     if (res == D3DERR_DEVICELOST) OutputDebugString("D3DERR_DEVICELOST\n");
+//     if (res == D3DERR_DEVICEREMOVED) OutputDebugString("D3DERR_DEVICEREMOVED\n");
+//     if (res == D3DERR_DRIVERINTERNALERROR) OutputDebugString("D3DERR_DRIVERINTERNALERROR\n");
+//     if (res == D3DERR_INVALIDCALL) OutputDebugString("D3DERR_INVALIDCALL\n");
+//     if (res != D3D_OK) { OutputDebugString("D3D RESET FAILED\n"); return; }
+
+//     // d3d_create_swapchain_and_depthbuffer(w, h, hwnd);
+// }

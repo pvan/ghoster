@@ -61,6 +61,19 @@ d3d_textured_quad debug_quad;
 d3d_textured_quad progress_bar_gray;
 d3d_textured_quad progress_bar_red;
 
+void create_quads()
+{
+    // create d3d quads
+    u32 gray = 0xaaaaaaaa;
+    u32 red = 0xffff0000;
+    progress_bar_gray.create((u8*)&gray,1,1, -1,-1,1,1,0);
+    progress_bar_red.create((u8*)&red,1,1, -1,-1,1,1,0);
+
+    // create screen quads
+    u32 green = 0xff00ff00;
+    screen.create((u8*)&green,1,1, -1,-1,1,1,0);
+}
+
 void SetSplash(char *msg, u32 col)
 {
     TransmogrifyTextInto(splash_msg, msg); // todo: check length somehow hmm...
@@ -100,6 +113,39 @@ void render()  // os msg pump thread
 
     double temp_dt = glass.sleep_ms / 1000.0; // todo: get proper dt and lock it to framerate
 
+    RECT winRect; GetWindowRect(glass.hwnd, &winRect);
+    int sw = winRect.right-winRect.left;
+    int sh = winRect.bottom-winRect.top;
+
+
+    if (!d3d_device_is_ok()) // probably device lost from ctrl alt delete or something
+    {
+        OutputDebugString("D3D NOT OK\n");
+        if (d3d_device_can_be_reset())
+        {
+
+            screen.destroy();
+            splash_quad.destroy();
+            overlay_quad.destroy();
+            debug_quad.destroy();
+            progress_bar_gray.destroy();
+            progress_bar_red.destroy();
+
+            // d3d_reset(sw, sh, glass.hwnd);
+
+            d3d_cleanup();
+            d3d_init(glass.hwnd, glass.get_win_width(), glass.get_win_height());
+            create_quads();
+
+        }
+        else
+        {
+            OutputDebugString("D3D CANNOT BE RESET\n");
+        }
+    }
+
+
+
     if (GetWallClockSeconds() - secOfLastMouseMove > PROGRESS_BAR_TIMEOUT)
         show_bar = false;
     if (!glass.is_mouse_in_window())
@@ -107,13 +153,10 @@ void render()  // os msg pump thread
     if (!projector.IsMovieLoaded())
         show_bar = false;
 
-    RECT winRect; GetWindowRect(glass.hwnd, &winRect);
-    int sw = winRect.right-winRect.left;
-    int sh = winRect.bottom-winRect.top;
 
+    if (!d3d_device_is_ok()) return;
 
     d3d_resize_if_change(sw, sh, glass.target_window());
-
 
     if (projector.front_buffer && projector.front_buffer->mem)
     {
@@ -452,16 +495,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     queue_random_url();
 
 
-    // create d3d quads
-    u32 gray = 0xaaaaaaaa;
-    u32 red = 0xffff0000;
-    progress_bar_gray.create((u8*)&gray,1,1, -1,-1,1,1,0);
-    progress_bar_red.create((u8*)&red,1,1, -1,-1,1,1,0);
+    create_quads();
+
 
     // window msg pump...
-    u32 green = 0xff00ff00;
-    screen.create((u8*)&green,1,1, -1,-1,1,1,0); //todo:update to new api
-    // screen.create(projector.rolling_movie.reel.vid_buffer,960,720, -1,-1,1,1,0); //todo:update to new api
     glass_run_msg_render_loop();
 
 
