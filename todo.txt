@@ -2,7 +2,7 @@
 
 before done enough to use:
 
-[ ] sync system render loop to decoding loop
+[x] sync system render loop to decoding loop [canceled, better to keep constant fast fps on os]
 
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 

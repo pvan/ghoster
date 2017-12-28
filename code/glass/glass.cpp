@@ -882,8 +882,6 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 
         case WM_TIMER: {
             glass.main_update();
-            KillTimer(hwnd, glass.render_timer_id);
-            SetTimer(hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
         } break;
 
 
