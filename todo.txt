@@ -24,7 +24,8 @@ before done enough to use:
 
 [x] black bar when loading new video is different size 
 
-[ ] test files with just audio or just video
+[x] test files with just audio 
+[x] and just video [couldn't find any so it can't be that common]
 
 [ ] laggy playback on hi res? maybe a slow frame copy somewhere? or slow dl?
     https://www.youtube.com/watch?v=dzUNFqOwjfA
@@ -148,6 +149,8 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 
 ---consider-----
+
+add support for static images?
 
 overlay display: icon/bitmaps (esp play/pause)?
 

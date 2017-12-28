@@ -198,10 +198,13 @@ struct ffmpeg_source
             fps = ((double)video.codecContext->time_base.den /
                    (double)video.codecContext->time_base.num) /
                    (double)video.codecContext->ticks_per_frame;
-        } else if (audio.codecContext) { // todo: test this, might get some weird fps from audio
-            fps = ((double)audio.codecContext->time_base.den /
-                   (double)audio.codecContext->time_base.num) /
-                   (double)audio.codecContext->ticks_per_frame;
+        } else if (audio.codecContext) {
+            // todo: test this, might get some weird fps from audio
+            // update: fps is usually too quick on audio steams, just use a default
+            fps = 30;
+            // fps = ((double)audio.codecContext->time_base.den /
+            //        (double)audio.codecContext->time_base.num) /
+            //        (double)audio.codecContext->ticks_per_frame;
         } else {
             fps = 30; // default if no video or audio.. probably shouldn't get here though
             assert(false); // thinking we should have at least one a or v stream
@@ -220,9 +223,19 @@ struct ffmpeg_source
         }
 
         // w / h / aspect_ratio
-        width = video.codecContext->width;
-        height = video.codecContext->height;
-        aspect_ratio = (double)width / (double)height;
+        if (video.codecContext)
+        {
+            width = video.codecContext->width;
+            height = video.codecContext->height;
+            aspect_ratio = (double)width / (double)height;
+        }
+        else
+        {
+            // todo: what to use here?
+            width = 400;
+            height = 400;
+            aspect_ratio = 1;
+        }
     }
 
     // todo: these two should only ever be called together, combine?
