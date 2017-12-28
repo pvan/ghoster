@@ -843,7 +843,13 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
 
     // -g gets urls (seems like two: video then audio)
     // todo: look into format options, eg -f worst (test on cmd)
-    if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))
+
+    // todo: check could it be lagging on large files because we're dling the video in the audio too?
+    // now only get videos with this resolution or less
+    if (!GetStringFromYoutubeDL(path, "--get-title -g -f \"bestvideo[height <=? 1440]+bestaudio/best\"", tempString, exe_dir))
+
+    // // note default is bestvideo+bestaudio/best
+    // if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))
     {
         return false;
     }
