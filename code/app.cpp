@@ -21,6 +21,7 @@ void SetSplash(char *msg, u32 col = 0xffffffff);
 #include "glass/glass.cpp"
 #include "urls.h"
 #include "icons.h"
+#include "dragdrop.h"
 
 
 // progress bar position
@@ -311,6 +312,7 @@ void on_mouse_drag(int cx, int cy) {
 void on_mouse_exit_window() { clickingOnProgressBar = false; }
 void on_dragdrop_file(char *path) { projector.QueueLoadFromPath(path); }
 
+void on_dragdrop(char *path) { if (glass.on_dragdrop_file) glass.on_dragdrop_file(path); }
 
 
 // other ways? could poll IsMovieLoaded each loop? this is prolly fine
@@ -463,6 +465,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass_custom_open_menu_at = OpenRClickMenuAt;
 
     origWndProc = SubclassWindow(glass.hwnd, appWndProc);
+
+
+    // could bundle dragdrop lib with glass i guess
+    dd_init(glass.hwnd, on_dragdrop);
 
 
 

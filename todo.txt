@@ -5,9 +5,7 @@ before done enough for this dev cycle:
 [ ] add option to overflow screen edges instead of just letterbox
     -maybe allow letterbox/overflow in windowed mode too?
 
-[ ] drag drop onto sys tray icon?
-
-[ ] drag drop highlighted text?
+[x] drag drop highlighted text?
 
 [ ] cleanup pass
     [ ] utils
@@ -15,15 +13,17 @@ before done enough for this dev cycle:
 
 [ ] buffer animation
 
+[ ] remove debug colors
+
 
 
 as it comes up / later:
 
+[ ] L click on sys tray while in wallpaper mode, pause video
+
 [ ] test command line args on cmd line, not just via batch file
 
 [ ] set quality in case still laggy (eg many playing)
-
-[ ] remove debug colors
 
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
@@ -125,6 +125,8 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
     [ ] on loading
     [ ] on continuous run 
 
+[ ] drag drop onto sys tray icon?
+    see https://stackoverflow.com/questions/2742954/drag-and-drop-on-notifyicon-in-tray-in-c-sharp/4029483#4029483
 
 
 ---consider-----
