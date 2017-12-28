@@ -2,30 +2,9 @@
 
 before done enough to use:
 
-[x] set caption
-
-[x] bug minimizing
-
-[x] weird bug after ctrl alt delete
-
-[x] add debug text from projector
-
 [ ] sync system render loop to decoding loop
 
-[x] figure out extra bar on right since allowing resize ffmpeg buffer 
-
-[x] loaded video using wrong aspect ratio if being dragged when loading
-
-[x] resize before done loading, window disappears
-
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
-
-[?] don't let failed load attempt cancel a previous but good load attempt?
-
-[x] black bar when loading new video is different size 
-
-[x] test files with just audio 
-[x] and just video [couldn't find any so it can't be that common]
 
 [ ] laggy playback on hi res? maybe a slow frame copy somewhere? or slow dl?
     https://www.youtube.com/watch?v=dzUNFqOwjfA
@@ -38,8 +17,7 @@ before done enough for this dev cycle:
 
 [ ] drag drop onto sys tray icon?
 
-[x] don't save/restore vid position and try to correct after doubleclick if vid is url
-    (long-term soln is apative dling plan)
+[ ] drag drop highlighted text?
 
 [ ] narrow down what dlls we actually need?
 
@@ -149,6 +127,8 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 
 ---consider-----
+
+don't let failed load attempt cancel a previous but good load attempt?
 
 add support for static images?
 
