@@ -19,6 +19,8 @@ before done enough for this dev cycle:
 
 as it comes up / later:
 
+[x] don't crash on decoding too much audio eg https://www.youtube.com/watch?v=w-NXWQ9QZwo
+
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible

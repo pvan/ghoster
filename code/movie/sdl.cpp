@@ -137,7 +137,7 @@ bool CreateSDLAudioDeviceFor(AVCodecContext *acc, SDLStuff *sdl_stuff)
 int nearestFactorOf4096(double input)
 {
     if (input < 0) assert(false);  // something went wrong
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 20; i++)
     {
         if (input < 4096*i) return 4096*i;
     }

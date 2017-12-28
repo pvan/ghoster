@@ -592,7 +592,11 @@ struct ffmpeg_source
                         // (ie, in case we guessed when to quit wrong below)
                         if (bytes_written+additional_bytes > outBuf.size_in_bytes)
                         {
-                            assert(false); // for now we want to know if this ever happens
+                            // assert(false); // for now we want to know if this ever happens
+                            // update: happened on https://www.youtube.com/watch?v=w-NXWQ9QZwo
+                            // todo: i wouldn't expect it to work to just return here, but it seems to in above vid
+                            // maybe because it appears to only happen once, some time near startup
+                            PRINT("Unexpected early return from audio decoder\n");
                             return bytes_written;
                         }
 
