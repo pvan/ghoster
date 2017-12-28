@@ -38,6 +38,12 @@ i64 nearestI64(double in)
 
 
 
+float GetWallClockSeconds()
+{
+    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
+    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
+    return (float)counter.QuadPart / (float)freq.QuadPart;
+}
 
 
 
