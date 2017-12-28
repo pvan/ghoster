@@ -24,6 +24,13 @@ static HANDLE movie_asyn_load_thread = 0;
 static bool movie_ytdl_running = false;
 static HANDLE movie_ytdl_process = 0;
 
+float GetWallClockSeconds()
+{
+    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
+    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
+    return (float)counter.QuadPart / (float)freq.QuadPart;
+}
+
 
 struct frame_buffer
 {

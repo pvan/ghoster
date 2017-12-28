@@ -21,18 +21,11 @@
 
 
 
-// for now just make our own versions of these util functions so we don't need a util dependency
 // basically just for parsing command line args.. if we drop that we can drop this
 bool glass_string_starts_with(const char *str, const char *front) // case sensitive
 {
     while (*front && *str) { if (*front++ != *str++) return false; }
     return true;
-}
-float glass_wall_seconds()
-{
-    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
-    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
-    return (float)counter.QuadPart / (float)freq.QuadPart;
 }
 
 
@@ -113,9 +106,7 @@ struct glass_window
 
 
     bool loop_running = true;
-    double sleep_ms = 0;  // this is set by the update loop, so only use after it's been ran
-    double target_dt = 16;  // how much we shoot for (right now using when starting our backdoor timer)
-    double ms_last_time;
+    int sleep_ms = 16; // todo: make more accurate loop timing
 
     UINT render_timer_id;
 
@@ -189,7 +180,7 @@ struct glass_window
         RECT wr = get_win_rect();
         sprintf(out,
         "loop_running: %s\n"
-        "sleep_ms: %f\n"
+        "sleep_ms: %i\n"
         "win_rect: %i, %i, %i, %i\n"
         "mouse_in_window: %s\n"
         "is_fullscreen: %s\n"
@@ -257,16 +248,6 @@ struct glass_window
         mouse_was_in_win = mouse_in_win;
 
         if (render) render();
-
-        // find how much we should sleep (won't be exact but better than nothing)
-        double dt_so_far = (glass_wall_seconds()*1000.0) - ms_last_time;
-        // PRINT("glass_wall_seconds %f\n", glass_wall_seconds());
-        // PRINT("ms_last_time %f\n", ms_last_time);
-        // PRINT("dt so far %f\n", dt_so_far);
-        sleep_ms = target_dt - dt_so_far;
-        if (sleep_ms < 0) { sleep_ms = 0; } // missed our fps
-        if (sleep_ms > target_dt) { sleep_ms = target_dt; } // a bit odd
-        ms_last_time = glass_wall_seconds()*1000.0;
     }
 
 
@@ -799,7 +780,7 @@ void glass_default_open_menu_at(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | full, GLASS_ID_FULLSCREEN, L"Fullscreen");
     SetForegroundWindow(hwnd);
 
-    SetTimer(glass.hwnd, glass.render_timer_id, glass.target_dt, 0); // 0 to get WM_TIMER msgs
+    SetTimer(glass.hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
     glass.menu_open = true;
     glass.next_mup_was_closing_menu = true;
     TrackPopupMenu(hPopupMenu, TPM_TOPALIGN | TPM_LEFTALIGN, point.x, point.y, 0, hwnd, NULL);
@@ -879,7 +860,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             in_movesize_loop = true;
             inhibit_movesize_loop = false;
 
-            SetTimer(hwnd, glass.render_timer_id, glass.target_dt, 0); // 0 to get WM_TIMER msgs
+            SetTimer(hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
         } break;
         case WM_EXITSIZEMOVE: {
             in_movesize_loop = false;
@@ -1319,11 +1300,8 @@ void glass_run_msg_render_loop()
             DispatchMessage(&Message);
         }
 
-        glass.ms_last_time = glass_wall_seconds()*1000.0; // seed our first dt
-
         glass.main_update();
 
-        // PRINT("Sleeping for %f (target %f)\n", glass.sleep_ms, glass.target_dt);
         Sleep(glass.sleep_ms);
     }
     glass_close();

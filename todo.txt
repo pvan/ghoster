@@ -124,8 +124,6 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
     [ ] on loading
     [ ] on continuous run 
 
-[ ] proper sync of display and decode threads.. (make sure each decoded frame 
-    is displayed once and only once, rather than just set the times equal and hope)
 
 
 ---consider-----
