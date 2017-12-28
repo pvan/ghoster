@@ -17,7 +17,7 @@
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 void SetSplash(char *msg, u32 col = 0xffffffff);
 
-#include "movie/movie.cpp"
+#include "movie/movie.cpp"  // right now we might be using some utils from this in other things
 #include "glass/glass.cpp"
 #include "urls.h"
 #include "icons.h"
@@ -113,7 +113,11 @@ void render()  // os msg pump thread
 {
     if (!glass.loop_running) return;  // kinda smells
 
-    double temp_dt = glass.sleep_ms / 1000.0; // todo: get proper dt and lock it to framerate
+    // note we don't base directly from reel fps since we might not have a reel
+    // todo: switch to accessor rather than a cached var?
+    glass.target_dt = projector.state.targetSecPerFrame * 1000.0;
+
+    double temp_sec_dt = glass.target_dt / 1000.0; // todo: get proper dt and lock it to framerate
 
     RECT winRect; GetWindowRect(glass.hwnd, &winRect);
     int sw = winRect.right-winRect.left;
@@ -211,7 +215,7 @@ void render()  // os msg pump thread
     double splash_alpha = 0;
     if (splash_sec_left > 0)
     {
-        splash_sec_left -= temp_dt;
+        splash_sec_left -= temp_sec_dt;
 
         double maxA = 0.65; // implicit min of 0
         splash_alpha = ((-cos(splash_sec_left*M_PI / SEC_OF_SPLASH_MSG) + 1.0) / 2.0) * maxA;
