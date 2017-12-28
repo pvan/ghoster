@@ -997,6 +997,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // look for a timestamp on the url
     char *timestamp = strstr(path, "&t=");
     if (timestamp == 0) timestamp = strstr(path, "#t=");
+    if (timestamp == 0) timestamp = strstr(path, "?t=");
     if (timestamp != 0) {
         int startSeconds = SecondsFromStringTimestamp(timestamp);
         projector->message.startAtSeconds = startSeconds;
