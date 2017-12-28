@@ -9,17 +9,21 @@ before done enough for this dev cycle:
 
 [ ] drag drop highlighted text?
 
-[x] narrow down what dlls we actually need?
-
 [ ] cleanup pass
     [ ] utils
     [ ] others
+
+[ ] buffer animation
 
 
 
 as it comes up / later:
 
-[x] don't crash on decoding too much audio eg https://www.youtube.com/watch?v=w-NXWQ9QZwo
+[ ] test command line args on cmd line, not just via batch file
+
+[ ] set quality in case still laggy (eg many playing)
+
+[ ] remove debug colors
 
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
@@ -28,14 +32,6 @@ as it comes up / later:
 [ ] test the new timeout on loading urls if connection is flaky
 
 [ ] add proper random lib
-
-[ ] playlist support
-    [ ] drop in folder
-    [ ] drop in text file list / string list
-    [ ] yt playlist
-    [ ] autoplay (yt+others?)
-    [ ] view to-play list somehow
-    [ ] re-arrange / shuffle / random
 
 [ ] improve video resize quality (compare to vlc eg)
     [x] start with variable-size ffmpeg to screen buffer?
@@ -49,6 +45,17 @@ bugs inherent to rendering on the sys msg loop thread:
 
 
 ----bigger projects----
+
+
+--playlist support--
+
+[ ] playlist support
+    [ ] drop in folder
+    [ ] drop in text file list / string list
+    [ ] yt playlist
+    [ ] autoplay (yt+others?)
+    [ ] view to-play list somehow
+    [ ] re-arrange / shuffle / random
 
 
 --CODEC_CAP_DELAY thing--
@@ -129,6 +136,7 @@ don't let failed load attempt cancel a previous but good load attempt?
 add support for static images?
 
 overlay display: icon/bitmaps (esp play/pause)?
+add icon to pause/play menu item
 
 step forward and backwards by a single frame?
 
@@ -144,8 +152,6 @@ replace youtube-dl with homegrown/internal variant?
 
 grown/shrink which side of window based on screen location when changing aspect ratio??
 
-add icon to pause/play menu item
-
 if ghost mode forced always on top, should it also be automatically disabled when leaving ghost mode?
 
 if we pre-process the file in parallel to display, we could seek much faster on files with spaced out I-frames
@@ -156,6 +162,8 @@ low vid framerate (eg maybe if audio only),
 things that we check each loop like if mouse leaves window will feel very slow
 their responsiveness is basically frame rate dependent
 always update at 60+ and just "render" at video fps?
+[this should be ok now that we've taken "update" things out of the decoder]
+[queued messages for decoder will still only be processed as fast as the decoder loop, though]
 
 
 kind of annoying...
@@ -165,7 +173,7 @@ maybe disabling ghost mode should always reset opacity and topmost??
 and should it set our opacity much lower too? i guess not
 
 
-possible for youtube-dl to not clsoe if process forced close at the wrong time? i think so
+it's possible for youtube-dl to not close if app is forced closed at the wrong time [small target tho]
 
 in wallpaper mode check for clicks on our rect and open menu?
 check for file drags somehow even?
@@ -236,7 +244,7 @@ random video [maybe 'i'm feeling lucky' style]
 
 green screen masking type functionality?
 
-if no video, visualize audio
+if no video, visualize audio [or option to overlay visualization anyway]
 
 face detection googly eyes? no, that's taking it too far
 
