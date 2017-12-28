@@ -9,7 +9,7 @@ before done enough for this dev cycle:
 
 [ ] drag drop highlighted text?
 
-[ ] narrow down what dlls we actually need?
+[x] narrow down what dlls we actually need?
 
 [ ] cleanup pass
     [ ] utils

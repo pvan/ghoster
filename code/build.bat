@@ -65,6 +65,11 @@ REM copy to release folder....
 set release_folder=..\ghoster
 
 IF NOT EXIST %release_folder% mkdir %release_folder%
-xcopy /s /y /q %build_folder%\*.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\SDL2.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\avcodec-57.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\avformat-57.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\avutil-55.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\swresample-2.dll %release_folder%>NUL
+xcopy /s /y /q %build_folder%\swscale-4.dll %release_folder%>NUL
 xcopy /s /y /q %build_folder%\app.exe %release_folder%>NUL
 xcopy /s /y /q %build_folder%\youtube-dl.exe %release_folder%>NUL
