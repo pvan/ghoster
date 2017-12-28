@@ -1,15 +1,5 @@
 
 
-before done enough to use:
-
-[x] sync system render loop to decoding loop [canceled, better to keep constant fast fps on os]
-
-[ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
-
-[x] laggy playback on hi res? [it's slow dl, limiting to 1440p for now]
-    https://www.youtube.com/watch?v=dzUNFqOwjfA
-
-
 before done enough for this dev cycle:
 
 [ ] add option to overflow screen edges instead of just letterbox
@@ -28,6 +18,8 @@ before done enough for this dev cycle:
 
 
 as it comes up / later:
+
+[ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 
@@ -127,6 +119,8 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 
 ---consider-----
+
+look into DASH
 
 don't let failed load attempt cancel a previous but good load attempt?
 
