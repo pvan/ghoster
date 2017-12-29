@@ -1,6 +1,6 @@
 @echo off
 
-set filesToOpen=code\app.cpp
+set filesToOpen=code\ghoster.cpp
 
 
 if not defined DevEnvDir (
@@ -10,6 +10,6 @@ if not defined DevEnvDir (
 
 start "" "D:\Program Files\Sublime Text 3\sublime_text.exe" %filesToOpen%
 
-start "" "devenv" "debug\app.exe" %filesToOpen%
+start "" "devenv" "debug\ghoster.exe" %filesToOpen%
 
 start cmd.exe

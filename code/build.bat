@@ -56,7 +56,7 @@ xcopy /s /y /q %lib_folder%\SDL2-2.0.5\lib\x64\*.dll %build_folder%
 xcopy /s /y /q %lib_folder%\youtube-dl.exe %build_folder%
 
 pushd %build_folder%
-cl -nologo %CompilerFlags% %WarningFlags% ..\code\app.cpp %LinkerFlags% user32.lib Winmm.lib ..\code\glass\icon\resource.res
+cl -nologo %CompilerFlags% %WarningFlags% ..\code\ghoster.cpp %LinkerFlags% user32.lib Winmm.lib ..\code\glass\icon\resource.res
 popd
 
 
@@ -71,5 +71,5 @@ xcopy /s /y /q %build_folder%\avformat-57.dll %release_folder%>NUL
 xcopy /s /y /q %build_folder%\avutil-55.dll %release_folder%>NUL
 xcopy /s /y /q %build_folder%\swresample-2.dll %release_folder%>NUL
 xcopy /s /y /q %build_folder%\swscale-4.dll %release_folder%>NUL
-xcopy /s /y /q %build_folder%\app.exe %release_folder%>NUL
+xcopy /s /y /q %build_folder%\ghoster.exe %release_folder%>NUL
 xcopy /s /y /q %build_folder%\youtube-dl.exe %release_folder%>NUL
