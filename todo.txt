@@ -10,7 +10,7 @@ before done enough for this dev cycle:
     [ ] utils
     [ ] others
 
-[ ] buffer animation
+[x] buffer animation
 
 [ ] remove debug colors
 

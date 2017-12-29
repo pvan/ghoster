@@ -192,6 +192,20 @@ void render()  // os msg pump thread
         } else {
             screen.fill_vb_with_rect(-1,-1,1,1,0);  // fill screen
         }
+    } else {
+        // buffering
+        static float buffering_t = 0;
+        buffering_t += temp_dt;
+        // e^sin(x) very interesting shape, via http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+        float col = pow(M_E, sin(buffering_t*M_PI*2 / 3));  // cycle every 3sec
+        float min = 1/M_E;
+        float max = M_E;
+        col = (col-min) / (max-min); // 0-1
+        col = 0.75*col + 0.2*(1-col); //lerp
+
+        u8 colbyte = col*255.99;
+        u32 colhex = 0xff<<(8*3) | colbyte<<(8*2) | colbyte<<(8*1) | colbyte<<(8*0);
+        screen.fill_tex_with_mem((u8*)&colhex, 1, 1);
     }
 
 
@@ -241,21 +255,9 @@ void render()  // os msg pump thread
         overlay_quad.update((u8*)&splash_color,1,1, -1,-1,1,1,0);
     }
 
-    // these should all be placed as indicated
-    // progress_bar_quad.set_to_pixel_coords_BL(50, 30, sw-50, sh-30);
-    // progress_bar_quad.set_to_pixel_coords_TL(50, 30, sw-50, sh-30);
-    // screen.move_to_pixel_coords_BL(50,30);  // note quad is source size here
-    // screen.move_to_pixel_coords_TL(50,30);
-    // screen.move_to_pixel_coords_center(50,30);
-    // screen.move_to_pixel_coords_center(sw/2,sh/2);
-    // screen.move_to_pixel_coords_center(sw/2,0);
-
-    // text = ttf_create(msg, 64, 255);
-    // text.move_to_pixel_coords_center(sw/2, sh/2, sw, sh);
-    // hud.update_with_pixel_coords(10, sh-10-200, 200, 200, sw, sh);
 
     // todo: seems we have still not completely eliminated flicker on resize.. hrmm
-    d3d_clear(0, 0, 255);
+    d3d_clear(255, 0, 255);
     screen.render(); // todo: strange bar on right
     if (show_bar) progress_bar_gray.render(0.4);
     if (show_bar) progress_bar_red.render(0.6);
