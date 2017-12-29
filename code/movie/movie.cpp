@@ -901,6 +901,12 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
         }
     }
 
+    // use video url for audio if audio url is missing (common on non-yt sites)
+    if (segments[2][0] == '\0') {
+        // MessageBox(0,"no 3rd",0,0);
+        strcpy(segments[2], segments[1]);
+    }
+
     int titleLen = strlen(segments[0]);  // note this doesn't include the \0
     if (titleLen+1 > FFMPEG_TITLE_SIZE-1) // note -1 since [size-1] is \0  and +1 since titleLen doesn't count \0
     {
@@ -1046,7 +1052,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
         // for now don't override them with a new (since our queue is only 1 deep)
         // char errbuf[123];
         // sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
-        LogError("load failed");
+        // LogError("load failed");
         return false;
     }
 

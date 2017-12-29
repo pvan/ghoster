@@ -46,23 +46,24 @@ bugs inherent to rendering on the sys msg loop thread:
     (impossible to avoid with sys render i think)
 
 
-
 ----bigger projects----
 
 
---playlist support--
+--improve sites supported--
+[ ] add vimeo support
+[ ] auto-update youtube-dl
 
-[ ] playlist support
-    [ ] drop in folder
-    [ ] drop in text file list / string list
-    [ ] yt playlist
-    [ ] autoplay (yt+others?)
-    [ ] view to-play list somehow
-    [ ] re-arrange / shuffle / random
+
+--playlist support--
+[ ] drop in folder
+[ ] drop in text file list / string list
+[ ] yt playlist
+[ ] autoplay (yt+others?)
+[ ] view to-play list somehow
+[ ] re-arrange / shuffle / random
 
 
 --CODEC_CAP_DELAY thing--
-
 [ ] handle these example cases with CODEC_CAP_DELAY
 https://www.youtube.com/watch?v=nUWur-T598s
 https://www.youtube.com/watch?v=gZo1BLYcMJ4
@@ -70,7 +71,6 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
     [ ] check if there is any data or it's just the flag is set
     [ ] use the remaining data if there
     [ ] or replace with new send/receive api which i don't think needs a special case for this?
-
 [ ] intermittent repeat-frame loop? maybe after seeking?
     -happened in dutch and manups and brick.. is it maybe a CODEC_CAP_DELAY thing?
 
@@ -79,12 +79,10 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 [ ] api/naming improvements
     [ ] window class "glass"
     [ ] movie decoder "projector"
-
 [ ] file conventions
     [ ] menu
     [ ] sdl
     [ ] etc
-
 [ ] limited to singleton usage
     [ ] glass
         [ ] need way to id instance from wndproc (and menu)

@@ -138,14 +138,21 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=WJiCUdLBxuI",  // van session 17
     "https://www.youtube.com/watch?v=63gdelpCp4k",  // love like a sunset
 
+    // non-youtube tests...
+
+    "http://www.gdcvault.com/play/1014652/An-Apology-for-Roger",
+    "https://www.dailymotion.com/video/x8pzuj" // jil is lucky
+    // "http://www.dailymotion.com/video/xxhhuh",  // peking opera blues pt1 (sloooow dl)
+
+    // // ffmpeg errors on these
     // "https://vimeo.com/137025856",  // barcelona
     // "https://vimeo.com/242445221",  // tarkovsky candle (we'll blame the witness for getting the yt version blocked)
     // "https://vimeo.com/241007433",  // art of flying
-    // "http://www.gdcvault.com/play/1014652/An-Apology-for-Roger",
+    // "https://player.vimeo.com/video/106771962", // soderbergh raiders
+
+    // works at time or writing but soundcloud seems to break youtube-dl frequently
+    // todo: either update youtube-dl automatically or don't include this
     // "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
-    // "http://www.myspace.com/video/g4-1/what-39-s-up-cover-jil-is-lucky-fou-du-roi/54341496",
-    // "http://extension765.com/soderblogh/18-raiders",
-    // "http://www.dailymotion.com/video/xxhhuh",  // peking opera blues pt1
 
     "https://www.youtube.com/watch?v=-ZggJNsAuIw",  // sleight ride in 7/8
     "https://www.youtube.com/watch?v=YvI_FNrczzQ",  // vince guaraldi
