@@ -8,13 +8,14 @@ before done enough for this dev cycle:
     [ ] check todos
 
 [x] test command line args on cmd line, not just via batch file
-[ ] test in batch file
+[x] test in batch file
 [x] movie not loading when launched from cmd (from folder works fine)
 
 [ ] has msg loop gotten laggy? test with older version if needed
 
 [x] loading new movie in wallpaper mode doesn't resize [could be improved still]
 
+[ ] update url list
 
 
 as it comes up / later:
@@ -31,7 +32,7 @@ as it comes up / later:
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 [ ] also menu gets closed if it's open
 
-[ ] test the new timeout on loading urls if connection is flaky
+[x] test the new timeout on loading urls if connection is flaky [pretty long but otherwise should be ok]
 
 [ ] add proper random lib
 
@@ -86,6 +87,7 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 [ ] limited to singleton usage
     [ ] glass
+        [ ] need way to id instance from wndproc (and menu)
     [ ] menu
     [ ] others?
 

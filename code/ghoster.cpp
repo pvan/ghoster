@@ -441,25 +441,28 @@ LRESULT CALLBACK appWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPara
     switch(message)
     {
         case WM_KEYDOWN: {
-            if (wParam == 0x56 &&  // V
-                GetKeyState(VK_CONTROL) & 0x8000)  // ctrl
+            if (wParam == 0x56 && GetKeyState(VK_CONTROL) & 0x8000)  // ctrl v
             {
                 paste_clipboard();
             }
         } break;
 
         case WM_KEYUP: {
-            if (wParam >= 0x30 && wParam <= 0x39) // 0-9
+            if (wParam >= 0x30 && wParam <= 0x39 && GetKeyState(VK_CONTROL) & 0x8000) // ctrl 0-9
             {
                 projector.QueueLoadFromPath(TEST_FILES[wParam - 0x30]);
             }
-            if (wParam == VK_OEM_3) // ~
-            {
-                queue_random_url();
-            }
+            // if (wParam == VK_OEM_3) // ~
+            // {
+            //     queue_random_url();
+            // }
             if (wParam == VK_TAB)
             {
                 show_debug = !show_debug;
+            }
+            if (wParam == 0x52 && GetKeyState(VK_CONTROL) & 0x8000) // ctrl r
+            {
+                queue_random_url();
             }
         } break;
     }
@@ -506,7 +509,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     projector.Init(exe_directory);
     projector.on_load_callback = on_video_load;
-    queue_random_url(); // this will get overridden below if path is passed in as arg
 
 
     // defaults
@@ -515,7 +517,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     int startW = 600;
     int startH = 400;
     int nest = 0; // todo: enum 0=none, 1=tl, 2=tr, 3=bl, 4=br
-    glass.set_icon(RandomIcon()); // overridden below if arg passed in
+    int randomVideo = true;
+    int randomIcon = true;
     // parse args
     for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
     {
@@ -523,6 +526,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         wcstombs(nextArg, argList[i], 256);
         if (nextArg[0] != '-')
         {
+            randomVideo = false;
             projector.QueueLoadFromPath(nextArg);
         }
 
@@ -608,6 +612,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     glass.on_dragdrop_file = on_dragdrop_file;
     glass.ghost_icon = global_icon_w;
     glass_custom_open_menu_at = OpenRClickMenuAt;
+    if (randomVideo)
+        queue_random_url();
+    if (randomIcon)
+        glass.set_icon(RandomIcon());
 
     origWndProc = SubclassWindow(glass.hwnd, appWndProc);
 
