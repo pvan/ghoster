@@ -403,13 +403,8 @@ bool paste_clipboard()
 
 bool copy_url_to_clipboard(bool withTimestamp)
 {
-    char *url = projector.rolling_movie.reel.path;
-
     char output[FFMPEG_PATH_SIZE]; // todo: stack alloc ok here?
-    if (StringIsUrl(url) && withTimestamp) {
-        int secondsElapsed = projector.rolling_movie.seconds_elapsed_at_last_decode;
-        sprintf(output, "%s&t=%i", url, secondsElapsed);
-    } else { sprintf(output, "%s", url); }
+    projector.rolling_movie.get_url(output, FFMPEG_PATH_SIZE, withTimestamp);
 
     const size_t len = strlen(output) + 1;
     HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);
