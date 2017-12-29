@@ -495,7 +495,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     // can it find its directory itself?
     char *exe_directory = (char*)malloc(MAX_PATH); // todo: what to use?
     wcstombs(exe_directory, argList[0], MAX_PATH);
+
+    // handle differently if full path (launched from debugger or folder)
+    // or just name of exe (launched from cmd)
+    // can't use this when debugging i think, will get debugger directory?
+    if (exe_directory[1] != ':') GetModuleFileName(0,exe_directory,MAX_PATH);
+
     DirectoryFromPath(exe_directory);
+
 
     projector.Init(exe_directory);
     projector.on_load_callback = on_video_load;
