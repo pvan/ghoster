@@ -12,41 +12,38 @@
 #include "directx.cpp"
 #include "text.cpp"
 
-// kinda hacky... todo: way to drop this? or maybe just allow this override of glass
-// what about making progress bar into a child window?
-bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
+
+// these are the things movie needs that it shouldn't
 void SetSplash(char *msg, u32 col = 0xffffffff);
-void hacky_extra_toggle_pause_function_for_glass();
-
-const int LIMIT_QUAL = 720;
-const int MAX_QUAL = 1440;  // used in movie atm
-void set_max_quality(int qual);
-
 #include "movie/movie.cpp"
+
+// these are the things glass needs that it shouldn't
+// todo: what about making progress bar into a child window?
+bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
+void hacky_extra_toggle_pause_function_for_glass();
 #include "glass/glass.cpp"
+
 #include "urls.h"
 #include "icons.h"
 #include "dragdrop.h"
 
 
-// progress bar position
-const int PROGRESS_BAR_H = 22;
 
-// hide progress bar after this many seconds
-const double PROGRESS_BAR_TIMEOUT = 1.0;
+const int PROGRESS_BAR_H = 22;  // progress bar position from bottom
 
-// how long our splash messages last (fade included)
-const double SEC_OF_SPLASH_MSG = 2;
+const double PROGRESS_BAR_TIMEOUT = 1.0;  // hide progress bar after this many seconds
+
+const double SEC_OF_SPLASH_MSG = 2; // how long our splash messages last (fade included)
 
 const bool D3D_DEBUG_MSG = false;
 
 
+
+// these are the things menu needs
 static MovieProjector projector;
-
-
 bool is_letterbox = false;
 bool is_720p = false;
-
+void set_max_quality(int qual);
 bool paste_clipboard();
 bool copy_url_to_clipboard(bool withTimestamp = false);
 void queue_random_url();

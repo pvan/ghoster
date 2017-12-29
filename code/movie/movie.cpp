@@ -13,7 +13,10 @@ void LogMessage(char *str);
 #include "sdl.cpp"
 
 
-// const int YTDL_TIMEOUT_MS = 5000;  // give up after this if taking too long to get urls (probably shoddy net)
+const int LIMIT_QUAL = 720;
+const int MAX_QUAL = 1440;   // when we're not set in 720p mode, also the default (atm)
+
+// const int YTDL_TIMEOUT_MS = 5000;  // this amount actually triggered when we has iffy net
 const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to get urls (probably shoddy net)
 
 
