@@ -10,7 +10,7 @@ before done enough for this dev cycle:
 
 [ ] has msg loop gotten laggy? test with older version if needed
 
-[ ] loading new movie in wallpaper mode doesn't resize
+[x] loading new movie in wallpaper mode doesn't resize [could be improved still]
 
 
 

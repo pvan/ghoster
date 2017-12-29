@@ -362,7 +362,13 @@ void on_video_load(int w, int h)
         glass.setFullscreen(true);
     }
 
-    // may need to recreate wallpaper window here?
+    if (glass.is_wallpaper)
+    {
+        // this seems to be enough
+        // todo: (actually it's overkill, we could just set the size of the wallpaper hwnd)
+        glass.set_wallpaper(false);
+        glass.set_wallpaper(true);
+    }
 
     // something like this? (na, would be too long on urls)
     if (first_video)
