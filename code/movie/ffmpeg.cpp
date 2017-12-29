@@ -1,6 +1,7 @@
 
 
 
+const bool FFMPEG_LOADING_MSG = false;
 
 extern "C"
 {
@@ -330,9 +331,9 @@ struct ffmpeg_source
 
     bool SetFromPaths(char *videopath, char *audiopath)
     {
-        PRINT("Creating new source from paths...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Creating new source from paths...\n");
 
-        PRINT("Checking if just a text file...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Checking if just a text file...\n");
 
         // special case to skip text files for now,
         // ffmpeg likes to eat these up and then our code doesn't know what to do with them
@@ -342,12 +343,12 @@ struct ffmpeg_source
             return false;
         }
 
-        PRINT("Freeing old pointers...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Freeing old pointers...\n");
 
         // free current video if exists
         FreeEverything();
 
-        PRINT("Opening format contexts...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Opening format contexts...\n");
 
         // now set from calling code so we get url correctly
         // if (strcmp(videopath, audiopath) == 0) sprintf(path, videopath);
@@ -356,9 +357,9 @@ struct ffmpeg_source
         // file.vfc = 0;  // = 0 or call avformat_alloc_context before opening?
         // file.afc = 0;  // = 0 or call avformat_alloc_context before opening?
         int open_result1 = avformat_open_input(&vfc, videopath, 0, 0);
-            PRINT("vfc loaded...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("vfc loaded...\n");
         int open_result2 = avformat_open_input(&afc, audiopath, 0, 0);
-            PRINT("afc loaded...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("afc loaded...\n");
         if (open_result1 != 0 || open_result2 != 0)
         {
             PRINT("Unable to load a format context...\n");
@@ -371,7 +372,7 @@ struct ffmpeg_source
         }
 
 
-        PRINT("Opening streams...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Opening streams...\n");
 
         // todo: need to call avformat_close_input() at some point after avformat_open_input
         // (when no longer using the file maybe?)
@@ -387,7 +388,7 @@ struct ffmpeg_source
         // this must be sending to stdout or something? (not showing up anywhere)
         // av_dump_format(vfc, 0, videopath, 0);
 
-        PRINT("Searching for streams...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Searching for streams...\n");
 
         // find first video and audio stream
         // todo: use av_find_best_stream?
@@ -442,10 +443,10 @@ struct ffmpeg_source
             return false;
         }
 
-        PRINT("Populating metadata...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Populating metadata...\n");
         PopulateMetadata();
 
-        PRINT("Setting up output frame...\n");
+        if (FFMPEG_LOADING_MSG) PRINT("Setting up output frame...\n");
         SetupSwsContex(width, height);   // width/height here depend on metadata being populated first
         SetupFrameOutput(width, height);
 

@@ -13,6 +13,8 @@ void LogMessage(char *str);
 #include "sdl.cpp"
 
 
+const bool LOADING_DEBUG_MSG = false;
+
 const int LIMIT_QUAL = 720;
 const int MAX_QUAL = 1440;   // when we're not set in 720p mode, also the default (atm)
 
@@ -762,7 +764,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle = TRUE;
 
-    PRINT("Creating pipe...\n");
+    if (LOADING_DEBUG_MSG) PRINT("Creating pipe...\n");
 
     HANDLE outRead, outWrite;
     if (!CreatePipe(&outRead, &outWrite, &sa, 0))
@@ -793,7 +795,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sprintf(args, "%syoutube-dl.exe %s %s", exe_dir, options, url);
     // MsgBox(args);
 
-    PRINT("Starting youtube-dl process...\n");
+    if (LOADING_DEBUG_MSG) PRINT("Starting youtube-dl process...\n");
 
     // try a guard like this so we don't force this thread closed while ytdl is running
     movie_ytdl_running = true;       // this actually shouldn't be needed since we close the prev thread
@@ -813,20 +815,20 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         // so we use the movie_ytdl_running as a guard against closing this thread until it's ready
         movie_ytdl_process = pi.hProcess;
 
-        PRINT("Waiting for youtube-dl process...\n");
+        if (LOADING_DEBUG_MSG) PRINT("Waiting for youtube-dl process...\n");
 
         DWORD res = WaitForSingleObject(pi.hProcess, YTDL_TIMEOUT_MS);
         if (res==WAIT_TIMEOUT) { LogError("Youtube-dl process timeout"); return false; }
         if (res==WAIT_FAILED) { LogError("Youtube-dl process WAIT_FAILED"); return false; }
 
-        PRINT("Terminating youtube-dl process...\n");
+        if (LOADING_DEBUG_MSG) PRINT("Terminating youtube-dl process...\n");
 
         TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
     }
     movie_ytdl_running = false;
     movie_ytdl_process = 0;
 
-    PRINT("Closing handle...\n");
+    if (LOADING_DEBUG_MSG) PRINT("Closing handle...\n");
 
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
@@ -835,7 +837,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         return false;
     }
 
-    PRINT("Reading from pipe...\n");
+    if (LOADING_DEBUG_MSG) PRINT("Reading from pipe...\n");
 
     DWORD bytesRead;
     if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
@@ -860,7 +862,7 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
 {
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
 
-    PRINT("Calling youtube-dl...\n");
+    if (LOADING_DEBUG_MSG) PRINT("Calling youtube-dl...\n");
 
     // --get-title returns title of vid (first to have it be first line of output)
     // -g gets urls instead of dling (default will return two urls)
@@ -954,7 +956,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
         {
             // todo: sometimes fails in here somewhere when loading urls?
             // maybe bad internet?
-            LogMessage("PARSED CORRECTLY\n");
+            if (LOADING_DEBUG_MSG) LogMessage("PARSED CORRECTLY\n");
             if (!newSource) PRINT("newSource NULL??\n");
             if (!newSource->SetFromPaths(video_url, audio_url))
             {
