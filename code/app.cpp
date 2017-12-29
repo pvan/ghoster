@@ -290,6 +290,11 @@ void set_progress_bar(double percent) {
 void set_max_quality(int qual)
 {
     projector.maxQuality = qual;
+
+    if (qual == LIMIT_QUAL)  // todo: hack to determine if we're downgrading or upgrading
+        if (projector.rolling_movie.reel.height <= qual)
+            return; // don't bother to reload in this case, we won't get anything different
+
     projector.QueueReload(true);
 }
 

@@ -16,7 +16,9 @@ before done enough for this dev cycle:
 
 [ ] test command line args on cmd line, not just via batch file
 
-[ ] set quality in case still laggy (eg many playing)
+[x] set quality in case still laggy (eg many playing) [only option to limit to 720 atm]
+
+[ ] has msg loop gotten laggy? test with older version if needed
 
 
 
@@ -129,6 +131,8 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 
 ---consider-----
+
+more quality setting options?
 
 look into DASH
 
