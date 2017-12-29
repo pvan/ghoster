@@ -82,7 +82,7 @@ AVCodecContext *ffmpeg_open_codec(AVFormatContext *fc, int streamIndex)
 
 const int FFMPEG_TITLE_SIZE = 256;
 
-const int FFMEPG_PATH_SIZE = 1024;  // todo: what to use for this?
+const int FFMPEG_PATH_SIZE = 1024;  // todo: what to use for this?
 
 
 
@@ -130,7 +130,7 @@ struct ffmpeg_source
     int vid_height;
 
     char title[FFMPEG_TITLE_SIZE]; // todo: how big? todo: alloc this?
-    char path[FFMEPG_PATH_SIZE]; // todo: how big? todo: alloc this?
+    char path[FFMPEG_PATH_SIZE]; // todo: how big? todo: alloc this?
 
 
     // metadata

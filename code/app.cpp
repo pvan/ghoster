@@ -290,7 +290,7 @@ void set_progress_bar(double percent) {
 void set_max_quality(int qual)
 {
     projector.maxQuality = qual;
-    projector.QueueReload();
+    projector.QueueReload(true);
 }
 
 void on_click(int x, int y) {
@@ -405,7 +405,7 @@ bool copy_url_to_clipboard(bool withTimestamp)
 {
     char *url = projector.rolling_movie.reel.path;
 
-    char output[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
+    char output[FFMPEG_PATH_SIZE]; // todo: stack alloc ok here?
     if (StringIsUrl(url) && withTimestamp) {
         int secondsElapsed = projector.rolling_movie.seconds_elapsed_at_last_decode;
         sprintf(output, "%s&t=%i", url, secondsElapsed);

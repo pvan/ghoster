@@ -78,6 +78,14 @@ struct RollingMovie
         return seconds_elapsed_at_last_decode / reel.durationSeconds;
     }
 
+    void get_url(char *output, int output_size, bool include_current_timestamp)
+    {
+        char *base_url = reel.path;
+        if (StringIsUrl(base_url) && include_current_timestamp)
+            snprintf(output, output_size, "%s&t=%i", base_url, (int)seconds_elapsed_at_last_decode);
+        else
+            snprintf(output, output_size, "%s", base_url);
+    }
 
     // todo: what to do with this, hmmm
     // what about a ffmpeg_rolling_movie ?
@@ -346,16 +354,10 @@ struct MovieProjector
         strcpy_s(message.new_path_to_load, 1024, path);
         message.new_load_path_queued = true;
     }
-    void QueueReload()  // reloads current video, probably because quality change
+    void QueueReload(bool atCurrentTime)  // reloads current video, probably because quality change
     {
-
-        char url_at_time[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
-        char *url = rolling_movie.reel.path;
-        if (StringIsUrl(url)) {
-            int secondsElapsed = rolling_movie.seconds_elapsed_at_last_decode;
-            sprintf(url_at_time, "%s&t=%i", url, secondsElapsed);
-        } else { sprintf(url_at_time, "%s", url); }
-
+        char url_at_time[FFMPEG_PATH_SIZE]; // todo: stack alloc ok here?
+        rolling_movie.get_url(url_at_time, FFMPEG_PATH_SIZE, atCurrentTime);
         QueueLoadFromPath(url_at_time);
     }
 
