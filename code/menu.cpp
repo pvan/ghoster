@@ -53,6 +53,7 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 #define ID_COPYURL 1017
 #define ID_COPYURL_TIME 1018
 #define ID_RANDO 1019
+#define ID_LETBOX 1020
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -97,9 +98,10 @@ menuItem menuItems[] =
     {ID_COPYURL      , L"Copy URL"                       , 0                           , 0, 0, 0 },
     {ID_COPYURL_TIME , L"Copy URL At Current Time"       , 0                           , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
-    {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                           , 0, 0, 0 },
     {ID_ASPECT       , L"Lock Aspect Ratio"              , &glass.is_ratiolocked       , 0, 0, 0 },
+    {ID_LETBOX       , L"Letterbox (Fullscreen + Locked)", &is_letterbox               , 0, 0, 0 },
     {ID_SNAPPING     , L"Snap To Edges"                  , &glass.is_snappy            , 0, 0, 0 },
+    {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                           , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
     {ID_ICONMENU     , L"Choose Icon"                    , 0                           , 0, 0, menu_iconsubmenu },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
@@ -215,6 +217,9 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         case ID_ASPECT:
             glass.set_ratiolocked(!glass.is_ratiolocked);
+            break;
+        case ID_LETBOX:
+            is_letterbox = !is_letterbox;
             break;
         case ID_PASTE:
             paste_clipboard();

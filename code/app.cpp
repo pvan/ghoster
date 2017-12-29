@@ -39,6 +39,8 @@ const bool D3D_DEBUG_MSG = false;
 static MovieProjector projector;
 
 
+bool is_letterbox = false;
+
 bool paste_clipboard();
 bool copy_url_to_clipboard(bool withTimestamp = false);
 void queue_random_url();
@@ -92,20 +94,26 @@ void queue_random_url()
 }
 
 
-// assuming a canvas of 0, 0, dw, dh, returns subrect filling that space but with aspect_ratio
+// assuming a canvas of 0,0,dw,dh, returns subrect filling that space but with aspect_ratio
 RECT calc_pixel_letterbox_subrect(int dw, int dh, double aspect_ratio)
 {
     int calcW = (int)((double)dh * aspect_ratio);
     int calcH = (int)((double)dw / aspect_ratio);
-
-    if (calcW > dw)  // letterbox
-        calcW = dw;
-    else
-        calcH = dh;  // pillarbox
-
+    if (calcW > dw) calcW = dw;  // letterbox
+    else calcH = dh;  // pillarbox
     int posX = (int)(((double)dw - (double)calcW) / 2.0);
     int posY = (int)(((double)dh - (double)calcH) / 2.0);
-
+    return {posX, posY, posX+calcW, posY+calcH};
+}
+// assuming a canvas of 0,0,dw,dh, returns a larger rect (negative position) that fills the canvas with aspect_ratio
+RECT calc_pixel_stretch_rect(int dw, int dh, double aspect_ratio)
+{
+    int calcW = (int)((double)dh * aspect_ratio);
+    int calcH = (int)((double)dw / aspect_ratio);
+    if (calcW > dw) calcH = dh;  // sides will be trimmed
+    else calcW = dw;  // top/bottom will be trimmed
+    int posX = (int)(((double)dw - (double)calcW) / 2.0);
+    int posY = (int)(((double)dh - (double)calcH) / 2.0);
     return {posX, posY, posX+calcW, posY+calcH};
 }
 
@@ -170,11 +178,12 @@ void render()  // os msg pump thread
         screen.fill_tex_with_mem(src, w, h);  //this resizes tex if needed, todo: better name
 
         if (glass.is_fullscreen && glass.is_ratiolocked) {
-            // todo: need to stretch to screen actually
-
-            RECT subrect = calc_pixel_letterbox_subrect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
-            screen.set_to_pixel_coords_BL(subrect.left, subrect.top, subrect.right-subrect.left, subrect.bottom-subrect.top);
-            // screen.set_to_pixel_coords_BL(0, subrect.top, subrect.right, subrect.bottom);
+            RECT rect;
+            if (is_letterbox)
+                rect = calc_pixel_letterbox_subrect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+            else
+                rect = calc_pixel_stretch_rect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+            screen.set_to_pixel_coords_BL(rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top);
         } else {
             screen.fill_vb_with_rect(-1,-1,1,1,0);  // fill screen
         }
