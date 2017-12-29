@@ -17,6 +17,10 @@
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 void SetSplash(char *msg, u32 col = 0xffffffff);
 
+const int LIMIT_QUAL = 720;
+const int MAX_QUAL = 1440;  // used in movie atm
+void set_max_quality(int qual);
+
 #include "movie/movie.cpp"
 #include "glass/glass.cpp"
 #include "urls.h"
@@ -40,6 +44,7 @@ static MovieProjector projector;
 
 
 bool is_letterbox = false;
+bool is_720p = false;
 
 bool paste_clipboard();
 bool copy_url_to_clipboard(bool withTimestamp = false);
@@ -281,6 +286,11 @@ void set_progress_bar(double percent) {
     double seconds = percent * projector.rolling_movie.reel.durationSeconds;
     projector.rolling_movie.seconds_elapsed_at_last_decode = seconds; // just set this here so it's immediate
     projector.QueueSeekToPercent(percent);
+}
+void set_max_quality(int qual)
+{
+    projector.maxQuality = qual;
+    projector.QueueReload();
 }
 
 void on_click(int x, int y) {

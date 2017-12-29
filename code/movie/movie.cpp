@@ -257,7 +257,7 @@ struct MovieProjector
     frame_buffer *back_buffer = 0;
 
 
-    int maxQuality = 1440; // get video of this res or less (to improve dl performance)
+    int maxQuality = MAX_QUAL; // get video of this res or less (to improve dl performance)
 
 
     // mostly flags, basic way to communicate between threads etc
@@ -340,12 +340,23 @@ struct MovieProjector
     }
 
 
-
     void QueueLoadFromPath(char *path)
     {
         PRINT("load new movie in queue");
         strcpy_s(message.new_path_to_load, 1024, path);
         message.new_load_path_queued = true;
+    }
+    void QueueReload()  // reloads current video, probably because quality change
+    {
+
+        char url_at_time[FFMEPG_PATH_SIZE]; // todo: stack alloc ok here?
+        char *url = rolling_movie.reel.path;
+        if (StringIsUrl(url)) {
+            int secondsElapsed = rolling_movie.seconds_elapsed_at_last_decode;
+            sprintf(url_at_time, "%s&t=%i", url, secondsElapsed);
+        } else { sprintf(url_at_time, "%s", url); }
+
+        QueueLoadFromPath(url_at_time);
     }
 
     void QueueSeekToPercent(double percent)
