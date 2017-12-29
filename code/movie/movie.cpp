@@ -293,6 +293,7 @@ struct MovieProjector
 
     void TogglePause()
     {
+        // todo: is it really necessary to check was_paused.. also, is it used anywhere else?
         state.is_paused = !state.is_paused;
         if (state.is_paused && !state.was_paused)
         {

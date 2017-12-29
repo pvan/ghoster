@@ -10,11 +10,13 @@ before done enough for this dev cycle:
 
 [ ] has msg loop gotten laggy? test with older version if needed
 
+[ ] loading new movie in wallpaper mode doesn't resize
+
 
 
 as it comes up / later:
 
-[ ] L click on sys tray while in wallpaper mode, pause video
+[x] L click on sys tray while in wallpaper mode, pause video
 
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 

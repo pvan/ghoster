@@ -16,6 +16,7 @@
 // what about making progress bar into a child window?
 bool screenPointIsOnProgressBar(HWND hwnd, int x, int y);
 void SetSplash(char *msg, u32 col = 0xffffffff);
+void hacky_extra_toggle_pause_function_for_glass();
 
 const int LIMIT_QUAL = 720;
 const int MAX_QUAL = 1440;  // used in movie atm
@@ -300,14 +301,18 @@ void set_max_quality(int qual)
     projector.QueueReload(true);
 }
 
+void play() { SetSplash("Play", 0xaaaaaaaa/*0x7cec7aff*/); projector.PlayMovie(); }
+void pause() { SetSplash("Pause", 0xaaaaaaaa/*0xfa8686ff*/); projector.PauseMovie(); }
+void toggle_pause() { if (projector.state.is_paused) play(); else pause(); }
 void on_click(int x, int y) {
     // PRINT("%i, %i\n", x, y);
     if (clientPointIsOnProgressBar(x, y)) {
         // doing this on mdown and mdrag now
     } else {
-        if (projector.state.is_paused) { SetSplash("Play", 0xaaaaaaaa/*0x7cec7aff*/); projector.PlayMovie(); }
-        else { SetSplash("Pause", 0xaaaaaaaa/*0xfa8686ff*/); projector.PauseMovie(); }
-        // projector.TogglePause();
+        toggle_pause();
+        // if (projector.state.is_paused) { play(); }
+        // else { pause(); }
+        // // projector.TogglePause();
     }
 }
 bool clickingOnProgressBar = false;
@@ -371,6 +376,7 @@ void on_video_load(int w, int h)
 }
 
 
+void hacky_extra_toggle_pause_function_for_glass() { toggle_pause(); }
 
 void resize_win_to_native_res()
 {

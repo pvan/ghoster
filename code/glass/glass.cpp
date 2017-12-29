@@ -1059,11 +1059,17 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         case ID_SYSTRAY_MSG: {
             switch (lParam) {
                 case WM_LBUTTONUP:
-                    // if (!wallpaperMode)
-                    // {
+                    if (!glass.is_wallpaper)
+                    {
                         SetForegroundWindow(hwnd);
                         glass.set_ghostmode(!glass.is_clickthrough);
-                    // }
+                    }
+                    else
+                    {
+                        // todo: make this behavior more consistent or improve it some how?
+                        // todo: make this into a callback maybe so our abstraction doesn't leak?
+                        hacky_extra_toggle_pause_function_for_glass();
+                    }
                 break;
                 case WM_RBUTTONUP:
                     POINT mousePos;
