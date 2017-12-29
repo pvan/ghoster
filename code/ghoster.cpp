@@ -92,8 +92,9 @@ void ClearSplash() { splash_msg[0] = '\0'; splash_sec_left = 0; }
 
 void queue_random_url()
 {
-    int r = getUnplayedIndex();
-    projector.QueueLoadFromPath(RANDOM_ON_LAUNCH[r]);
+    projector.QueueLoadFromPath(get_random_url());
+    // int r = getUnplayedIndex();
+    // projector.QueueLoadFromPath(RANDOM_ON_LAUNCH[r]);
 }
 
 

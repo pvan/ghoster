@@ -1,5 +1,7 @@
 
 
+const bool DEBUG_URL_MSG = true;
+
 char *TEST_FILES[] = {
     "D:/~phil/projects/ghoster/test-vids/tall.mp4",
     "D:/~phil/projects/ghoster/test-vids/testcounter30fps.webm",
@@ -15,7 +17,7 @@ char *TEST_FILES[] = {
     "https://www.youtube.com/watch?v=NAvOdjRsOoI"
 };
 
-char *RANDOM_ON_LAUNCH[] = {
+char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=RYbe-35_BaA",  // 7-11
     "https://www.youtube.com/watch?v=ucZl6vQ_8Uo",  // AV sync
     "https://www.youtube.com/watch?v=tprMEs-zfQA",  // mother of all funk chords
@@ -45,7 +47,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=XKDGZ-VWLMg",  // raining in tokyo
     "https://www.youtube.com/watch?v=_JPa3BNi6l4",  // gondry daft p backwards
     "https://www.youtube.com/watch?v=kGN0B0WqCgM",  // volare
-    // "https://www.youtube.com/watch?v=gZo1BLYcMJ4",  // mario rpg  // todo: crash at end
+    "https://www.youtube.com/watch?v=gZo1BLYcMJ4",  // mario rpg
     "https://www.youtube.com/watch?v=i53jrrMT6XQ",  // singsingsing reversed
     "https://www.youtube.com/watch?v=lJJW0dE5GF0",  // queen of the night
     "https://www.youtube.com/watch?v=EyPyjprGvW0",  // dragon roost
@@ -60,7 +62,7 @@ char *RANDOM_ON_LAUNCH[] = {
     "https://www.youtube.com/watch?v=a9zvWR14KJQ",  // synthwave mix
     "https://www.youtube.com/watch?v=6gYBXRwsDjY",  // transfiguration
     "https://www.youtube.com/watch?v=L8CxZWazgxY",  // cousins?
-    // "https://www.youtube.com/watch?v=T6JEW93Ock8",  // somewhere in cali
+    "https://www.youtube.com/watch?v=T6JEW93Ock8",  // somewhere in cali
     "https://www.youtube.com/watch?v=u1MKUJN7vUk",  // bande a part
     "https://www.youtube.com/watch?v=69gZRgMcNZo",  // down by law
     "https://www.youtube.com/watch?v=OQN6Gkv4JRU",  // fallen angels
@@ -153,13 +155,20 @@ char *RANDOM_ON_LAUNCH[] = {
     // works at time or writing but soundcloud seems to break youtube-dl frequently
     // todo: either update youtube-dl automatically or don't include this
     // "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+};
+const int VIDS_COUNT = sizeof(RANDOM_VIDEOS) / sizeof(RANDOM_VIDEOS[0]);
 
+char *XMAS_SPECIAL[] = {
     "https://www.youtube.com/watch?v=-ZggJNsAuIw",  // sleight ride in 7/8
     "https://www.youtube.com/watch?v=YvI_FNrczzQ",  // vince guaraldi
     "https://www.youtube.com/watch?v=dNUbEDPWrvw",  // sufjan i'll be home for xmas
-
 };
-static int xmasCount = 3; // how many of the trailing songs in the list are december easter eggs? // todo: generalize
+const int XMAS_COUNT = sizeof(XMAS_SPECIAL) / sizeof(XMAS_SPECIAL[0]);
+
+char *MAY_SPECIAL[] = {
+    "https://www.youtube.com/watch?v=HAtWd_7ZpF8"  // sufjan piano
+};
+const int MAY_COUNT = sizeof(MAY_SPECIAL) / sizeof(MAY_SPECIAL[0]);
 
 static int *alreadyPlayedRandos = 0;
 static int alreadyPlayedCount = 0;
@@ -183,44 +192,174 @@ bool alreadyPlayed(int index)
 //         OutputDebugString(buf);
 //     }
 // }
-int getUnplayedIndex()
-{
-    int randomCount = sizeof(RANDOM_ON_LAUNCH) / sizeof(RANDOM_ON_LAUNCH[0]);
 
-    // note alloc before we reduce so we always have enough space
+// get_unplayed_index(char **lists, int *listLengths, int listLength)
+// {
+//     for (int i = 0; i < listLength; i++)
+//     {
+
+//     }
+
+// }
+
+const int MAX_LISTS_SUPPORTED = 10;  // increase if we have more than this many lists
+struct super_list
+{
+    char **lists[MAX_LISTS_SUPPORTED];
+    int listCounts[MAX_LISTS_SUPPORTED];
+    int listCount = 0; // should be less than MAX_LISTS_SUPPORTED
+
+    void add(char **list, int length)
+    {
+        assert(listCount < MAX_LISTS_SUPPORTED);
+        lists[listCount] = list;
+        listCounts[listCount] = length;
+        listCount++;
+    }
+    char *get(int index)
+    {
+        // better would be to check which list it's in, convert to that index, then return from that list
+        int test_index = 0;
+        for (int i = 0; i < listCount; i++)
+        {
+            for (int j = 0; j < listCounts[i]; j++)
+            {
+                if (test_index == index) return lists[i][j];
+                test_index++;
+            }
+        }
+        return 0;
+    }
+    int total_count()
+    {
+        int total = 0;
+        for (int i = 0; i < listCount; i++)
+        {
+            total += listCounts[i];
+        }
+        return total;
+    }
+};
+
+super_list allvids = {0};
+char *get_random_url()
+{
     if (!alreadyPlayedRandos)
     {
-        alreadyPlayedRandos = (int*)malloc(sizeof(int) * randomCount);
+        // only build the list once per execution so lengths dont change
+
+        allvids.add(RANDOM_VIDEOS, VIDS_COUNT);
+
+        char month[32];
+        char day[32];
+        GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, 0, "M", (char*)&month, 32);
+        GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, 0, "d", (char*)&day, 32);
+
+        if (DEBUG_URL_MSG) PRINT("date: %s-%s\n", month, day);
+
+        if (strcmp(month, "12")==0)
+        {
+            if (DEBUG_URL_MSG) OutputDebugString("\nDEC\n\n");
+            allvids.add(XMAS_SPECIAL, XMAS_COUNT);
+        }
+
+        if (strcmp(month, "5")==0 && strcmp(day, "15")==0)
+        {
+            if (DEBUG_URL_MSG) OutputDebugString("\nMAY\n\n");
+            allvids = {0};
+            allvids.add(MAY_SPECIAL, MAY_COUNT);
+        }
+
+        // note alloc after building lists so we have enough space
+        alreadyPlayedRandos = (int*)malloc(sizeof(int) * allvids.total_count());
+
+
+        if (DEBUG_URL_MSG)
+        {
+            PRINT("list count: %i\n", allvids.listCount);
+            PRINT("url count: %i\n", allvids.total_count());
+            for (int i = 0; i < allvids.total_count(); i++)
+            {
+                PRINT("%i: %s\n", i, allvids.get(i));
+            }
+        }
     }
 
-
-    // todo: better way to do this
-    // drop the xmas songs if not december
-    char month[32];
-    int res = GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, 0, "M", (char*)&month, 32);
-    if (month[1] != '2') // _2 = december
-    {
-        randomCount -= xmasCount;
-    }
-
+    int randomCount = allvids.total_count();
 
     if (alreadyPlayedCount >= randomCount) // we've gone through every video once
     {
-        // keep our last video so we never get same twice in row
-        alreadyPlayedRandos[0] = alreadyPlayedRandos[alreadyPlayedCount-1];
-        alreadyPlayedCount = 1;
+        if (randomCount > 1) // only save last if more than one
+        {
+            if (DEBUG_URL_MSG) PRINT("\nWENT THRU ALL URLS, saving %i\n\n", alreadyPlayedRandos[alreadyPlayedCount-1]);
+            // keep our last video so we never get same twice in row
+            alreadyPlayedRandos[0] = alreadyPlayedRandos[alreadyPlayedCount-1];
+            alreadyPlayedCount = 1;
+        }
     }
 
-    // todo: technically unbounded
     int r = randomInt(randomCount);
-    while (alreadyPlayed(r))
+    int count = 0;
+    while (alreadyPlayed(r) && count++<10000)
     {
         r = randomInt(randomCount);
+    }
+    if (DEBUG_URL_MSG)
+    {
+        PRINT("\nusing index %i\n",r);
+        OutputDebugString("already used: ");
+        for (int i = 0; i < alreadyPlayedCount; i++)
+        {
+            char buf[123];
+            sprintf(buf, "%i ", alreadyPlayedRandos[i]);
+            OutputDebugString(buf);
+        }
+        OutputDebugString("\n");
     }
 
     alreadyPlayedRandos[alreadyPlayedCount++] = r;
 
-    // outputAlreadyPlayedList();
-
-    return r;
+    return allvids.get(r);
 }
+
+// int getUnplayedIndex()
+// {
+//     int randomCount = sizeof(RANDOM_VIDEOS) / sizeof(RANDOM_VIDEOS[0]);
+
+//     // note alloc before we reduce so we always have enough space
+//     if (!alreadyPlayedRandos)
+//     {
+//         alreadyPlayedRandos = (int*)malloc(sizeof(int) * randomCount);
+//     }
+
+
+//     // todo: better way to do this
+//     // drop the xmas songs if not december
+//     char month[32];
+//     int res = GetDateFormat(LOCALE_SYSTEM_DEFAULT, 0, 0, "M", (char*)&month, 32);
+//     if (month[1] != '2') // _2 = december
+//     {
+//         randomCount -= xmasCount;
+//     }
+
+
+//     if (alreadyPlayedCount >= randomCount) // we've gone through every video once
+//     {
+//         // keep our last video so we never get same twice in row
+//         alreadyPlayedRandos[0] = alreadyPlayedRandos[alreadyPlayedCount-1];
+//         alreadyPlayedCount = 1;
+//     }
+
+//     // todo: technically unbounded
+//     int r = randomInt(randomCount);
+//     while (alreadyPlayed(r))
+//     {
+//         r = randomInt(randomCount);
+//     }
+
+//     alreadyPlayedRandos[alreadyPlayedCount++] = r;
+
+//     // outputAlreadyPlayedList();
+
+//     return r;
+// }
