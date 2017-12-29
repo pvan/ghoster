@@ -251,6 +251,14 @@ struct glass_window
     }
 
 
+    // todo: something like this?
+    // could use for fullscreen / on load / on aspect ratio
+    // this way we resize main window and wallpaper window if needed
+    void set_size(int w, int h)
+    {
+        // hwnd_resize(target_window(), w, h);
+    }
+
 
     WINDOWPLACEMENT last_win_pos;
     void setFullscreen(bool enable)
@@ -302,6 +310,7 @@ struct glass_window
         // need to recreate wallpaper window if mode is set
         if (is_wallpaper)
         {
+            // todo: do we really need to recreate it or just resize it?
             // just do this for now
             set_wallpaper(false);
             set_wallpaper(true);

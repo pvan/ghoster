@@ -5,6 +5,7 @@ before done enough for this dev cycle:
 [ ] cleanup pass
     [ ] utils
     [ ] others
+    [ ] check todos
 
 [ ] test command line args on cmd line, not just via batch file
 
@@ -15,6 +16,11 @@ before done enough for this dev cycle:
 
 
 as it comes up / later:
+
+[ ] refactor window resizing?
+    [ ] add hwnd.h function for it
+    [ ] add glass function for it, that resizes wallpaper hwnd as needed
+    [ ] use when loading, setting fullscreen, setting aspect ratio
 
 [x] L click on sys tray while in wallpaper mode, pause video
 
