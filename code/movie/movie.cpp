@@ -152,6 +152,7 @@ struct RollingMovie
 };
 
 
+// todo: just put these straight in projector?
 struct AppState
 {
     char *exe_directory;

@@ -471,7 +471,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     timeBeginPeriod(1); // set resolution of sleep
 
 
-
     LoadIcons(hInstance);
 
 
@@ -479,47 +478,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     global_popup_window = InitPopupMenu(hInstance, menuItems, sizeof(menuItems)/sizeof(menuItem));
 
 
-    glass_create_window(hInstance, 0,0,400,400);
-    glass.render = render;
-    // should be able to comment these out to get default glass behavior
-    glass.on_click = on_click;
-    glass.on_mdown = on_mdown;
-    glass.on_mup = on_mup;
-    glass.on_oops_that_was_a_double_click = restore_vid_position;
-    glass.on_mouse_move = on_mouse_move;
-    glass.on_mouse_drag = on_mouse_drag;
-    glass.on_mouse_exit_window = on_mouse_exit_window;
-    glass.on_dragdrop_file = on_dragdrop_file;
-    glass.set_icon(RandomIcon());
-    glass.ghost_icon = global_icon_w;
-    glass_custom_open_menu_at = OpenRClickMenuAt;
-
-    origWndProc = SubclassWindow(glass.hwnd, appWndProc);
-
-
-    // could bundle dragdrop lib with glass i guess
-    dd_init(glass.hwnd, on_dragdrop);
-
-
-
-    assert(d3d_load());
-    assert(d3d_init(glass.hwnd, 400, 400));
-
-    ttf_init();
-
-    debug_string = (char*)malloc(0x8000);
-
 
     // should we have each module parse this themselves?
-
     wchar_t **argList;
     int argCount;
     argList = CommandLineToArgvW(GetCommandLineW(), &argCount);
     if (argList == 0)
     {
-        // MsgBox("CommandLineToArgvW failed.");
         MessageBox(0,"CommandLineToArgvW fail!",0,0);  // here even? or not
     }
+    // for (int i = 0; i < argCount; i++)
+    //     MessageBoxW(0,argList[i],0,0);
+
 
     // pass exe directory to ghoster so it knows where to find youtube-dl
     // can it find its directory itself?
@@ -529,12 +499,129 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     projector.Init(exe_directory);
     projector.on_load_callback = on_video_load;
-
-    projector.StartBackgroundChurn();
-    queue_random_url();
+    queue_random_url(); // this will get overridden below if path is passed in as arg
 
 
+    // defaults
+    int startX = 0;
+    int startY = 0;
+    int startW = 600;
+    int startH = 400;
+    int nest = 0; // todo: enum 0=none, 1=tl, 2=tr, 3=bl, 4=br
+    glass.set_icon(RandomIcon()); // overridden below if arg passed in
+    // parse args
+    for (int i = 1; i < argCount; i++)  // skip first one which is name of exe
+    {
+        char nextArg[256]; // todo what max to use
+        wcstombs(nextArg, argList[i], 256);
+        if (nextArg[0] != '-')
+        {
+            projector.QueueLoadFromPath(nextArg);
+        }
+
+        if (strcmp(nextArg, "-top") == 0) glass.is_topmost = true;
+        if (strcmp(nextArg, "-notop") == 0) glass.is_topmost = false;
+
+        if (strcmp(nextArg, "-aspect") == 0) glass.is_ratiolocked = true;
+        if (strcmp(nextArg, "-noaspect") == 0) glass.is_ratiolocked = false;
+
+        if (strcmp(nextArg, "-repeat") == 0) { projector.state.repeat = true; }
+        if (strcmp(nextArg, "-norepeat") == 0) { projector.state.repeat = false; }
+
+        if (strcmp(nextArg, "-ghost") == 0) glass.is_clickthrough = true;
+        if (strcmp(nextArg, "-noghost") == 0) glass.is_clickthrough = false;
+
+        if (strcmp(nextArg, "-snap") == 0) glass.is_snappy = true;
+        if (strcmp(nextArg, "-nosnap") == 0) glass.is_snappy = false;
+
+        // if (strcmp(nextArg, "-wall") == 0) wallpaperMode = true;
+        // if (strcmp(nextArg, "-nowall") == 0) wallpaperMode = false;
+
+        if (strcmp(nextArg, "-fullscreen") == 0) glass.is_fullscreen = true;
+        if (strcmp(nextArg, "-nofullscreen") == 0) glass.is_fullscreen = false;
+
+        if (strcmp(nextArg, "-blinky") == 0) glass.set_icon(GetIconByInt(randomInt(4) + 4*2));
+        if (strcmp(nextArg, "-pinky") == 0)  glass.set_icon(GetIconByInt(randomInt(4) + 4*1));
+        if (strcmp(nextArg, "-inky") == 0)   glass.set_icon(GetIconByInt(randomInt(4) + 4*0));
+        if (strcmp(nextArg, "-clyde") == 0)  glass.set_icon(GetIconByInt(randomInt(4) + 4*3));
+
+        if (glass_string_starts_with(nextArg, "-opac"))
+        {
+            char *opacNum = nextArg + 5; // 5 = length of "-opac"
+            glass.opacity = (double)atoi(opacNum) / 100.0;
+        }
+
+        if (glass_string_starts_with(nextArg, "-vol"))
+        {
+            char *volNum = nextArg + 4; // 4 = length of "-vol"
+            projector.state.volume = (double)atoi(volNum) / 100.0;
+        }
+
+        if (glass_string_starts_with(nextArg, "-x"))
+        {
+            char *xNum = nextArg + 2; // 2 = length of "-x"
+            startX = (double)atoi(xNum);
+        }
+        if (glass_string_starts_with(nextArg, "-y"))
+        {
+            char *yNum = nextArg + 2; // 2 = length of "-y"
+            startY = (double)atoi(yNum);
+        }
+        if (glass_string_starts_with(nextArg, "-w"))
+        {
+            char *wNum = nextArg + 2; // 2 = length of "-w"
+            startW = (double)atoi(wNum);
+        }
+        if (glass_string_starts_with(nextArg, "-h"))
+        {
+            char *hNum = nextArg + 2; // 2 = length of "-h"
+            startH = (double)atoi(hNum);
+        }
+
+        if (strcmp(nextArg, "-tl")==0) nest = 1;
+        if (strcmp(nextArg, "-tr")==0) nest = 2;
+        if (strcmp(nextArg, "-bl")==0) nest = 3;
+        if (strcmp(nextArg, "-br")==0) nest = 4;
+        if (strcmp(nextArg, "-Bl")==0) nest = 5;  // todo: better name for above/below taskbar
+        if (strcmp(nextArg, "-Br")==0) nest = 6;
+    }
+
+    glass_create_window(hInstance, startX, startY, startW, startH, nest);
+    // glass_create_window(hInstance, 0,0,400,400);
+    // glass_create_window_from_args_string(hInstance, argList, argCount);
+    glass.render = render;
+    // should be able to comment these out to get default glass behavior (not any more since parsing args ourselves)
+    glass.on_click = on_click;
+    glass.on_mdown = on_mdown;
+    glass.on_mup = on_mup;
+    glass.on_oops_that_was_a_double_click = restore_vid_position;
+    glass.on_mouse_move = on_mouse_move;
+    glass.on_mouse_drag = on_mouse_drag;
+    glass.on_mouse_exit_window = on_mouse_exit_window;
+    glass.on_dragdrop_file = on_dragdrop_file;
+    glass.ghost_icon = global_icon_w;
+    glass_custom_open_menu_at = OpenRClickMenuAt;
+
+    origWndProc = SubclassWindow(glass.hwnd, appWndProc);
+
+
+
+
+    // init other libs and things...
+    dd_init(glass.hwnd, on_dragdrop); // could bundle dragdrop lib with glass i guess
+    assert(d3d_load());
+    assert(d3d_init(glass.hwnd, 400, 400));
+    ttf_init();
+
+
+    // allocate app stuff...
+    debug_string = (char*)malloc(0x8000);
     create_quads();
+
+
+    // start decoder loop...
+    projector.StartBackgroundChurn();
+
 
 
     // window msg pump...

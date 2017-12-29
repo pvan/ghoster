@@ -7,7 +7,9 @@ before done enough for this dev cycle:
     [ ] others
     [ ] check todos
 
-[ ] test command line args on cmd line, not just via batch file
+[x] test command line args on cmd line, not just via batch file
+[ ] test in batch file
+[ ] movie not loading when launched from cmd (from folder works fine)
 
 [ ] has msg loop gotten laggy? test with older version if needed
 

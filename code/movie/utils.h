@@ -8,7 +8,6 @@
 #define PRINT(...) { char buf[256]; sprintf(buf, __VA_ARGS__); OutputDebugString(buf); }
 
 
-
 int randomInt(int upToAndNotIncluding)
 {
     // todo: oddly this only-seed-once code is throwing something off
