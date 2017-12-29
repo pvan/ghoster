@@ -257,6 +257,9 @@ struct MovieProjector
     frame_buffer *back_buffer = 0;
 
 
+    int maxQuality = 1440; // get video of this res or less (to improve dl performance)
+
+
     // mostly flags, basic way to communicate between threads etc
     // todo: make a proper msg queue system?? maybe not
     AppMessages message;
@@ -835,21 +838,24 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
 
 
 
-bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTitle, char *exe_dir)
+bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTitle, char *exe_dir, int maxQual)
 {
     char *tempString = (char*)malloc(1024*30); // big enough for messy urls
 
     PRINT("Calling youtube-dl...\n");
 
-    // -g gets urls (seems like two: video then audio)
-    // todo: look into format options, eg -f worst (test on cmd)
+    // --get-title returns title of vid (first to have it be first line of output)
+    // -g gets urls instead of dling (default will return two urls)
+    // -f gets format specified, if + then multiple urls will be returned (default is bestvideo+bestaudio/best)
+    // ("/" is a fallback.. so if no "bestaudio", "best" will be the second url)
 
-    // todo: check could it be lagging on large files because we're dling the video in the audio too?
-    // now only get videos with this resolution or less
-    if (!GetStringFromYoutubeDL(path, "--get-title -g -f \"bestvideo[height <=? 1440]+bestaudio/best\"", tempString, exe_dir))
+    // todo: query formats and pick one ourselves? seem uncessary
+    // todo: check could we lag on large files because we're dling the video in the audio url too?
 
-    // // note default is bestvideo+bestaudio/best
-    // if (!GetStringFromYoutubeDL(path, "--get-title -g", tempString, exe_dir))
+    // now only get videos with maxQual resolution or less (default 1440 at time of writting, 720 for never stutter)
+    char args[256];
+    sprintf(args, "--get-title -g -f \"bestvideo[height<=?%i]+bestaudio/best\"", maxQual);
+    if (!GetStringFromYoutubeDL(path, args, tempString, exe_dir))
     {
         return false;
     }
@@ -906,7 +912,7 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
 
 // fill MovieReel with data from movie at path
 // calls youtube-dl if needed so could take a sec
-bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char *exe_dir)
+bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char *exe_dir, int maxQual)
 {
     char loadingMsg[1234];
     sprintf(loadingMsg, "\nLoading %s\n", path);
@@ -920,7 +926,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
     {
         char *video_url = (char*)malloc(1024*10);  // big enough for some big url from youtube-dl
         char *audio_url = (char*)malloc(1024*10);  // todo: mem leak if we kill this thread before free()
-        if(ParseOutputFromYoutubeDL(path, video_url, audio_url, outTitle, exe_dir))
+        if(ParseOutputFromYoutubeDL(path, video_url, audio_url, outTitle, exe_dir, maxQual))
         {
             // todo: sometimes fails in here somewhere when loading urls?
             // maybe bad internet?
@@ -1016,7 +1022,7 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
 
 
     // if (!SlowCreateMovieSourceFromAnyPath(path, projector->message.new_write_reel, exe_dir))
-    if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir))
+    if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir, projector->maxQuality))
     {
         // now we get more specific error msg in function call,
         // for now don't override them with a new (since our queue is only 1 deep)
