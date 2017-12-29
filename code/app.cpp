@@ -257,7 +257,7 @@ void render()  // os msg pump thread
 
 
     // todo: seems we have still not completely eliminated flicker on resize.. hrmm
-    d3d_clear(255, 0, 255);
+    d3d_clear(0, 0, 0);
     screen.render(); // todo: strange bar on right
     if (show_bar) progress_bar_gray.render(0.4);
     if (show_bar) progress_bar_red.render(0.6);

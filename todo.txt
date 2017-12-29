@@ -12,7 +12,7 @@ before done enough for this dev cycle:
 
 [x] buffer animation
 
-[ ] remove debug colors
+[x] remove debug colors
 
 [ ] test command line args on cmd line, not just via batch file
 
@@ -29,6 +29,7 @@ as it comes up / later:
 [ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
 
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
+[ ] also menu gets closed if it's open
 
 [ ] test the new timeout on loading urls if connection is flaky
 
