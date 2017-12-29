@@ -2,21 +2,11 @@
 
 before done enough for this dev cycle:
 
-[x] add option to overflow screen edges instead of just letterbox
-
-[x] drag drop highlighted text?
-
 [ ] cleanup pass
     [ ] utils
     [ ] others
 
-[x] buffer animation
-
-[x] remove debug colors
-
 [ ] test command line args on cmd line, not just via batch file
-
-[x] set quality in case still laggy (eg many playing) [only option to limit to 720 atm]
 
 [ ] has msg loop gotten laggy? test with older version if needed
 
