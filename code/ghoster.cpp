@@ -531,6 +531,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
             projector.QueueLoadFromPath(nextArg);
         }
 
+        if (strcmp(nextArg, "-qualmax") == 0) is_720p = false; set_max_quality(is_720p? LIMIT_QUAL : MAX_QUAL);
+        if (strcmp(nextArg, "-qual720") == 0) is_720p = true; set_max_quality(is_720p? LIMIT_QUAL : MAX_QUAL);
+
         if (strcmp(nextArg, "-top") == 0) glass.is_topmost = true;
         if (strcmp(nextArg, "-notop") == 0) glass.is_topmost = false;
 

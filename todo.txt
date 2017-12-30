@@ -11,7 +11,7 @@ before done enough for this dev cycle:
 [x] test in batch file
 [x] movie not loading when launched from cmd (from folder works fine)
 
-[ ] has msg loop gotten laggy? test with older version if needed
+[x] has msg loop gotten laggy? test with older version if needed [seems fine]
 
 [x] loading new movie in wallpaper mode doesn't resize [could be improved still]
 
@@ -20,6 +20,8 @@ before done enough for this dev cycle:
 [ ] can ffmpeg auto crop black bars?
 
 [x] bug loading new vid in fullscreen ghostmode
+
+[x] add cmd line arg for 720p mode
 
 
 as it comes up / later:
