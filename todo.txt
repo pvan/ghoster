@@ -19,7 +19,7 @@ before done enough for this dev cycle:
 
 [ ] can ffmpeg auto crop black bars?
 
-[ ] bug loading new vid in fullscreen ghostmode
+[x] bug loading new vid in fullscreen ghostmode
 
 
 as it comes up / later:

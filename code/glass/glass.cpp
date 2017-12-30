@@ -34,7 +34,7 @@ const bool DEBUG_MCLICK_MSGS = false;
 
 
 // disallow opacity greater than this when in ghost mode
-const double GHOST_MODE_MAX_OPACITY = 0.95;
+const double GHOST_MODE_MAX_OPACITY = 0.8; //0.95
 
 // feels like i want this less often
 const bool GHOST_MODE_SETS_TOPMOST = false;
@@ -320,7 +320,8 @@ struct glass_window
 
     void set_title(char *title)  // sets hwnd title and sys tray hover text
     {
-        icon_update_systray(hwnd, icon, title);
+        HICON currentIcon = is_clickthrough ? ghost_icon : icon;
+        icon_update_systray(hwnd, currentIcon, title);
         SetWindowText(hwnd, title);
     }
 
