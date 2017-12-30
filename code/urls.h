@@ -73,10 +73,10 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=E-6xk4W6N20",  // disney to madeon
     "https://www.youtube.com/watch?v=nUWur-T598s",  // brick chase
     "https://www.youtube.com/watch?v=2jQ-ehu3ZS8",  // strictly ballroom
-    "https://www.youtube.com/watch?v=UUO5WPaIr-s",  // strictly ballroom paso doble
+    // "https://www.youtube.com/watch?v=UUO5WPaIr-s",  // strictly ballroom paso doble  // cut
     "https://www.youtube.com/watch?v=hOZKbOwNGhQ",  // ratcatcher window scene
     "https://www.youtube.com/watch?v=GTFaOxLlJCA",  // blue cheer
-    "https://www.youtube.com/watch?v=7Z0lNch5qkQ",  // morvern callar scene
+    "https://www.youtube.com/watch?v=7Z0lNch5qkQ",  // morvern callar scene  cut?
     "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
     "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car
     "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
@@ -91,15 +91,15 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=6KES5UH6fHE",  // peking opera blues
     "https://www.youtube.com/watch?v=ygI-2F8ApUM",  // brodyquest
     "https://www.youtube.com/watch?v=ekdLYH04LHQ",  // electric feel cover
-    "https://www.youtube.com/watch?v=ckJVotYWyRQ",  // portico quartet live
+    "https://www.youtube.com/watch?v=ckJVotYWyRQ",  // portico quartet live  // cut? sax saves it?
     "https://www.youtube.com/watch?v=GRPw0xGwYNQ",  // smore jazz, tv
-    "https://www.youtube.com/watch?v=Pv-Do30-P8A",  // graffiti timelapse
+    "https://www.youtube.com/watch?v=Pv-Do30-P8A",  // graffiti timelapse  // cut?
     "https://www.youtube.com/watch?v=hE7l6Adoiiw",  // coming from biomed?
     "https://www.youtube.com/watch?v=Sk_ga0Y_lnM",  // russian dance
     "https://www.youtube.com/watch?v=voBp8BLU9Gk",  // magenta
     "https://www.youtube.com/watch?v=HFBjfzsOtx0",  // spaceship ambience
     "https://www.youtube.com/watch?v=9pVWfzsgLoQ",  // train nordland line
-    "https://www.youtube.com/watch?v=u9a1EQS_9Wo",  // ambient space, alien  // todo: cut?
+    // "https://www.youtube.com/watch?v=u9a1EQS_9Wo",  // ambient space, alien  // todo: cut?
     "https://www.youtube.com/watch?v=m4oZZhpMXP4",  // cathedral mix
     "https://www.youtube.com/watch?v=6ddO3jPUFpg",  // winter ambient
     "https://www.youtube.com/watch?v=g9fZ9YZsQ9A",  // uakti live
@@ -115,9 +115,9 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=KH4NrUxcsYs",  // how to crush can
     "https://www.youtube.com/watch?v=SqFu5O-oPmU",  // video games and the human condition
     "https://www.youtube.com/watch?v=7uUl_aTbOzQ",  // jon blow on deep work // todo: full
-    "https://www.youtube.com/watch?v=YwSZvHqf9qM",  // tangled up in blue live
+    "https://www.youtube.com/watch?v=YwSZvHqf9qM",  // tangled up in blue live  // cut?
     "https://www.youtube.com/watch?v=8pTEmbeENF4",  // bret victor
-    "https://www.youtube.com/watch?v=JQRRnAhmB58",  // dancing in the rain
+    // "https://www.youtube.com/watch?v=JQRRnAhmB58",  // dancing in the rain  // cut?
     "https://www.youtube.com/watch?v=90TzDXjWTdo",  // daft charleston
     "https://www.youtube.com/watch?v=SAMEIH2_f1k",  // squash & stretch
     "https://www.youtube.com/watch?v=hsNKSbTNd5I",  // dakhabrakha tiny desk
@@ -131,7 +131,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=00jWiadrkTo",  // rocket league
     "https://www.youtube.com/watch?v=9ZX_XCYokQo",  // glenn gould
     "https://www.youtube.com/watch?v=04abkYHAbO4",  // art style test
-    "https://www.youtube.com/watch?v=UhHYQTK5RWo",  // libertango live
+    "https://www.youtube.com/watch?v=UhHYQTK5RWo",  // libertango live  // cut?
     "https://www.youtube.com/watch?v=AXTwB-NftjA",  // kid at wedding
     "https://www.youtube.com/watch?v=4KzFe50RQkQ",  // wind trees ambient
     "https://www.youtube.com/watch?v=InbaU387Wl8",  // pepe silvia w/ drums
@@ -139,6 +139,41 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=HJD-GeSJ-oY",  // mathnet trial
     "https://www.youtube.com/watch?v=WJiCUdLBxuI",  // van session 17
     "https://www.youtube.com/watch?v=63gdelpCp4k",  // love like a sunset
+    "https://www.youtube.com/watch?v=mMuTDdWXbNo?t=64",  // edelweiss cp's voice
+    "https://www.youtube.com/watch?v=Yrt-ZKa4u0k",  // bottle rocket short
+    "https://www.youtube.com/watch?v=Pzl4cM1jKNU",  // cs poker simul
+    "https://www.youtube.com/watch?v=yYAw79386WI",  // differential steering
+    "https://www.youtube.com/watch?v=yJDv-zdhzMY",  // mother of all demos
+    "https://www.youtube.com/watch?v=Ac7G7xOG2Ag",  // retro encabulator
+    "https://www.youtube.com/watch?v=YdHTlUGN1zw",  // disney's multiplane camera
+    // "https://www.youtube.com/watch?v=qH2DK_VgATI",  // fun squad   // cut?
+    // "https://www.youtube.com/watch?v=zKMw2dIjyqc",  // sockbaby
+    "https://www.youtube.com/watch?v=nBsxbjTIJxs",  // day for night
+    "https://www.youtube.com/watch?v=JOhDo2ZoOig",  // wes anderson amex
+    "https://www.youtube.com/watch?v=TgJ-yOhpYIM",  // norman mclaren boogie
+    "https://www.youtube.com/watch?v=86Wp96uG-N8",  // norman mclaren phantasy in col
+    "https://www.youtube.com/watch?v=12Coi4_BVL4",  // hot wheels pov
+    "https://www.youtube.com/watch?v=3jzWk00x51A",  // whiplash
+    "https://www.youtube.com/watch?v=w5qf9O6c20o",  // theremin
+    "https://www.youtube.com/watch?v=b64lKqbbaUM",  // level editors
+    "https://www.youtube.com/watch?v=Vmb1tqYqyII",  // office
+    "https://www.youtube.com/watch?v=YSrpSAKDajQ",  // ellery december days
+    "https://www.youtube.com/watch?v=XTg3PJWh5nU",  // i find that i miss it
+    "https://www.youtube.com/watch?v=7_aJHJdCHAo",  // call your girlfriend
+    "https://www.youtube.com/watch?v=mERAVdY0hF4?t=26",  // real-time drive to fatburger
+    "https://www.youtube.com/watch?v=TupjTEEU4Ms",  // marble race 2017 40m
+    "https://www.youtube.com/watch?v=0HHs7hnkqGk",  // fiasconauts pen show
+    "https://www.youtube.com/watch?v=UkCAvIDYZUo&t=697",  // scrumbers final
+    "https://www.youtube.com/watch?v=2FjZkJJx3bc",  // shuffling
+    "https://www.youtube.com/watch?v=mHjRZ688t3c",  // perfidia
+    "https://www.youtube.com/watch?v=-_Q5kO4YXFs",  // baby hearing
+    "https://www.youtube.com/watch?v=O8BqOI3BR1g",  // boom boom boom boom
+    "https://www.youtube.com/watch?v=1_9IMZcbKHQ",  // sax battle
+    "https://www.youtube.com/watch?v=R-tMbLYGbvY",  // cowboy bebop opening
+    "https://www.youtube.com/watch?v=jMe6Y8GDVEI",  // too many zooz
+    "https://www.youtube.com/watch?v=otktRxKo2XY",  // spalding gray
+    "https://www.youtube.com/watch?v=bBamIi0tIRg?t=70",  // dark side of the rainbow
+    "https://www.youtube.com/watch?v=pF_Fi7x93PY",  // jason & the argonauts skeletons
 
     // non-youtube tests...
 
@@ -153,8 +188,9 @@ char *RANDOM_VIDEOS[] = {
     // "https://player.vimeo.com/video/106771962", // soderbergh raiders
 
     // works at time or writing but soundcloud seems to break youtube-dl frequently
-    // todo: either update youtube-dl automatically or don't include this
-    // "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+    // todo: either update youtube-dl automatically or don't include these
+    "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+    "https://soundcloud.com/brainpicker/a-rare-interview-with-stanley",  // jeremy bernstein w/ kubrick
 };
 const int VIDS_COUNT = sizeof(RANDOM_VIDEOS) / sizeof(RANDOM_VIDEOS[0]);
 

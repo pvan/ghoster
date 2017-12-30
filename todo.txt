@@ -15,10 +15,16 @@ before done enough for this dev cycle:
 
 [x] loading new movie in wallpaper mode doesn't resize [could be improved still]
 
-[ ] update url list
+[x] update url list
+
+[ ] can ffmpeg auto crop black bars?
+
+[ ] bug loading new vid in fullscreen ghostmode
 
 
 as it comes up / later:
+
+[ ] improve error messages (let longer ones through, shrink to fit)
 
 [ ] refactor window resizing?
     [ ] add hwnd.h function for it
@@ -51,7 +57,9 @@ bugs inherent to rendering on the sys msg loop thread:
 
 --improve sites supported--
 [ ] add vimeo support
-[ ] auto-update youtube-dl
+[ ] fix those couple yt vids that don't work
+    check out https://github.com/rg3/youtube-dl#i-extracted-a-video-url-with--g-but-it-does-not-play-on-another-machine--in-my-web-browser
+[ ] auto-update youtube-dl?
 
 
 --playlist support--
@@ -244,7 +252,7 @@ pixel shaders, eg splash on click
 -switch on
 -degauss
 
-random a/v mashup
+random a/v mashup [wings+orbital]
 
 random video [maybe 'i'm feeling lucky' style]
 
