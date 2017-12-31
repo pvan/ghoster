@@ -71,13 +71,11 @@ d3d_textured_quad progress_bar_red;
 
 void create_quads()
 {
-    // create d3d quads
     u32 gray = 0xaaaaaaaa;
     u32 red = 0xffff0000;
     progress_bar_gray.create((u8*)&gray,1,1, -1,-1,1,1,0);
     progress_bar_red.create((u8*)&red,1,1, -1,-1,1,1,0);
 
-    // create screen quads
     u32 green = 0xff00ff00;
     screen.create((u8*)&green,1,1, -1,-1,1,1,0);
 }
@@ -348,6 +346,8 @@ void on_dragdrop(char *path) { if (glass.on_dragdrop_file) glass.on_dragdrop_fil
 bool first_video = true;
 void on_video_load(int w, int h)
 {
+    ClearSplash();
+
     glass.set_title(projector.rolling_movie.reel.title);
 
     glass.aspect_ratio = (double)w / (double)h;
