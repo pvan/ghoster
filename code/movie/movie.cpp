@@ -21,6 +21,8 @@ const int MAX_QUAL = 1440;   // when we're not set in 720p mode, also the defaul
 // const int YTDL_TIMEOUT_MS = 5000;  // this amount actually triggered when we has iffy net
 const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to get urls (probably shoddy net)
 
+const int AUTOCROP_DEFAULT_THRESHOLD = 8; // of 255, the ones i've seen are pretty black, ffmpeg def is 24?
+
 
 // todo: support multiple threads launched?
 // and use results from the most recent working one?
@@ -28,6 +30,121 @@ const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to 
 static HANDLE movie_asyn_load_thread = 0;
 static bool movie_ytdl_running = false;
 static HANDLE movie_ytdl_process = 0;
+
+//asdf  https://www.youtube.com/watch?v=TmoBMjbY5Nw
+     // https://www.youtube.com/watch?v=7Z0lNch5qkQ
+     // https://www.youtube.com/watch?v=63gdelpCp4k
+void draw_rect(u32 *dst, int w, int h, RECT subRect)
+{
+    int rx = subRect.left;
+    int ry = subRect.top;
+    int rr = subRect.right;
+    int rb = subRect.bottom;
+    for (int x = 0; x < w; x++)
+    {
+        for (int y = 0; y < h; y++)
+        {
+            if ((x==rx || x==rr-1) && y>ry && y<rb)
+                dst[y*w + x] = 0xff00ff00;
+            if ((y==ry || y==rb-1) && x>rx && x<rr)
+                dst[y*w + x] = 0xff00ff00;
+        }
+    }
+}
+
+void copy_subrect(u32 *dst, RECT subRect, u32 *src, int sw, int sh)
+{
+    int rx = subRect.left;
+    int ry = subRect.top;
+    int rw = subRect.right-subRect.left;
+    int rh = subRect.bottom-subRect.top;
+    for (int x = 0; x < rw; x++)
+    {
+        for (int y = 0; y < rh; y++)
+        {
+            dst[y*rw + x] = src[(y+ry)*sw + (x+rx)];
+        }
+    }
+}
+
+bool row_all_black(u8 *buf, int w, int h, int thres, int row)
+{
+    for (int x = 0; x < w; x++)
+    {
+        if (buf[(row*w + x)*4 + 0] > thres) return false;
+        if (buf[(row*w + x)*4 + 1] > thres) return false;
+        if (buf[(row*w + x)*4 + 2] > thres) return false;
+        // if (buf[(row*w + x)*4 + 3] > thres) return false;  // don't check alpha
+    }
+    return true;
+}
+bool col_all_black(u8 *buf, int w, int h, int thres, int col)
+{
+    for (int y = 0; y < h; y++)
+    {
+        if (buf[(y*w + col)*4 + 0] > thres) return false;
+        if (buf[(y*w + col)*4 + 1] > thres) return false;
+        if (buf[(y*w + col)*4 + 2] > thres) return false;
+        // if (buf[(y*w + col)*4 + 3] > thres) return false;  // don't check alpha
+    }
+    return true;
+}
+
+RECT calc_autocroped_rect(u32 *buf, int bw, int bh, int thres=AUTOCROP_DEFAULT_THRESHOLD)
+{
+    int startRow = 0;
+    for (int r = 0; r < bh; r++)
+    {
+        if (!row_all_black((u8*)buf,bw,bh, thres,r))
+        {
+            startRow = r;
+            break;
+        }
+    }
+    int endRow = 0;
+    for (int r = bh-1; r >= 0; r--)
+    {
+        if (!row_all_black((u8*)buf,bw,bh, thres,r))
+        {
+            endRow = r;
+            break;
+        }
+    }
+
+    int startCol = 0;
+    for (int c = 0; c < bw; c++)
+    {
+        if (!col_all_black((u8*)buf,bw,bh, thres,c))
+        {
+            startRow = c;
+            break;
+        }
+    }
+    int endCol = 0;
+    for (int c = bw-1; c >= 0; c--)
+    {
+        if (!col_all_black((u8*)buf,bw,bh, thres,c))
+        {
+            endCol = c;
+            break;
+        }
+    }
+
+    int frstRow = 0; for (int r = 0;    r < bh; r++) { if (!row_all_black((u8*)buf,bw,bh, thres,r)) { frstRow = r; break; } }
+    int lastRow = 0; for (int r = bh-1; r >= 0; r--) { if (!row_all_black((u8*)buf,bw,bh, thres,r)) { lastRow = r; break; } }
+    int frstCol = 0; for (int c = 0;    c < bw; c++) { if (!col_all_black((u8*)buf,bw,bh, thres,c)) { frstCol = c; break; } }
+    int lastCol = 0; for (int c = bw-1; c >= 0; c--) { if (!col_all_black((u8*)buf,bw,bh, thres,c)) { lastCol = c; break; } }
+
+    // assert(frstRow == startRow);  // sanity check
+    // assert(lastRow == endRow);
+    // assert(frstCol == startCol);
+    // assert(lastCol == endCol);
+
+    if (lastRow-frstRow > 0 && lastCol-frstCol > 0)
+        return {frstCol, frstRow, lastCol, lastRow};
+    else
+        return {0,0,bw,bh};
+}
 
 
 struct frame_buffer
@@ -272,6 +389,7 @@ struct MovieProjector
 
 
     int maxQuality = MAX_QUAL; // get video of this res or less (to improve dl performance)
+    int blackThres = AUTOCROP_DEFAULT_THRESHOLD;
 
 
     // mostly flags, basic way to communicate between threads etc
@@ -655,13 +773,38 @@ struct MovieProjector
         u8 *src = rolling_movie.reel.vid_buffer;
         int bw = rolling_movie.reel.vid_width;
         int bh = rolling_movie.reel.vid_height;
+
+        RECT crop = calc_autocroped_rect((u32*)src, bw, bh, blackThres);
+        int dw = crop.right - crop.left;
+        int dh = crop.bottom - crop.top;
+
+        // back_buffer->resize_if_needed(dw, dh);
+        // assert(back_buffer->size() == dw*dh*sizeof(u32));
+        // copy_subrect((u32*)back_buffer->mem,crop, (u32*)src,bw,bh);
         back_buffer->resize_if_needed(bw, bh);
-        assert(back_buffer->size() == bw*bh*sizeof(u32));
-        memcpy(back_buffer->mem, src, back_buffer->size());
+        copy_subrect((u32*)back_buffer->mem,{0,0,bw,bh}, (u32*)src,bw,bh);
+//asdf  https://www.youtube.com/watch?v=TmoBMjbY5Nw
+     // https://www.youtube.com/watch?v=7Z0lNch5qkQ
+
+        PRINT("RECT: %i, %i, %i, %i\n", crop.left, crop.top, dw, dh);
+
+        draw_rect((u32*)back_buffer->mem,bw,bh, crop);
+
 
         frame_buffer *old_front = front_buffer;
         front_buffer = back_buffer;
         back_buffer = old_front;
+
+        // u8 *src = rolling_movie.reel.vid_buffer;
+        // int bw = rolling_movie.reel.vid_width;
+        // int bh = rolling_movie.reel.vid_height;
+        // back_buffer->resize_if_needed(bw, bh);
+        // assert(back_buffer->size() == bw*bh*sizeof(u32));
+        // memcpy(back_buffer->mem, src, back_buffer->size());
+
+        // frame_buffer *old_front = front_buffer;
+        // front_buffer = back_buffer;
+        // back_buffer = old_front;
 
 
         // REPEAT

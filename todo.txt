@@ -23,6 +23,8 @@ before done enough for this dev cycle:
 
 [x] add cmd line arg for 720p mode
 
+[ ] resize to native res before vid load = crash
+
 
 as it comes up / later:
 
