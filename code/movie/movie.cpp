@@ -173,6 +173,8 @@ struct frame_buffer
 };
 
 
+
+
 // basically a movie source with a time component
 struct RollingMovie
 {
@@ -278,42 +280,41 @@ struct RollingMovie
     //     hard_seek_to_timestamp(startAt);
     // }
 
-    // todo: improve the speed and accuracy of this
-    // different sampling method? (a few frames at multiple locations?)
-    // faster seek somehow? auto-correct while movie runs? let user manually adjust?
-    RECT slow_sample_for_autocrop(int thres)
-    {
-        double current_percent = percent_elapsed();
-        PRINT("\n\ncurrent_percent: %f\n\n", current_percent);
-
-        u8 *src = reel.vid_buffer;
-        int bw = reel.vid_width;
-        int bh = reel.vid_height;
-
-        // todo: should check more than one spot and check consistency / proportion of screen / etc
-        hard_seek_to_timestamp(0.5 * reel.durationSeconds);
-
-        RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
-        PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
-
-        hard_seek_to_percent(current_percent);
-
-        return crop;
-    }
-
-    RECT sample_current_frame_for_autocrop(int thres)
-    {
-        u8 *src = reel.vid_buffer;
-        int bw = reel.vid_width;
-        int bh = reel.vid_height;
-        RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
-        PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
-        return crop;
-    }
-
 };
 
 
+// todo: improve the speed and accuracy of this
+// different sampling method? (a few frames at multiple locations?)
+// faster seek somehow? auto-correct while movie runs? let user manually adjust?
+RECT slow_sample_for_autocrop(RollingMovie *movie, int thres)
+{
+    double current_percent = movie->percent_elapsed();
+    PRINT("\n\ncurrent_percent: %f\n\n", current_percent);
+
+    u8 *src = movie->reel.vid_buffer;
+    int bw = movie->reel.vid_width;
+    int bh = movie->reel.vid_height;
+
+    // todo: should check more than one spot and check consistency / proportion of screen / etc
+    movie->hard_seek_to_timestamp(0.5 * movie->reel.durationSeconds);
+
+    RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
+    PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+
+    movie->hard_seek_to_percent(current_percent);
+
+    return crop;
+}
+
+RECT sample_current_frame_for_autocrop(RollingMovie *movie, int thres)
+{
+    u8 *src = movie->reel.vid_buffer;
+    int bw = movie->reel.vid_width;
+    int bh = movie->reel.vid_height;
+    RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
+    PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+    return crop;
+}
 
 
 // todo: just put these straight in projector?
@@ -580,7 +581,7 @@ struct MovieProjector
                 rolling_movie.reel.TransferFromReel(&message.new_source);
 
                 // just calc for every movie for now
-                autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
+                autocrop_rect = slow_sample_for_autocrop(&rolling_movie, autocrop_thres);
 
                 rolling_movie.hard_seek_to_timestamp(message.startAtSeconds);  // get first frame even if startAt is 0 because we could be paused
 
@@ -623,7 +624,7 @@ struct MovieProjector
             // so we can specifically use that frame to calc autocrop
 
             // cache current position since slow_sample moves our seek pos (todo: not great)
-            autocrop_rect = rolling_movie.sample_current_frame_for_autocrop(autocrop_thres);
+            autocrop_rect = sample_current_frame_for_autocrop(&rolling_movie, autocrop_thres);
         }
         autocrop_was_enabled = autocrop_enabled;
 
