@@ -280,8 +280,10 @@ struct RollingMovie
     // todo: improve the speed and accuracy of this
     // different sampling method? (a few frames at multiple locations?)
     // faster seek somehow? auto-correct while movie runs? let user manually adjust?
-    RECT slow_sample_for_autocrop(int thres)
+    RECT slow_sample_for_autocrop(int thres, bool reset_seek)
     {
+        double current_percent = percent_elapsed();
+
         u8 *src = reel.vid_buffer;
         int bw = reel.vid_width;
         int bh = reel.vid_height;
@@ -300,6 +302,10 @@ struct RollingMovie
 
         RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
         PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+
+        if (reset_seek)
+            hard_seek_to_percent(current_percent);
+
         return crop;
     }
 
@@ -571,7 +577,7 @@ struct MovieProjector
             // rolling_movie.load_new_source(&message.new_source, message.startAtSeconds);
                 rolling_movie.reel.TransferFromReel(&message.new_source);
                 // just calc for every movie for now
-                autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
+                autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres, false);
                 // autocrop_rect_init = false;
                 rolling_movie.hard_seek_to_timestamp(message.startAtSeconds);  // get first frame even if startAt is 0 because we could be paused
 
@@ -613,9 +619,7 @@ struct MovieProjector
             // so we can specifically use that frame to calc autocrop
 
             // cache current position since slow_sample moves our seek pos (todo: not great)
-            double percent = rolling_movie.percent_elapsed();
-            autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
-            rolling_movie.hard_seek_to_percent(percent);
+            autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres, true);
         }
         autocrop_was_enabled = autocrop_enabled;
 
