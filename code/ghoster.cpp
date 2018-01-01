@@ -42,7 +42,7 @@ const bool D3D_DEBUG_MSG = false;
 // these are the things menu needs
 static MovieProjector projector;
 bool is_letterbox = false;
-bool is_720p = false;
+bool is_720p = true;
 void set_max_quality(int qual);
 bool paste_clipboard();
 bool copy_url_to_clipboard(bool withTimestamp = false);
