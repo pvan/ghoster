@@ -55,6 +55,7 @@ LRESULT CALLBACK MouseHookProc(int nCode, WPARAM wParam, LPARAM lParam);
 #define ID_RANDO 1019
 #define ID_LETBOX 1020
 #define ID_MAX720 1021
+#define ID_AUTOCROP 1022
 
 #define ID_SET_R 2001
 #define ID_SET_P 2002
@@ -104,6 +105,7 @@ menuItem menuItems[] =
     {ID_SNAPPING     , L"Snap To Edges"                  , &glass.is_snappy            , 0, 0, 0 },
     {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                           , 0, 0, 0 },
     {ID_MAX720       , L"Limit To 720p"                  , &is_720p                    , 0, 0, 0 },
+    {ID_AUTOCROP     , L"Crop Black Bars (Experimental)" , &projector.autocrop_enabled , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
     {ID_ICONMENU     , L"Choose Icon"                    , 0                           , 0, 0, menu_iconsubmenu },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
@@ -225,6 +227,9 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         case ID_MAX720:
             is_720p = !is_720p; set_max_quality(is_720p? LIMIT_QUAL : MAX_QUAL);
+            break;
+        case ID_AUTOCROP:
+            projector.autocrop_enabled = !projector.autocrop_enabled;
             break;
         case ID_PASTE:
             paste_clipboard();

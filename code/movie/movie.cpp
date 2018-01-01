@@ -821,7 +821,7 @@ struct MovieProjector
 
             draw_rect((u32*)back_buffer->mem,bw,bh, crop);
         }
-        if (bool debug_draw_cached_autocrop_rect = true)
+        if (bool debug_draw_cached_autocrop_rect = false)
         {
             RECT crop = autocrop_rect;
             int dw = crop.right - crop.left;
@@ -835,19 +835,19 @@ struct MovieProjector
             draw_rect((u32*)back_buffer->mem,bw,bh, crop);
         }
 
-        // if (autocrop_enabled)
-        // {
-        //     int dw = autocrop_rect.right - autocrop_rect.left;
-        //     int dh = autocrop_rect.bottom - autocrop_rect.top;
-        //     back_buffer->resize_if_needed(dw, dh);
-        //     copy_subrect((u32*)back_buffer->mem,autocrop_rect, (u32*)src,bw,bh);
-        // }
-        // else
-        // {
-        //     back_buffer->resize_if_needed(bw, bh);
-        //     assert(back_buffer->size() == bw*bh*sizeof(u32));
-        //     memcpy(back_buffer->mem, src, back_buffer->size());
-        // }
+        if (autocrop_enabled)
+        {
+            int dw = autocrop_rect.right - autocrop_rect.left;
+            int dh = autocrop_rect.bottom - autocrop_rect.top;
+            back_buffer->resize_if_needed(dw, dh);
+            copy_subrect((u32*)back_buffer->mem,autocrop_rect, (u32*)src,bw,bh);
+        }
+        else
+        {
+            back_buffer->resize_if_needed(bw, bh);
+            assert(back_buffer->size() == bw*bh*sizeof(u32));
+            memcpy(back_buffer->mem, src, back_buffer->size());
+        }
 
         frame_buffer *old_front = front_buffer;
         front_buffer = back_buffer;
