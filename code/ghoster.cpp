@@ -178,10 +178,11 @@ void render()  // os msg pump thread
         int w = projector.front_buffer->wid;
         int h = projector.front_buffer->hei;
 
+        // added for autocrop
         double buffer_ratio = (double)w / (double)h;
         if (glass.aspect_ratio != buffer_ratio)
         {
-            PRINT("RESIZE\n");  // probably autocrop
+            // PRINT("RESIZE\n");
             glass.aspect_ratio = (double)w / (double)h;
             glass.resize_to_aspect_ratio();
         }

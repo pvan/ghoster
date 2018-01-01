@@ -278,7 +278,7 @@ struct MovieProjector
     int maxQuality = MAX_QUAL; // get video of this res or less (to improve dl performance)
 
 
-    bool autocrop_enabled = true;
+    bool autocrop_enabled = false;
     bool autocrop_was_enabled = autocrop_enabled;
     // bool autocrop_rect_init = false; // do we need to recalc the crop rect?
     RECT autocrop_rect;
@@ -462,8 +462,6 @@ struct MovieProjector
         {
             // basically checking for this if user enabled mid-movie
             // so we can specifically use that frame to calc autocrop
-
-            // cache current position since slow_sample moves our seek pos (todo: not great)
             autocrop_rect = sample_current_frame_for_autocrop(&rolling_movie, autocrop_thres);
         }
         autocrop_was_enabled = autocrop_enabled;
@@ -690,7 +688,7 @@ struct MovieProjector
         }
         else
         {
-            // these would replace the regular back buffer copy
+            // note to try one of these, comment out the regular back buffer copy
             // debug_draw_live_autocrop_rect(src, bw, bh, back_buffer, autocrop_thres);
             // debug_draw_cached_autocrop_rect(src, bw, bh, back_buffer, autocrop_rect);
 
