@@ -1,6 +1,6 @@
 
 
-const bool DEBUG_URL_MSG = true;
+const bool DEBUG_URL_MSG = false;
 
 char *TEST_FILES[] = {
     "D:/~phil/projects/ghoster/test-vids/tall.mp4",
@@ -164,7 +164,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=TupjTEEU4Ms",  // marble race 2017 40m
     "https://www.youtube.com/watch?v=0HHs7hnkqGk",  // fiasconauts pen show
     "https://www.youtube.com/watch?v=UkCAvIDYZUo&t=697",  // scrumbers final
-    "https://www.youtube.com/watch?v=2FjZkJJx3bc",  // shuffling
+    // "https://www.youtube.com/watch?v=2FjZkJJx3bc",  // shuffling
     "https://www.youtube.com/watch?v=mHjRZ688t3c",  // perfidia
     "https://www.youtube.com/watch?v=-_Q5kO4YXFs",  // baby hearing
     "https://www.youtube.com/watch?v=O8BqOI3BR1g",  // boom boom boom boom
@@ -174,6 +174,22 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=otktRxKo2XY",  // spalding gray
     "https://www.youtube.com/watch?v=bBamIi0tIRg?t=70",  // dark side of the rainbow
     "https://www.youtube.com/watch?v=pF_Fi7x93PY",  // jason & the argonauts skeletons
+    "https://www.youtube.com/watch?v=K8b4NQhMZms",  // red dwarf credits
+    "https://www.youtube.com/watch?v=pEgMOSS5pmc",  // lupin credits
+    "https://www.youtube.com/watch?v=5kc-bhOOLxE",  // bode vocoder
+    "https://www.youtube.com/watch?v=vL-bjKTy8-Q",  // toys & tiny instruments
+    "https://www.youtube.com/watch?v=v1DKOUWSf-A",  // habingo
+    "https://www.youtube.com/watch?v=xXbrPn6_Uos",  // magic song machine
+    "https://www.youtube.com/watch?v=PFu0KyrNAAA",  // marx bros cabin
+    "https://www.youtube.com/watch?v=k5YuBRwAo0Y?t=3", // marx bros bridge
+    "https://www.youtube.com/watch?v=YblaO87Tqf8",  // balloonatic
+    "https://www.youtube.com/watch?v=JKTQ4a3BR5c",  // manhattan
+    "https://www.youtube.com/watch?v=DJBVv5haBF8",  // holiday
+    "https://www.youtube.com/watch?v=NcTo5vPm6Ng",  // holiday what is the answer?
+    "https://www.youtube.com/watch?v=s33ScN4D-HU",  // mr blandings colors
+    // hunchback cathedral scene?
+    // spirits of the dead running scene?
+    // rififi heist scene
 
     // non-youtube tests...
 
@@ -198,6 +214,7 @@ char *XMAS_SPECIAL[] = {
     "https://www.youtube.com/watch?v=-ZggJNsAuIw",  // sleight ride in 7/8
     "https://www.youtube.com/watch?v=YvI_FNrczzQ",  // vince guaraldi
     "https://www.youtube.com/watch?v=dNUbEDPWrvw",  // sufjan i'll be home for xmas
+    "https://www.youtube.com/watch?v=Ho5ogXI1JW4",  // thin man
 };
 const int XMAS_COUNT = sizeof(XMAS_SPECIAL) / sizeof(XMAS_SPECIAL[0]);
 
@@ -205,6 +222,11 @@ char *MAY_SPECIAL[] = {
     "https://www.youtube.com/watch?v=HAtWd_7ZpF8"  // sufjan piano
 };
 const int MAY_COUNT = sizeof(MAY_SPECIAL) / sizeof(MAY_SPECIAL[0]);
+
+char *NEWYEAR_SPECIAL[] = {
+    "https://www.youtube.com/watch?v=ziEQlasGhV8",  // holiday new year
+};
+const int NEWYEAR_COUNT = sizeof(NEWYEAR_SPECIAL) / sizeof(NEWYEAR_SPECIAL[0]);
 
 static int *alreadyPlayedRandos = 0;
 static int alreadyPlayedCount = 0;
@@ -304,6 +326,13 @@ char *get_random_url()
             if (DEBUG_URL_MSG) OutputDebugString("\nMAY\n\n");
             allvids = {0};
             allvids.add(MAY_SPECIAL, MAY_COUNT);
+        }
+
+        if (strcmp(month, "12")==0 && strcmp(day, "31")==0)
+        {
+            if (DEBUG_URL_MSG) OutputDebugString("\nNEWYEAR\n\n");
+            allvids = {0};
+            allvids.add(NEWYEAR_SPECIAL, NEWYEAR_COUNT);
         }
 
         // note alloc after building lists so we have enough space
