@@ -259,6 +259,13 @@ struct RollingMovie
         // PRINT("..seeking took %f seconds\n", GetWallClockSeconds()-start);
     }
 
+    // todo: replace above usage with this where appropriate?
+    void hard_seek_to_percent(double percent)
+    {
+        hard_seek_to_timestamp(percent * reel.durationSeconds);
+    }
+
+    // update: moving this functionality back to update(), so we can guess autocrop before seeking
     // // TODO: move audio latency to this class???
     // void load_new_source(ffmpeg_source *new_source, double startAt)
     // {
@@ -270,12 +277,27 @@ struct RollingMovie
     //     hard_seek_to_timestamp(startAt);
     // }
 
+    // todo: improve the speed and accuracy of this
+    // different sampling method? (a few frames at multiple locations?)
+    // faster seek somehow? auto-correct while movie runs? let user manually adjust?
     RECT slow_sample_for_autocrop(int thres)
     {
         u8 *src = reel.vid_buffer;
         int bw = reel.vid_width;
         int bh = reel.vid_height;
-        hard_seek_to_timestamp(0.5 * reel.durationSeconds);
+
+        // use half-way point of movie to guess
+        if (percent_elapsed() > 0.01)
+        {
+            // just use current frame if we aren't at the start
+            // (we give some, though opaque, control to user this way)
+        }
+        else
+        {
+            // todo: should check more than one spot and check consistency / proportion of screen / etc
+            hard_seek_to_timestamp(0.5 * reel.durationSeconds);
+        }
+
         RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
         PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
         return crop;
@@ -408,7 +430,8 @@ struct MovieProjector
 
 
     bool autocrop_enabled = true;
-    bool autocrop_rect_init = false; // do we need to recalc the crop rect?
+    bool autocrop_was_enabled = autocrop_enabled;
+    // bool autocrop_rect_init = false; // do we need to recalc the crop rect?
     RECT autocrop_rect;
     int autocrop_thres = AUTOCROP_DEFAULT_THRESHOLD;
 
@@ -583,6 +606,18 @@ struct MovieProjector
 
             rolling_movie.hard_seek_to_timestamp(seconds);
         }
+
+        if (autocrop_enabled && !autocrop_was_enabled)
+        {
+            // basically checking for this if user enabled mid-movie
+            // so we can specifically use that frame to calc autocrop
+
+            // cache current position since slow_sample moves our seek pos (todo: not great)
+            double percent = rolling_movie.percent_elapsed();
+            autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
+            rolling_movie.hard_seek_to_percent(percent);
+        }
+        autocrop_was_enabled = autocrop_enabled;
 
 
         // state.bufferingOrLoading = true;
