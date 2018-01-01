@@ -431,7 +431,7 @@ bool paste_clipboard()
 bool copy_url_to_clipboard(bool withTimestamp)
 {
     char output[FFMPEG_PATH_SIZE]; // todo: stack alloc ok here?
-    projector.rolling_movie.get_url(output, FFMPEG_PATH_SIZE, withTimestamp);
+    projector.get_url(output, FFMPEG_PATH_SIZE, withTimestamp);
 
     const size_t len = strlen(output) + 1;
     HGLOBAL hMem =  GlobalAlloc(GMEM_MOVEABLE, len);

@@ -25,7 +25,7 @@ before done enough for this dev cycle:
 
 [ ] resize to native res before vid load = crash
 
-[ ] if no vid loaded, return url of last failed load attempt
+[x] if no vid loaded, return url of last failed load attempt
 
 
 as it comes up / later:

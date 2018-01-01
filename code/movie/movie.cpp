@@ -285,6 +285,17 @@ struct MovieProjector
     int autocrop_thres = AUTOCROP_DEFAULT_THRESHOLD;
 
 
+    // kind of a workaround for retrieving the last failed url if no movie is loaded
+    // basically to check what it was
+    char last_url_backup_cache[FFMPEG_TITLE_SIZE];
+    void get_url(char *output, int max_length, bool withTimestamp) {
+        if (rolling_movie.reel.loaded) // todo: do we need a better way to see if a movie is loaded/playing?
+            rolling_movie.get_url(output, max_length, withTimestamp);
+        else
+            strncpy(output, last_url_backup_cache, max_length);
+    }
+
+
     // mostly flags, basic way to communicate between threads etc
     // todo: make a proper msg queue system?? maybe not
     AppMessages message;
@@ -1085,6 +1096,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     if (timestamp != 0)
         timestamp[0] = '\0';
 
+    // kind of a workaround for knowing what url failed on a random failed load (but only if no other video loaded)
+    strncpy(projector->last_url_backup_cache, path, FFMPEG_TITLE_SIZE);
 
     // if (!SlowCreateMovieSourceFromAnyPath(path, projector->message.new_write_reel, exe_dir))
     if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir, projector->maxQuality))
