@@ -17,13 +17,15 @@ before done enough for this dev cycle:
 
 [x] update url list
 
-[ ] can ffmpeg auto crop black bars?
+[x] can ffmpeg auto crop black bars? [yes but easier to just do ourselves, though slow]
 
 [x] bug loading new vid in fullscreen ghostmode
 
 [x] add cmd line arg for 720p mode
 
 [ ] resize to native res before vid load = crash
+
+[ ] if no vid loaded, return url of last failed load attempt
 
 
 as it comes up / later:
@@ -119,6 +121,9 @@ https://www.youtube.com/watch?v=KH4NrUxcsYs
 
 ---low priority----
 
+
+[ ] set autocrop threshold
+[ ] set more options for quality 
 
 [ ] opacity doesn't seem to work in wallpaper mode, but not really wanted too badly anyway
     could maybe do something funny with workerW to get it to work, 
