@@ -31,9 +31,11 @@ static HANDLE movie_asyn_load_thread = 0;
 static bool movie_ytdl_running = false;
 static HANDLE movie_ytdl_process = 0;
 
-//asdf  https://www.youtube.com/watch?v=TmoBMjbY5Nw
-     // https://www.youtube.com/watch?v=7Z0lNch5qkQ
-     // https://www.youtube.com/watch?v=63gdelpCp4k
+// asdf
+// https://www.youtube.com/watch?v=TmoBMjbY5Nw
+// https://www.youtube.com/watch?v=7Z0lNch5qkQ
+// https://www.youtube.com/watch?v=63gdelpCp4k
+// https://www.youtube.com/watch?v=T9hHKYfXIE0
 void draw_rect(u32 *dst, int w, int h, RECT subRect)
 {
     int rx = subRect.left;
@@ -257,18 +259,31 @@ struct RollingMovie
         // PRINT("..seeking took %f seconds\n", GetWallClockSeconds()-start);
     }
 
-    // TODO: move audio latency to this class???
-    void load_new_source(ffmpeg_source *new_source, double startAt)
+    // // TODO: move audio latency to this class???
+    // void load_new_source(ffmpeg_source *new_source, double startAt)
+    // {
+    //     reel.TransferFromReel(new_source);
+
+    //     // seconds_elapsed_at_last_decode = startAt; // should be set by seek now
+
+    //     // get first frame even if startAt is 0 because we could be paused
+    //     hard_seek_to_timestamp(startAt);
+    // }
+
+    RECT slow_sample_for_autocrop(int thres)
     {
-        reel.TransferFromReel(new_source);
-
-        // seconds_elapsed_at_last_decode = startAt; // should be set by seek now
-
-        // get first frame even if startAt is 0 because we could be paused
-        hard_seek_to_timestamp(startAt);
+        u8 *src = reel.vid_buffer;
+        int bw = reel.vid_width;
+        int bh = reel.vid_height;
+        hard_seek_to_timestamp(0.5 * reel.durationSeconds);
+        RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
+        PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+        return crop;
     }
 
 };
+
+
 
 
 // todo: just put these straight in projector?
@@ -289,6 +304,7 @@ struct AppState
     bool was_paused = false;
 
     double targetSecPerFrame;
+
 };
 
 
@@ -389,7 +405,12 @@ struct MovieProjector
 
 
     int maxQuality = MAX_QUAL; // get video of this res or less (to improve dl performance)
-    int blackThres = AUTOCROP_DEFAULT_THRESHOLD;
+
+
+    bool autocrop_enabled = true;
+    bool autocrop_rect_init = false; // do we need to recalc the crop rect?
+    RECT autocrop_rect;
+    int autocrop_thres = AUTOCROP_DEFAULT_THRESHOLD;
 
 
     // mostly flags, basic way to communicate between threads etc
@@ -524,9 +545,12 @@ struct MovieProjector
         {
             message.new_source_ready = false;
             OutputDebugString("Ready to load new movie...\n");
-            // LoadNewMovieSource(&message.new_reel);
-            // rolling_movie.load_new_source(message.new_read_reel, message.startAtSeconds);
-            rolling_movie.load_new_source(&message.new_source, message.startAtSeconds);
+            // rolling_movie.load_new_source(&message.new_source, message.startAtSeconds);
+                rolling_movie.reel.TransferFromReel(&message.new_source);
+                // just calc for every movie for now
+                autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
+                // autocrop_rect_init = false;
+                rolling_movie.hard_seek_to_timestamp(message.startAtSeconds);  // get first frame even if startAt is 0 because we could be paused
 
             // SDL, for sound atm (todo: move sound playing out of projector and into calling application?)
             if (rolling_movie.reel.audio.codecContext)
@@ -568,6 +592,18 @@ struct MovieProjector
         }
         else
         {
+
+
+            // if (autocrop_enabled && !autocrop_rect_init)
+            // {
+            //     autocrop_rect = rolling_movie.slow_sample_for_autocrop(autocrop_thres);
+            //     autocrop_rect_init = true;
+            // }
+            // if (!autocrop_enabled)
+            // {
+            //     autocrop_rect_init = false;
+            // }
+
 
             if (!state.is_paused)
             {
@@ -769,42 +805,54 @@ struct MovieProjector
 
 
         // "RENDER" basically (to an offscreen buffer)
-
+//asdf
         u8 *src = rolling_movie.reel.vid_buffer;
         int bw = rolling_movie.reel.vid_width;
         int bh = rolling_movie.reel.vid_height;
 
-        RECT crop = calc_autocroped_rect((u32*)src, bw, bh, blackThres);
-        int dw = crop.right - crop.left;
-        int dh = crop.bottom - crop.top;
+        if (bool debug_draw_live_autocrop_rect = false)
+        {
+            RECT crop = calc_autocroped_rect((u32*)src, bw, bh, autocrop_thres);
+            int dw = crop.right - crop.left;
+            int dh = crop.bottom - crop.top;
 
-        // back_buffer->resize_if_needed(dw, dh);
-        // assert(back_buffer->size() == dw*dh*sizeof(u32));
-        // copy_subrect((u32*)back_buffer->mem,crop, (u32*)src,bw,bh);
-        back_buffer->resize_if_needed(bw, bh);
-        copy_subrect((u32*)back_buffer->mem,{0,0,bw,bh}, (u32*)src,bw,bh);
-//asdf  https://www.youtube.com/watch?v=TmoBMjbY5Nw
-     // https://www.youtube.com/watch?v=7Z0lNch5qkQ
+            back_buffer->resize_if_needed(bw, bh);
+            copy_subrect((u32*)back_buffer->mem,{0,0,bw,bh}, (u32*)src,bw,bh);
 
-        PRINT("RECT: %i, %i, %i, %i\n", crop.left, crop.top, dw, dh);
+            draw_rect((u32*)back_buffer->mem,bw,bh, crop);
+        }
+        if (bool debug_draw_cached_autocrop_rect = true)
+        {
+            RECT crop = autocrop_rect;
+            int dw = crop.right - crop.left;
+            int dh = crop.bottom - crop.top;
 
-        draw_rect((u32*)back_buffer->mem,bw,bh, crop);
+            PRINT("crop: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
 
+            back_buffer->resize_if_needed(bw, bh);
+            copy_subrect((u32*)back_buffer->mem,{0,0,bw,bh}, (u32*)src,bw,bh);
+
+            draw_rect((u32*)back_buffer->mem,bw,bh, crop);
+        }
+
+        // if (autocrop_enabled)
+        // {
+        //     int dw = autocrop_rect.right - autocrop_rect.left;
+        //     int dh = autocrop_rect.bottom - autocrop_rect.top;
+        //     back_buffer->resize_if_needed(dw, dh);
+        //     copy_subrect((u32*)back_buffer->mem,autocrop_rect, (u32*)src,bw,bh);
+        // }
+        // else
+        // {
+        //     back_buffer->resize_if_needed(bw, bh);
+        //     assert(back_buffer->size() == bw*bh*sizeof(u32));
+        //     memcpy(back_buffer->mem, src, back_buffer->size());
+        // }
 
         frame_buffer *old_front = front_buffer;
         front_buffer = back_buffer;
         back_buffer = old_front;
 
-        // u8 *src = rolling_movie.reel.vid_buffer;
-        // int bw = rolling_movie.reel.vid_width;
-        // int bh = rolling_movie.reel.vid_height;
-        // back_buffer->resize_if_needed(bw, bh);
-        // assert(back_buffer->size() == bw*bh*sizeof(u32));
-        // memcpy(back_buffer->mem, src, back_buffer->size());
-
-        // frame_buffer *old_front = front_buffer;
-        // front_buffer = back_buffer;
-        // back_buffer = old_front;
 
 
         // REPEAT
