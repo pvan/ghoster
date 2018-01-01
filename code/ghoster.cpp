@@ -177,6 +177,14 @@ void render()  // os msg pump thread
         u8 *src = projector.front_buffer->mem;
         int w = projector.front_buffer->wid;
         int h = projector.front_buffer->hei;
+
+        if (glass.get_win_width() != w || glass.get_win_height() != h)
+        {
+            PRINT("RESIZE\n");
+            glass.aspect_ratio = (double)w / (double)h;
+            glass.resize_to_aspect_ratio();
+        }
+
         screen.fill_tex_with_mem(src, w, h);  //this resizes tex if needed, todo: better name
 
         if (glass.is_fullscreen && glass.is_ratiolocked) {

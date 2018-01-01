@@ -827,7 +827,7 @@ struct MovieProjector
             int dw = crop.right - crop.left;
             int dh = crop.bottom - crop.top;
 
-            PRINT("crop: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+            // PRINT("crop: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
 
             back_buffer->resize_if_needed(bw, bh);
             copy_subrect((u32*)back_buffer->mem,{0,0,bw,bh}, (u32*)src,bw,bh);

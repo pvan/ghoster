@@ -251,12 +251,16 @@ struct glass_window
     }
 
 
-    // todo: something like this?
-    // could use for fullscreen / on load / on aspect ratio
-    // this way we resize main window and wallpaper window if needed
-    void set_size(int w, int h)
+    // // todo: something like this?
+    // // could use for fullscreen / on load / on aspect ratio
+    // // this way we resize main window and wallpaper window if needed
+    // void resize_window(int w, int h)
+    // {}
+
+    void resize_to_aspect_ratio()
     {
         // hwnd_resize(target_window(), w, h);
+        hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
     }
 
 
@@ -405,6 +409,7 @@ struct glass_window
         is_ratiolocked = enable;
         if (is_ratiolocked)
         {
+            // todo: use resize_to_aspect_ratio?
             hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
             // need to set wallpaper hwnd too? todo: other cases similar?
         }
