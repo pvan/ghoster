@@ -48,6 +48,11 @@ double hwnd_set_opacity(HWND hwnd, double opac)   // 0-1
     return opac;
 }
 
+void hwnd_resize(HWND hwnd, int w, int h)
+{
+    RECT r; GetWindowRect(hwnd, &r);
+    MoveWindow(hwnd, r.left, r.top, w, h, true);
+}
 
 // does not appear to work when dragging the window around?
 // update: added workaround to cache w/h on SIZE and set rect to that on MOVING

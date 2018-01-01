@@ -394,16 +394,22 @@ void hacky_extra_toggle_pause_function_for_glass() { toggle_pause(); }
 
 void resize_win_to_native_res()
 {
+    if (projector.rolling_movie.reel.loaded)
+    {
+        int vw = projector.rolling_movie.reel.vid_width;
+        int vh = projector.rolling_movie.reel.vid_height;
+        glass.resize_window(vw, vh);
+    }
     // char hwbuf[123];
     // sprintf(hwbuf, "wid: %i  hei: %i\n",
     //     global_ghoster.rolling_movie.reel.video.codecContext->width,
     //     global_ghoster.rolling_movie.reel.video.codecContext->height);
     // OutputDebugString(hwbuf);
 
-    RECT winRect = glass.get_win_rect();
-    int vw = projector.rolling_movie.reel.vid_width;
-    int vh = projector.rolling_movie.reel.vid_height;
-    MoveWindow(glass.hwnd, winRect.left, winRect.top, vw, vh, true);
+    // RECT winRect = glass.get_win_rect();
+    // int vw = projector.rolling_movie.reel.vid_width;
+    // int vh = projector.rolling_movie.reel.vid_height;
+    // MoveWindow(glass.hwnd, winRect.left, winRect.top, vw, vh, true);
 }
 
 bool paste_clipboard()
