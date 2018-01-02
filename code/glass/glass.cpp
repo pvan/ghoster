@@ -171,6 +171,7 @@ struct glass_window
     UINT single_click_timer_id;
     POINT mup_timer_point;
     bool registeredLastSingleClick = false;
+    POINT lastMovePos; // for checking MOUSEMOVE is really a movement
 
 
     RECT get_win_rect() { RECT winRect; GetWindowRect(hwnd,&winRect); return winRect; }
@@ -1049,7 +1050,10 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         } break;
 
         case WM_MOUSEMOVE: {
-            glass.onMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            POINT currentPos = {GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)};
+            if (glass.lastMovePos.x != currentPos.x || glass.lastMovePos.y != currentPos.y)
+                glass.onMouseMove(hwnd, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+            glass.lastMovePos = currentPos;
         } break;
 
         case WM_LBUTTONUP: {

@@ -2,6 +2,8 @@
 
 [ ] draw sound if no vid
 
+[ ] repeat sometimes not working?
+
 [ ] cleanup pass
     [ ] utils
     [ ] others
@@ -11,9 +13,9 @@
 
 [ ] one time exiting wallpaper mode did not hide wallpaper window [can't seem to reproduce]
 
-[ ] intermittent progress bar not hiding when mouse is still
-    -appears to be extra WM_MOUSEMOVE in wndproc.. hmm.. maybe check if mouse moved since last msg?
-    -to reproduce try debug, menu, ctrlaltdel, laggy comp
+[x] intermittent progress bar not hiding when mouse is still
+    -appears to be extra WM_MOUSEMOVE in wndproc
+    -added check of mouse move to see if mouse really moved
 
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 [ ] also menu gets closed if it's open
