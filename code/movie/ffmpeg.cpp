@@ -714,20 +714,26 @@ struct ffmpeg_source
             av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
         }
 
-        // skip this for now
-        // // Some codecs will cause frames to be buffered up in the decoding process. If the CODEC_CAP_DELAY flag
-        // // is set, there can be buffered up frames that need to be flushed, so we'll do that
-        // if (cc->codec->capabilities & CODEC_CAP_DELAY)
-        // {
-        //     av_init_packet(&readingPacket);
-        //     // Decode all the remaining frames in the buffer, until the end is reached
-        //     int gotFrame = 0;
-        //     while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
-        //     {
-        //         // todo: need to actually use these last frames of decoded audio
-        //         // todo: just replace this whole function with send_packet/receive_frame api?
-        //     }
-        // }
+        // now that we're syncing a/v so well, we need to flush these or our video will freeze at the end?
+        if (cc->codec->capabilities & CODEC_CAP_DELAY)
+        {
+            // for now, use this code to let caller know we're at end of file
+            bytes_written *= -1;
+            // below not seeming to work as expected
+
+            // // assert(false);
+            // av_free_packet(&readingPacket);
+            // av_init_packet(&readingPacket);
+
+            // int gotFrame = 0;
+            // while (avcodec_decode_audio4(cc, frame, &gotFrame, &readingPacket) >= 0 && gotFrame)
+            // {
+            //     // todo: actually decode and use the data here
+            //     // todo: just replace this whole function with send_packet/receive_frame api?
+            // }
+            // // note we need to set this to sync right or we'll still freeze
+            // *outPTS = av_frame_get_best_effort_timestamp(frame);
+        }
 
         av_free_packet(&readingPacket);
         av_frame_free(&frame);

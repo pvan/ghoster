@@ -482,6 +482,10 @@ struct MovieProjector
         autocrop_was_enabled = autocrop_enabled;
 
 
+        // todo: remove this (need to handle CODEC_CAP_DELAY properly)
+        bool tempy_reached_end_of_audio_file = false;
+
+
         // state.bufferingOrLoading = true;
         if (state.bufferingOrLoading)
         {
@@ -524,6 +528,12 @@ struct MovieProjector
                         -1,
                         &rolling_movie.ptsOfLastAudio);
 
+                    if (bytes_queued_up < 0)
+                    {
+                        // for now an awkward hack to let us know we've reached end of file
+                        bytes_queued_up *= -1;
+                        tempy_reached_end_of_audio_file = true;
+                    }
                     if (bytes_queued_up > 0)
                     {
                         // remix to adjust volume
@@ -719,7 +729,8 @@ struct MovieProjector
 
 
         // REPEAT
-        if (state.repeat && rolling_movie.percent_elapsed() > 1.0)  // note percent will keep ticking up even after vid is done
+        if ((state.repeat && rolling_movie.percent_elapsed() > 1.0)  // note percent will keep ticking up even after vid is done
+            || tempy_reached_end_of_audio_file)
         {
             rolling_movie.hard_seek_to_timestamp(0);
         }
