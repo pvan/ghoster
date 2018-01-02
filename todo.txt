@@ -8,7 +8,9 @@ before done enough for this dev cycle:
     [ ] check todos
 
 [ ] tighten up performance
-[ ] test many windows [seems like cpu usage low, but laggy msg loop?]
+[x] test many windows [seems like cpu usage low, but laggy msg loop?]
+    -reduced sleep when loops take longer
+     (fighting our architecture here? maybe a little, but so much easier rendering)
 
 [ ] test common usage
 

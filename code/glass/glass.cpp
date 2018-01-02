@@ -21,14 +21,6 @@
 
 
 
-// basically just for parsing command line args.. if we drop that we can drop this
-bool glass_string_starts_with(const char *str, const char *front) // case sensitive
-{
-    while (*front && *str) { if (*front++ != *str++) return false; }
-    return true;
-}
-
-
 
 const bool DEBUG_MCLICK_MSGS = false;
 
@@ -48,6 +40,22 @@ const double MS_PAUSE_DELAY_FOR_DOUBLECLICK = 200;  // slowest double click is 5
 const int SNAP_IF_PIXELS_THIS_CLOSE = 25;
 
 
+
+// basically just for parsing command line args.. if we drop that we can drop this
+bool glass_string_starts_with(const char *str, const char *front) // case sensitive
+{
+    while (*front && *str) { if (*front++ != *str++) return false; }
+    return true;
+}
+
+// for timing loop
+float glass_get_ms()
+{
+    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
+    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
+    return ((float)counter.QuadPart/(float)freq.QuadPart) * 1000.0;
+}
+double glass_last_ms = 0;
 
 
 
@@ -248,6 +256,15 @@ struct glass_window
         mouse_was_in_win = mouse_in_win;
 
         if (render) render();
+
+
+        // sleep only what we need
+        double dt = glass_get_ms() - glass_last_ms;
+        double ms_left = sleep_ms - dt;
+        // PRINT("dt: %2f,  sleeping: %2f\n", dt, ms_left);
+        if (ms_left < 0) ms_left = 0;
+        Sleep(ms_left);
+        glass_last_ms = glass_get_ms();
     }
 
 
@@ -834,7 +851,7 @@ void glass_default_open_menu_at(HWND hwnd, POINT point)
     InsertMenuW(hPopupMenu, 0, MF_BYPOSITION | MF_STRING | full, GLASS_ID_FULLSCREEN, L"Fullscreen");
     SetForegroundWindow(hwnd);
 
-    SetTimer(glass.hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
+    SetTimer(glass.hwnd, glass.render_timer_id, 1/*glass.sleep_ms*/, 0); // 0 to get WM_TIMER msgs
     glass.menu_open = true;
     glass.next_mup_was_closing_menu = true;
     TrackPopupMenu(hPopupMenu, TPM_TOPALIGN | TPM_LEFTALIGN, point.x, point.y, 0, hwnd, NULL);
@@ -914,7 +931,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
             in_movesize_loop = true;
             inhibit_movesize_loop = false;
 
-            SetTimer(hwnd, glass.render_timer_id, glass.sleep_ms, 0); // 0 to get WM_TIMER msgs
+            SetTimer(hwnd, glass.render_timer_id, 1/*glass.sleep_ms*/, 0); // 0 to get WM_TIMER msgs
         } break;
         case WM_EXITSIZEMOVE: {
             in_movesize_loop = false;
@@ -1346,14 +1363,6 @@ void glass_close()
 // because this thread isn't getting any messages
 // (not even timer messages or callbacks)
 
-float glass_get_ms()
-{
-    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
-    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
-    return ((float)counter.QuadPart/(float)freq.QuadPart) * 1000.0;
-}
-double glass_last_ms = 0;
-
 int msgcount = 0;
 
 void glass_run_msg_render_loop()
@@ -1372,13 +1381,6 @@ void glass_run_msg_render_loop()
 
         glass.main_update();
 
-        // Sleep(glass.sleep_ms);
-        double dt = glass_get_ms() - glass_last_ms;
-        double ms_left = glass.sleep_ms - dt;
-        PRINT("dt: %2f,  sleeping: %2f\n", dt, ms_left);
-        if (ms_left < 0) ms_left = 0;
-        Sleep(ms_left);
-        glass_last_ms = glass_get_ms();
     }
     glass_close();
 }
