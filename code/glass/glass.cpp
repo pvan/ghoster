@@ -1346,21 +1346,39 @@ void glass_close()
 // because this thread isn't getting any messages
 // (not even timer messages or callbacks)
 
+float glass_get_ms()
+{
+    LARGE_INTEGER counter; QueryPerformanceCounter(&counter);
+    LARGE_INTEGER freq; QueryPerformanceFrequency(&freq);
+    return ((float)counter.QuadPart/(float)freq.QuadPart) * 1000.0;
+}
+double glass_last_ms = 0;
+
+int msgcount = 0;
+
 void glass_run_msg_render_loop()
 {
     // MSG LOOP
     while (glass.loop_running)
     {
+        msgcount = 0;
         MSG Message;
         while (PeekMessage(&Message, 0, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&Message);
             DispatchMessage(&Message);
+            msgcount++;
         }
 
         glass.main_update();
 
-        Sleep(glass.sleep_ms);
+        // Sleep(glass.sleep_ms);
+        double dt = glass_get_ms() - glass_last_ms;
+        double ms_left = glass.sleep_ms - dt;
+        PRINT("dt: %2f,  sleeping: %2f\n", dt, ms_left);
+        if (ms_left < 0) ms_left = 0;
+        Sleep(ms_left);
+        glass_last_ms = glass_get_ms();
     }
     glass_close();
 }

@@ -221,7 +221,8 @@ void render()  // os msg pump thread
         projector.rolling_movie.reel.MetadataToString(debug_string);
         sprintf(debug_string+strlen(debug_string), "\n");
 
-        // todo: add these to projector tostring
+        sprintf(debug_string+strlen(debug_string), "msgcount: %i\n", msgcount);
+        // todo: add these to projector tostring, or wherever they should be
         sprintf(debug_string+strlen(debug_string), "fps: %f\n", 1.0/projector.last_frame_ms);
         sprintf(debug_string+strlen(debug_string), "missed fps: %i\n", projector.missed_fps_count);
 
