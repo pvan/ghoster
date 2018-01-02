@@ -260,14 +260,10 @@ struct glass_window
         if (wallpaper_window) hwnd_resize(wallpaper_window, w, h);
     }
 
-    void resize_to_aspect_ratio()
-    {
-        hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
-        if (wallpaper_window) hwnd_set_to_aspect_ratio(wallpaper_window, aspect_ratio);
-    }
 
 
     WINDOWPLACEMENT last_win_pos;
+    RECT last_win_rect;
     void setFullscreen(bool enable)
     {
         is_fullscreen = enable;
@@ -275,6 +271,7 @@ struct glass_window
         {
             last_win_pos.length = sizeof(WINDOWPLACEMENT);
             GetWindowPlacement(hwnd, &last_win_pos);
+            last_win_rect = last_win_pos.rcNormalPosition;
 
             // todo: BUG: transparency is lost when we full screen
             // ShowWindow(hwnd, SW_MAXIMIZE); // or SW_SHOWMAXIMIZED?
@@ -300,14 +297,21 @@ struct glass_window
         {
             if (last_win_pos.length)
             {
-                // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
+                // // restore our old position todo: replace if we get SW_MAXIMIZE / SW_RESTORE working
+                // SetWindowPos(hwnd, 0,
+                //     last_win_pos.rcNormalPosition.left,
+                //     last_win_pos.rcNormalPosition.top,
+                //     last_win_pos.rcNormalPosition.right -
+                //     last_win_pos.rcNormalPosition.left,
+                //     last_win_pos.rcNormalPosition.bottom -
+                //     last_win_pos.rcNormalPosition.top, 0);
                 SetWindowPos(hwnd, 0,
-                    last_win_pos.rcNormalPosition.left,
-                    last_win_pos.rcNormalPosition.top,
-                    last_win_pos.rcNormalPosition.right -
-                    last_win_pos.rcNormalPosition.left,
-                    last_win_pos.rcNormalPosition.bottom -
-                    last_win_pos.rcNormalPosition.top, 0);
+                    last_win_rect.left,
+                    last_win_rect.top,
+                    last_win_rect.right -
+                    last_win_rect.left,
+                    last_win_rect.bottom -
+                    last_win_rect.top, 0);
             }
 
             // unset our temp topmost from fullscreening if we aren't actually set that way
@@ -407,14 +411,46 @@ struct glass_window
                 0);
         }
     }
+
+    // for changing the "non-maximized" window aspect ratio / size while fullscreen
+    void set_restored_position_to_aspect_ratio()
+    {
+        if (last_win_pos.length)
+        {
+            RECT newRect = hwnd_set_rect_to_ratio(last_win_pos.rcNormalPosition, aspect_ratio);
+            // last_win_pos.rcNormalPosition = newRect;
+            last_win_rect = newRect;
+        }
+        else
+        {
+            // i think we are always calling setFullscreen(true) once before this ?
+            assert(false);
+        }
+    }
+    void resize_to_aspect_ratio()
+    {
+        if (is_fullscreen)
+        {
+            set_restored_position_to_aspect_ratio();
+        }
+        else
+        {
+            hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
+            if (wallpaper_window) hwnd_set_to_aspect_ratio(wallpaper_window, aspect_ratio);
+            // todo: other similar cases with setting both hwnd and wallpaper hwnd?
+        }
+    }
+    void set_aspect_ratio(double ratio)
+    {
+        aspect_ratio = ratio;
+        resize_to_aspect_ratio();
+    }
     void set_ratiolocked(bool enable)
     {
         is_ratiolocked = enable;
         if (is_ratiolocked)
         {
-            // todo: use resize_to_aspect_ratio?
-            hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
-            // need to set wallpaper hwnd too? todo: other cases similar?
+            resize_to_aspect_ratio();
         }
     }
 

@@ -127,7 +127,7 @@ RECT calc_autocroped_rect(u32 *buf, int bw, int bh, int thres=AUTOCROP_DEFAULT_T
 RECT slow_sample_for_autocrop(RollingMovie *movie, int thres)
 {
     double current_percent = movie->percent_elapsed();
-    PRINT("\n\ncurrent_percent: %f\n\n", current_percent);
+    // PRINT("\n\ncurrent_percent: %f\n\n", current_percent);
 
     u8 *src = movie->reel.vid_buffer;
     int bw = movie->reel.vid_width;
@@ -137,7 +137,7 @@ RECT slow_sample_for_autocrop(RollingMovie *movie, int thres)
     movie->hard_seek_to_timestamp(0.5 * movie->reel.durationSeconds);
 
     RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
-    PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+    // PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
 
     movie->hard_seek_to_percent(current_percent);
 
@@ -150,7 +150,7 @@ RECT sample_current_frame_for_autocrop(RollingMovie *movie, int thres)
     int bw = movie->reel.vid_width;
     int bh = movie->reel.vid_height;
     RECT crop = calc_autocroped_rect((u32*)src, bw, bh, thres);
-    PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
+    // PRINT("AUTOCROP CALC RECT: %i, %i, %i, %i\n", crop.left, crop.top, crop.right, crop.bottom);
     return crop;
 }
 

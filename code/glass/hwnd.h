@@ -54,6 +54,20 @@ void hwnd_resize(HWND hwnd, int w, int h)
     MoveWindow(hwnd, r.left, r.top, w, h, true);
 }
 
+RECT hwnd_set_rect_to_ratio(RECT rect, double aspect_ratio)
+{
+    int w = rect.right - rect.left;
+    int h = rect.bottom - rect.top;
+
+    int nw = (int)((double)h * aspect_ratio);
+    int nh = (int)((double)w / aspect_ratio);
+
+    if (nw == 0) { assert(false);/*oops*/ return rect; }
+
+    // always adjusting width for now
+    return {rect.left, rect.top, rect.left+nw, rect.top+h};
+}
+
 // does not appear to work when dragging the window around?
 // update: added workaround to cache w/h on SIZE and set rect to that on MOVING
 void hwnd_set_to_aspect_ratio(HWND hwnd, double aspect_ratio)

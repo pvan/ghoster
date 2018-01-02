@@ -183,8 +183,7 @@ void render()  // os msg pump thread
         if (glass.aspect_ratio != buffer_ratio)
         {
             // PRINT("RESIZE\n");
-            glass.aspect_ratio = (double)w / (double)h;
-            glass.resize_to_aspect_ratio();
+            glass.set_aspect_ratio((double)w / (double)h);
         }
 
         screen.fill_tex_with_mem(src, w, h);  //this resizes tex if needed, todo: better name
@@ -360,28 +359,7 @@ void on_load_video(int w, int h)
 
     glass.set_title(projector.rolling_movie.reel.title);
 
-    glass.aspect_ratio = (double)w / (double)h;
-
-    if (!glass.is_fullscreen)
-        glass.set_ratiolocked(glass.is_ratiolocked);
-
-    if (glass.is_fullscreen)
-    {
-        // todo: awkward, you can see it flicker
-        glass.setFullscreen(false);
-        glass.set_ratiolocked(glass.is_ratiolocked);
-        glass.setFullscreen(true);
-        // glass.resize_to_aspect_ratio();
-    }
-
-    if (glass.is_wallpaper)
-    {
-        glass.resize_to_aspect_ratio();
-        // // this seems to be enough
-        // // todo: (actually it's overkill, we could just set the size of the wallpaper hwnd)
-        // glass.set_wallpaper(false);
-        // glass.set_wallpaper(true);
-    }
+    glass.set_aspect_ratio((double)w / (double)h);
 
     // something like this? (na, would be too long on urls)
     if (first_video)
@@ -402,16 +380,6 @@ void resize_win_to_native_res()
         int vh = projector.rolling_movie.reel.vid_height;
         glass.resize_window(vw, vh);
     }
-    // char hwbuf[123];
-    // sprintf(hwbuf, "wid: %i  hei: %i\n",
-    //     global_ghoster.rolling_movie.reel.video.codecContext->width,
-    //     global_ghoster.rolling_movie.reel.video.codecContext->height);
-    // OutputDebugString(hwbuf);
-
-    // RECT winRect = glass.get_win_rect();
-    // int vw = projector.rolling_movie.reel.vid_width;
-    // int vh = projector.rolling_movie.reel.vid_height;
-    // MoveWindow(glass.hwnd, winRect.left, winRect.top, vw, vh, true);
 }
 
 bool paste_clipboard()

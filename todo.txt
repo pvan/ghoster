@@ -27,15 +27,19 @@ before done enough for this dev cycle:
 
 [x] if no vid loaded, return url of last failed load attempt
 
+[ ] one time exiting wallpaper mode did not hide wallpaper window, can we reproduce?
+
+[ ] 720p mode not correctly set on startup if on by default
+
 
 as it comes up / later:
 
 [ ] improve error messages (let longer ones through, shrink to fit)
 
-[ ] refactor window resizing?
+[x] refactor window resizing?
     [x] add hwnd.h function for it
-    [ ] add glass function for it, that resizes wallpaper hwnd as needed
-    [ ] use when loading, setting fullscreen, setting aspect ratio
+    [x] add glass function for it, that resizes wallpaper hwnd as needed
+    [x] use when loading, setting fullscreen, setting aspect ratio
 
 [x] L click on sys tray while in wallpaper mode, pause video
 
