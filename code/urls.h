@@ -78,7 +78,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=GTFaOxLlJCA",  // blue cheer
     "https://www.youtube.com/watch?v=7Z0lNch5qkQ",  // morvern callar scene  cut? maybe autocrop test
     "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
-    "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car
+    "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car // todo failed once?
     "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
     // "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // todo: fail?
     "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video
@@ -114,7 +114,8 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=lt8rfsm2mUE",  // possibly in michigan
     "https://www.youtube.com/watch?v=KH4NrUxcsYs",  // how to crush can
     "https://www.youtube.com/watch?v=SqFu5O-oPmU",  // video games and the human condition
-    "https://www.youtube.com/watch?v=7uUl_aTbOzQ",  // jon blow on deep work // todo: full
+    "https://www.youtube.com/watch?v=d0m0jIzJfiQ",  // jon blow on deep work
+    "https://www.youtube.com/watch?v=C5FUtrmO7gI",  // truth in game design
     "https://www.youtube.com/watch?v=YwSZvHqf9qM",  // tangled up in blue live  // cut?
     "https://www.youtube.com/watch?v=8pTEmbeENF4",  // bret victor
     // "https://www.youtube.com/watch?v=JQRRnAhmB58",  // dancing in the rain  // cut?
@@ -186,7 +187,9 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=JKTQ4a3BR5c",  // manhattan
     "https://www.youtube.com/watch?v=DJBVv5haBF8",  // holiday
     "https://www.youtube.com/watch?v=NcTo5vPm6Ng",  // holiday what is the answer?
-    "https://www.youtube.com/watch?v=s33ScN4D-HU",  // mr blandings colors
+    // "https://www.youtube.com/watch?v=s33ScN4D-HU",  // mr blandings colors  // todo: fails
+    "https://www.youtube.com/watch?v=atyvdC15HFA",  // moby train ride
+    "https://www.youtube.com/watch?v=0MN6WtmcrBA",  // grim fandango
     // hunchback cathedral scene?
     // spirits of the dead running scene?
     // rififi heist scene
