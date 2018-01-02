@@ -29,7 +29,7 @@ before done enough for this dev cycle:
 
 [ ] one time exiting wallpaper mode did not hide wallpaper window, can we reproduce?
 
-[ ] 720p mode not correctly set on startup if on by default
+[x] 720p mode not correctly set on startup if on by default
 
 
 as it comes up / later:
