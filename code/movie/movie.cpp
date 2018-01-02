@@ -734,8 +734,7 @@ struct MovieProjector
 
         // try waiting on this until we confirm it's a good path/file ?
 
-        // SplashMessage("fetching...", 0xaaaaaaff);
-        SetSplash("Fetching", 0xaaaaaaaa);
+        SetSplash("Fetching", 0xffaaaaaa);
 
         // todo: we should check for certain fails here
         // so we don't cancel the loading thread if we don't have to
@@ -1017,7 +1016,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
                 free(video_url);
                 free(audio_url);
 
-                // SplashMessage("video failed");
+                SetSplash("video failed", 0xffff0000);
                 return false;
             }
             free(video_url);
@@ -1028,7 +1027,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
             free(video_url);
             free(audio_url);
 
-            // SplashMessage("no video");
+            SetSplash("no video", 0xffff0000);
             return false;
         }
     }
@@ -1037,7 +1036,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
         // *newSource = OpenMovieReel(path, path);
         if (!newSource->SetFromPaths(path, path))
         {
-            // SplashMessage("invalid file");
+            SetSplash("invalid file", 0xffff0000);
             return false;
         }
 
@@ -1053,8 +1052,8 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
     {
         // char buf[123];
         // sprintf(buf, "invalid url\n%s", path);
-        // SplashMessage(buf);
-        // SplashMessage("invalid url");
+        // SetSplash(buf, 0xffff0000);
+        SetSplash("invalid url", 0xffff0000);
         return false;
     }
 
@@ -1106,10 +1105,8 @@ DWORD WINAPI AsyncMovieLoad( LPVOID lpParam )
     // if (!SlowCreateMovieSourceFromAnyPath(path, projector->message.new_write_reel, exe_dir))
     if (!SlowCreateMovieSourceFromAnyPath(path, &projector->message.new_source, exe_dir, projector->maxQuality))
     {
-        // now we get more specific error msg in function call,
-        // for now don't override them with a new (since our queue is only 1 deep)
-        // char errbuf[123];
-        // sprintf(errbuf, "Error creating movie source from path:\n%s\n", path);
+        // more specific error msg in function call now with SetSplash()
+        // keep this commented out to see them (since our queue is only 1 deep)
         // LogError("load failed");
         return false;
     }

@@ -311,8 +311,8 @@ void set_max_quality(int qual)
     projector.QueueReload(true);
 }
 
-void play() { SetSplash("Play", 0xaaaaaaaa/*0x7cec7aff*/); projector.PlayMovie(); }
-void pause() { SetSplash("Pause", 0xaaaaaaaa/*0xfa8686ff*/); projector.PauseMovie(); }
+void play() { SetSplash("Play", 0xffaaaaaa/*0x7cec7aff*/); projector.PlayMovie(); }
+void pause() { SetSplash("Pause", 0xffaaaaaa/*0xfa8686ff*/); projector.PauseMovie(); }
 void toggle_pause() { if (projector.state.is_paused) play(); else pause(); }
 void on_click(int x, int y) {
     // PRINT("%i, %i\n", x, y);
