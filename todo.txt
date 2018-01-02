@@ -1,21 +1,11 @@
 
 
-before done enough for this dev cycle:
+[ ] draw sound if no vid
 
 [ ] cleanup pass
     [ ] utils
     [ ] others
     [ ] check todos
-
-[ ] tighten up performance
-[x] test many windows [seems like cpu usage low, but laggy msg loop?]
-    -reduced sleep when loops take longer
-     (fighting our architecture here? maybe a little, but so much easier rendering)
-
-[ ] test common usage
-
-
-as it comes up / later:
 
 [ ] improve error messages (let longer ones through, shrink to fit)
 
@@ -28,18 +18,14 @@ as it comes up / later:
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 [ ] also menu gets closed if it's open
 
-[x] add proper random lib
-
 [ ] improve video resize quality (compare to vlc eg)
     [x] start with variable-size ffmpeg to screen buffer?
     [ ] sharpen filter?
 
-[ ] draw sound if no vid
-
-
 bugs inherent to rendering on the sys msg loop thread:
 [ ] click and drag a little bit, then hold, freezes render 
     (impossible to avoid with sys render i think)
+
 
 
 ----bigger projects----
