@@ -34,11 +34,12 @@ REM  -SUBSYSTEM:CONSOLE
 
 set include1= -I"..\lib\ffmpeg-3.3.3-win64-dev\include"
 set include2= -I"..\lib\SDL2-2.0.5\include"
-set CompilerFlags= -FC -Zi %include1% %include2%
+set CompilerFlags= -FC -Zi -O2 %include1% %include2%
 
 REM  -Idir           add an include directory (.h)
 REM  -Zi             enable debugging info (.pdb)
 REM  -FC             full paths in errors (for sublime error regex)
+REM  -O2             max speed
 
 
 
