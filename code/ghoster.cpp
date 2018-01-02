@@ -354,7 +354,7 @@ void on_dragdrop(char *path) { if (glass.on_dragdrop_file) glass.on_dragdrop_fil
 
 // other ways? could poll IsMovieLoaded each loop? this is prolly fine
 bool first_video = true;
-void on_video_load(int w, int h)
+void on_load_video(int w, int h)
 {
     ClearSplash();
 
@@ -371,14 +371,16 @@ void on_video_load(int w, int h)
         glass.setFullscreen(false);
         glass.set_ratiolocked(glass.is_ratiolocked);
         glass.setFullscreen(true);
+        // glass.resize_to_aspect_ratio();
     }
 
     if (glass.is_wallpaper)
     {
-        // this seems to be enough
-        // todo: (actually it's overkill, we could just set the size of the wallpaper hwnd)
-        glass.set_wallpaper(false);
-        glass.set_wallpaper(true);
+        glass.resize_to_aspect_ratio();
+        // // this seems to be enough
+        // // todo: (actually it's overkill, we could just set the size of the wallpaper hwnd)
+        // glass.set_wallpaper(false);
+        // glass.set_wallpaper(true);
     }
 
     // something like this? (na, would be too long on urls)
@@ -525,7 +527,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 
     projector.Init(exe_directory);
-    projector.on_load_callback = on_video_load;
+    projector.on_load_callback = on_load_video;
 
 
     // defaults
