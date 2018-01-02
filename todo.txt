@@ -2,7 +2,9 @@
 
 [ ] draw sound if no vid
 
-[ ] repeat sometimes not working?
+[x] fullscreen autocrop not working right
+
+[x] repeat sometimes not working?
 
 [ ] cleanup pass
     [ ] utils

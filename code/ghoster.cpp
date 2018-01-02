@@ -190,10 +190,13 @@ void render()  // os msg pump thread
 
         if (glass.is_fullscreen && glass.is_ratiolocked) {
             RECT rect;
-            if (is_letterbox)
-                rect = calc_pixel_letterbox_subrect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
-            else
-                rect = calc_pixel_stretch_rect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+            if (is_letterbox) {
+                // rect = calc_pixel_letterbox_subrect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+                rect = calc_pixel_letterbox_subrect(sw, sh, buffer_ratio); // in case autocrop
+            } else {
+                // rect = calc_pixel_stretch_rect(sw, sh, projector.rolling_movie.reel.aspect_ratio);
+                rect = calc_pixel_stretch_rect(sw, sh, buffer_ratio); // in case autocrop
+            }
             screen.set_to_pixel_coords_BL(rect.left, rect.top, rect.right-rect.left, rect.bottom-rect.top);
         } else {
             screen.fill_vb_with_rect(-1,-1,1,1,0);  // fill screen
