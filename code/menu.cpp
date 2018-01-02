@@ -101,7 +101,7 @@ menuItem menuItems[] =
     {ID_COPYURL_TIME , L"Copy URL At Current Time"       , 0                           , 0, 0, 0 },
     {ID_SEP          , L""                               , 0                           , 0, 0, 0 },
     {ID_ASPECT       , L"Lock Aspect Ratio"              , &glass.is_ratiolocked       , 0, 0, 0 },
-    {ID_LETBOX       , L"Letterbox (Fullscreen + Locked)", &is_letterbox               , 0, 0, 0 },
+    {ID_LETBOX       , L"Letterbox Fullscreen/Locked A.R.", &is_letterbox          , 0, 0, 0 },
     {ID_SNAPPING     , L"Snap To Edges"                  , &glass.is_snappy            , 0, 0, 0 },
     {ID_RESET_RES    , L"Resize To Native Resolution"    , 0                           , 0, 0, 0 },
     {ID_MAX720       , L"Limit To 720p"                  , &is_720p                    , 0, 0, 0 },
@@ -739,7 +739,8 @@ LRESULT CALLBACK PopupWndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lPa
             // calc submenu pos
             // do inside ShowSubMenu() ?
             RECT winRect; GetWindowRect(hwnd, &winRect);
-            int menuItemPos = 220;  // todo: need a getmenuitemrect
+            // int menuItemPos = 220;  // todo: need a getmenuitemrect
+            int menuItemPos = 220+MI_HEI*5;  // or we'll have to update this whenever add menu items
             int posX = winRect.right - 7;  // they overlap a bit
             int posY = winRect.top + menuItemPos;
             int wid = SMI_WID;
