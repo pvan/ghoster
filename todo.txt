@@ -7,54 +7,32 @@ before done enough for this dev cycle:
     [ ] others
     [ ] check todos
 
-[x] test command line args on cmd line, not just via batch file
-[x] test in batch file
-[x] movie not loading when launched from cmd (from folder works fine)
+[ ] tighten up performance
+[ ] test many windows [seems like cpu usage low, but laggy msg loop?]
 
-[x] has msg loop gotten laggy? test with older version if needed [seems fine]
-
-[x] loading new movie in wallpaper mode doesn't resize [could be improved still]
-
-[x] update url list
-
-[x] can ffmpeg auto crop black bars? [yes but easier to just do ourselves, though slow]
-
-[x] bug loading new vid in fullscreen ghostmode
-
-[x] add cmd line arg for 720p mode
-
-[x] resize to native res before vid load = crash
-
-[x] if no vid loaded, return url of last failed load attempt
-
-[ ] one time exiting wallpaper mode did not hide wallpaper window, can we reproduce?
-
-[x] 720p mode not correctly set on startup if on by default
+[ ] test common usage
 
 
 as it comes up / later:
 
 [ ] improve error messages (let longer ones through, shrink to fit)
 
-[x] refactor window resizing?
-    [x] add hwnd.h function for it
-    [x] add glass function for it, that resizes wallpaper hwnd as needed
-    [x] use when loading, setting fullscreen, setting aspect ratio
+[ ] one time exiting wallpaper mode did not hide wallpaper window [can't seem to reproduce]
 
-[x] L click on sys tray while in wallpaper mode, pause video
-
-[ ] intermittent progress bar not hiding when mouse is still [need last mouse move ms displayed]
+[ ] intermittent progress bar not hiding when mouse is still
+    -appears to be extra WM_MOUSEMOVE in wndproc.. hmm.. maybe check if mouse moved since last msg?
+    -to reproduce try debug, menu, ctrlaltdel, laggy comp
 
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 [ ] also menu gets closed if it's open
-
-[x] test the new timeout on loading urls if connection is flaky [pretty long but otherwise should be ok]
 
 [ ] add proper random lib
 
 [ ] improve video resize quality (compare to vlc eg)
     [x] start with variable-size ffmpeg to screen buffer?
     [ ] sharpen filter?
+
+[ ] draw sound if no vid
 
 
 bugs inherent to rendering on the sys msg loop thread:
