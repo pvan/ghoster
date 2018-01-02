@@ -256,14 +256,14 @@ struct glass_window
     // this way we resize main window and wallpaper window if needed
     void resize_window(int w, int h)
     {
-        //target_window()
         hwnd_resize(hwnd, w, h);
+        if (wallpaper_window) hwnd_resize(wallpaper_window, w, h);
     }
 
     void resize_to_aspect_ratio()
     {
-        // hwnd_resize(target_window(), w, h);
         hwnd_set_to_aspect_ratio(hwnd, aspect_ratio);
+        if (wallpaper_window) hwnd_set_to_aspect_ratio(wallpaper_window, aspect_ratio);
     }
 
 
