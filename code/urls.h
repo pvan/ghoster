@@ -175,7 +175,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=otktRxKo2XY",  // spalding gray
     "https://www.youtube.com/watch?v=bBamIi0tIRg?t=70",  // dark side of the rainbow
     "https://www.youtube.com/watch?v=pF_Fi7x93PY",  // jason & the argonauts skeletons
-    "https://www.youtube.com/watch?v=K8b4NQhMZms",  // red dwarf credits
+    // "https://www.youtube.com/watch?v=K8b4NQhMZms",  // red dwarf credits  // todo fail
     "https://www.youtube.com/watch?v=pEgMOSS5pmc",  // lupin credits
     "https://www.youtube.com/watch?v=5kc-bhOOLxE",  // bode vocoder
     "https://www.youtube.com/watch?v=vL-bjKTy8-Q",  // toys & tiny instruments

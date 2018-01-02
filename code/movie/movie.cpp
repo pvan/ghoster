@@ -16,7 +16,7 @@ void LogMessage(char *str);
 const bool LOADING_DEBUG_MSG = false;
 
 const int LIMIT_QUAL = 720;
-const int MAX_QUAL = 1440;   // when we're not set in 720p mode, also the default (atm)
+const int MAX_QUAL = 1440;   // when we're not in 720p mode, still limit to this
 
 // const int YTDL_TIMEOUT_MS = 5000;  // this amount actually triggered when we has iffy net
 const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to get urls (probably shoddy net)
@@ -296,6 +296,9 @@ struct MovieProjector
             strncpy(output, last_url_backup_cache, max_length);
     }
 
+    // todo: add these tostring
+    double last_frame_ms;
+    int missed_fps_count = 0;
 
     // mostly flags, basic way to communicate between threads etc
     // todo: make a proper msg queue system?? maybe not
@@ -1173,11 +1176,13 @@ DWORD WINAPI StartProjectorChurnThread( LPVOID lpParam )
         }
         else
         {
+            projector->missed_fps_count++;
             // missed fps target
             char msg[256];
             sprintf(msg, "!! missed fps !! target ms: %.3f, actual ms: %.3f\n", targetSec*1000.0, dt*1000.0);
             OutputDebugString(msg);
         }
+        projector->last_frame_ms = GetWallClockSeconds() - timeLastFrame;
         timeLastFrame = GetWallClockSeconds();
     }
 
