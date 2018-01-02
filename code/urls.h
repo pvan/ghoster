@@ -366,11 +366,11 @@ char *get_random_url()
         }
     }
 
-    int r = randomInt(randomCount);
+    int r = rand_int(randomCount);
     int count = 0;
     while (alreadyPlayed(r) && count++<10000)
     {
-        r = randomInt(randomCount);
+        r = rand_int(randomCount);
     }
     if (DEBUG_URL_MSG)
     {
@@ -419,10 +419,10 @@ char *get_random_url()
 //     }
 
 //     // todo: technically unbounded
-//     int r = randomInt(randomCount);
+//     int r = rand_int(randomCount);
 //     while (alreadyPlayed(r))
 //     {
-//         r = randomInt(randomCount);
+//         r = rand_int(randomCount);
 //     }
 
 //     alreadyPlayedRandos[alreadyPlayedCount++] = r;

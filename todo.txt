@@ -26,7 +26,7 @@ as it comes up / later:
 [ ] cleanup loading files when fullscreen... the restore->fullscreenagain loop is visible
 [ ] also menu gets closed if it's open
 
-[ ] add proper random lib
+[x] add proper random lib
 
 [ ] improve video resize quality (compare to vlc eg)
     [x] start with variable-size ffmpeg to screen buffer?

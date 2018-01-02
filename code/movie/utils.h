@@ -4,23 +4,11 @@
 
 // todo: move glass and movie depend on this file, try to elim both dependances?
 
+// todo: keep this sep or what?
+#include "rand.h"
+
 
 #define PRINT(...) { char buf[256]; sprintf(buf, __VA_ARGS__); OutputDebugString(buf); }
-
-
-int randomInt(int upToAndNotIncluding)
-{
-    // todo: oddly this only-seed-once code is throwing something off
-    // todo: replace with proper randomness anyway (lib?)
-
-    // static bool global_already_seeded_rand = false;
-    // if (!global_already_seeded_rand)
-    // {
-        // global_already_seeded_rand = true;
-        srand(GetTickCount());
-    // }
-    return rand() % upToAndNotIncluding;
-}
 
 
 
@@ -32,8 +20,6 @@ i64 nearestI64(double in)
 {
     return floor(in + 0.5);
 }
-
-
 
 
 

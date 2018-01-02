@@ -545,10 +545,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         if (strcmp(nextArg, "-fullscreen") == 0) glass.is_fullscreen = true;
         if (strcmp(nextArg, "-nofullscreen") == 0) glass.is_fullscreen = false;
 
-        if (strcmp(nextArg, "-blinky") == 0) glass.set_icon(GetIconByInt(randomInt(4) + 4*2));
-        if (strcmp(nextArg, "-pinky") == 0)  glass.set_icon(GetIconByInt(randomInt(4) + 4*1));
-        if (strcmp(nextArg, "-inky") == 0)   glass.set_icon(GetIconByInt(randomInt(4) + 4*0));
-        if (strcmp(nextArg, "-clyde") == 0)  glass.set_icon(GetIconByInt(randomInt(4) + 4*3));
+        if (strcmp(nextArg, "-blinky") == 0) glass.set_icon(GetIconByInt(rand_int(4) + 4*2));
+        if (strcmp(nextArg, "-pinky") == 0)  glass.set_icon(GetIconByInt(rand_int(4) + 4*1));
+        if (strcmp(nextArg, "-inky") == 0)   glass.set_icon(GetIconByInt(rand_int(4) + 4*0));
+        if (strcmp(nextArg, "-clyde") == 0)  glass.set_icon(GetIconByInt(rand_int(4) + 4*3));
 
         if (glass_string_starts_with(nextArg, "-opac"))
         {

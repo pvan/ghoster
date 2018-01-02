@@ -257,16 +257,16 @@ void onMenuItemClick(HWND hwnd, menuItem item)
             break;
         int color;
         case ID_SET_C: color = 0;
-            glass.set_icon(GetIconByInt(randomInt(4) + 4*color));
+            glass.set_icon(GetIconByInt(rand_int(4) + 4*color));
             break;
         case ID_SET_P: color = 1;
-            glass.set_icon(GetIconByInt(randomInt(4) + 4*color));
+            glass.set_icon(GetIconByInt(rand_int(4) + 4*color));
             break;
         case ID_SET_R: color = 2;
-            glass.set_icon(GetIconByInt(randomInt(4) + 4*color));
+            glass.set_icon(GetIconByInt(rand_int(4) + 4*color));
             break;
         case ID_SET_Y: color = 3;
-            glass.set_icon(GetIconByInt(randomInt(4) + 4*color));
+            glass.set_icon(GetIconByInt(rand_int(4) + 4*color));
             break;
         case ID_FULLSCREEN:
             glass.setFullscreen(!glass.is_fullscreen);

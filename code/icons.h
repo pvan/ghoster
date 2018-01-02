@@ -136,7 +136,7 @@ HICON GetIconByInt(int i)
 
 HICON RandomIcon()
 {
-    return GetIconByInt(randomInt(16));
+    return GetIconByInt(rand_int(16));
 }
 
 
