@@ -21,7 +21,8 @@ const int MAX_QUAL = 1440;   // when we're not set in 720p mode, also the defaul
 // const int YTDL_TIMEOUT_MS = 5000;  // this amount actually triggered when we has iffy net
 const int YTDL_TIMEOUT_MS = 10000;  // give up after this if taking too long to get urls (probably shoddy net)
 
-const int AUTOCROP_DEFAULT_THRESHOLD = 8; // of 255, the ones i've seen are pretty black, ffmpeg def is 24?
+// out of 255, ffmpeg default is 24? but most i've seen are pretty black (like 8 works), some tho need higher
+const int AUTOCROP_DEFAULT_THRESHOLD = 24;
 
 
 // todo: support multiple threads launched?

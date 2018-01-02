@@ -6,6 +6,7 @@
 // https://www.youtube.com/watch?v=7Z0lNch5qkQ
 // https://www.youtube.com/watch?v=63gdelpCp4k
 // https://www.youtube.com/watch?v=T9hHKYfXIE0
+// https://www.youtube.com/watch?v=o7rpXLdgtEY
 void draw_rect(u32 *dst, int w, int h, RECT subRect)
 {
     int rx = subRect.left;
