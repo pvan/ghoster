@@ -93,7 +93,7 @@ struct RollingMovie
     {
         char *base_url = reel.path;
         if (StringIsUrl(base_url) && include_current_timestamp)
-            snprintf(output, output_size, "%s&t=%i", base_url, (int)seconds_elapsed_at_last_decode);
+            snprintf(output, output_size, "%s#t=%i", base_url, (int)seconds_elapsed_at_last_decode);
         else
             snprintf(output, output_size, "%s", base_url);
     }
