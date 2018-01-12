@@ -190,6 +190,11 @@ char *RANDOM_VIDEOS[] = {
     // "https://www.youtube.com/watch?v=s33ScN4D-HU",  // mr blandings colors  // todo: fails
     "https://www.youtube.com/watch?v=atyvdC15HFA",  // moby train ride
     "https://www.youtube.com/watch?v=0MN6WtmcrBA",  // grim fandango
+    "https://www.youtube.com/watch?v=qIddFRK8ll0",  // ballad of keenan milton
+    "https://www.youtube.com/watch?v=Nd-A-iiPoLg",  // iron and wine
+    "https://www.youtube.com/watch?v=SPHgcj0-pXw",  // fairy tale
+    "https://www.youtube.com/watch?v=NJztfsXKcPQ",  // day9
+    "https://www.youtube.com/watch?v=Jcghl0lbDSk",  // cantina
     // hunchback cathedral scene?
     // spirits of the dead running scene?
     // rififi heist scene
