@@ -599,7 +599,8 @@ struct glass_window
 
         // basically mups after drags aren't treated as regular mups
         mDown = false; // kind of out-of-place but mouseup() is not getting called after drags
-        next_mup_was_closing_menu = false; // also needs to be reset here
+        next_mup_was_closing_menu = false; // these also needs to be reset here
+        next_mup_was_double_click = false;
         // todo: any other mup flags need to be reset here?
 
         SendMessage(hwnd, WM_NCLBUTTONDOWN, HTCAPTION, 0);
@@ -670,37 +671,37 @@ struct glass_window
                 // wait a little bit before we actually pause (should work with 0 delay as well)
 
                 // don't queue up another pause if this is the end of a double click
-                // we'll be restoring our pause state in restoreVideoPositionAfterDoubleClick() below
                 if (!next_mup_was_double_click)
                 {
                     registeredLastSingleClick = false; // we haven't until the timer runs out
                     mup_timer_point = {cx, cy};
                     single_click_timer_id = SetTimer(NULL, 0, MS_PAUSE_DELAY_FOR_DOUBLECLICK, &SingleLClickCallback);
                 }
-                else
-                {
-                    // if we are ending the click and we already registered the first click as a pause,
-                    // toggle pause again to undo that
-                    // doesn't this kind of assume the application L clicks undo each other?
-                    if (registeredLastSingleClick)
-                    {
-                        if (DEBUG_MCLICK_MSGS) OutputDebugString("undo that click\n");
-
-                        if (on_click) on_click(cx, cy);
-                    }
-                }
             // }
         }
 
-        if (on_mup) on_mup();
+        if (on_mup) on_mup(); // in ghoster this just resets state at this point
 
         mouseHasMovedSinceDownL = false;
         // clickingOnProgressBar = false;
+        next_mup_was_double_click = false;
+    }
 
-        if (next_mup_was_double_click)
+    void onDoubleClickDownL(int cx, int cy)
+    {
+        if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOUBLECLICK\n");
+
+        // if (clientPointIsOnProgressBar(
+        //     mDownPoint.x,
+        //     mDownPoint.y))
+        // {
+        //     // OutputDebugString("on bar dbl\n");
+        //     clickingOnProgressBar = true;
+        //     return;
+        // }
+
+        // kill timer here instead of mup, since our mup after a double click is unreliable (eg could be offscreen)
         {
-            next_mup_was_double_click = false;
-
             // cancel any pending single click effects lingering from the first mup of this dclick
             KillTimer(0, single_click_timer_id); // todo: rare race condition here right?
 
@@ -716,20 +717,6 @@ struct glass_window
                 if (DEBUG_MCLICK_MSGS) OutputDebugString("that was a fast doubleclick! no stutter\n");
             }
         }
-    }
-
-    void onDoubleClickDownL()
-    {
-        if (DEBUG_MCLICK_MSGS) OutputDebugString("LDOUBLECLICK\n");
-
-        // if (clientPointIsOnProgressBar(
-        //     mDownPoint.x,
-        //     mDownPoint.y))
-        // {
-        //     // OutputDebugString("on bar dbl\n");
-        //     clickingOnProgressBar = true;
-        //     return;
-        // }
 
         setFullscreen(!is_fullscreen);
 
@@ -1046,7 +1033,7 @@ LRESULT CALLBACK glass_WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
         // case WM_NCLBUTTONDOWN: {
         // } break;
         case WM_LBUTTONDBLCLK: {
-            glass.onDoubleClickDownL();
+            glass.onDoubleClickDownL(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
         } break;
 
         case WM_MOUSEMOVE: {

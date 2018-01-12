@@ -293,6 +293,7 @@ bool screenPointIsOnProgressBar(HWND hwnd, int x, int y)
     return clientPointIsOnProgressBar(newPoint.x, newPoint.y);
 }
 void restore_vid_position() {
+    projector.RestoreVideoPlayPauseState(); // do this on every doubleclick
     // only do this if local file, otherwise the seeking will be too slow
     if (!StringIsUrl(projector.rolling_movie.reel.path))
         projector.RestoreVideoPosition();

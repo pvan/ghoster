@@ -203,7 +203,7 @@ struct AppMessages
 
 
     bool savestate_is_saved = false; // basically save everything that could be messed up by a slow double click
-    // bool savestate_paused = false; // were we paused when mdown?
+    bool savestate_paused = false; // were we paused when mdown?
 
 };
 
@@ -312,6 +312,7 @@ struct MovieProjector
 
     void PlayMovie()
     {
+        // PRINT("play\n");
         if (rolling_movie.reel.IsAudioAvailable())
             SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)false);
         state.is_paused = false;
@@ -319,6 +320,7 @@ struct MovieProjector
 
     void PauseMovie()
     {
+        // PRINT("pause\n");  // todo: this function gets spammed before video is loaded?
         SDL_PauseAudioDevice(sdl_stuff.audio_device, (int)true);
         state.is_paused = true;
     }
@@ -348,7 +350,7 @@ struct MovieProjector
     void SaveVideoPosition()
     {
         message.savestate_is_saved = true;
-        // message.savestate_paused = state.is_paused;
+        message.savestate_paused = state.is_paused;
 
         // todo: this won't be sub-frame accurate (elapsed is really "elapsed at last decoder call")
         // but i guess if we're pausing for a split second it won't be exact anyway
@@ -361,13 +363,13 @@ struct MovieProjector
         {
             message.savestate_is_saved = false;
             message.setSeek = true;
-
-            // if (message.savestate_paused) PlayMovie();
-            // else PauseMovie();
         }
-
-        // // cancel any play/pause messages (todo: could cancel other valid msgs)
-        // global_ghoster.ClearCurrentSplash();
+    }
+    void RestoreVideoPlayPauseState()
+    {
+        PRINT("restoring pause...\n");
+        if (message.savestate_paused) PauseMovie();
+        else PlayMovie();
     }
 
 

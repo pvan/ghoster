@@ -5,7 +5,7 @@
 
 [ ] test loading new vid and enabling wallpaper before done loading
 
-[ ] double click to close fullscreen, but second click not on window - toggles pause when shouldnt
+[x] double click to close fullscreen, but second click not on window - toggles pause when shouldnt
 
 [ ] test copy timestamp # or & in diff urls (depends on url format??)
 
