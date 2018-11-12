@@ -1,5 +1,10 @@
 
 
+[ ] keep "fetching..." msg up until done
+
+[ ] hide cursor if on edge of screen and fullscreen
+
+
 [ ] youtube playback has become pretty inconsistent -- try something a little more future-proof
     [ ] maybe just download the whole video and play from local hd
     [ ] maybe download 10 seconds and play from hd.. then 30 seconds... then 2min... etc...

@@ -930,11 +930,13 @@ HWND InitPopupMenu(HINSTANCE hInstance, menuItem *menuItems, int itemCount)
     if (!global_icon_menu_window) { LogError("Couldn't open global_icon_menu_window."); }
 
 
+    // TODO: basically this ties all mouse handling responsiveness to our app responsiveness, should find another way
     // install mouse hook so we know when we click outside of a menu (to close it)
     // (could also use this to detect clicks on an owner-draw menu item)
     // (probably would have been easier than redrawing our own entire menu)
     // (but we'd have been stuck with an old non-themed menu that way i think)
-    mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0);
+    // mouseHook = SetWindowsHookEx(WH_MOUSE_LL, MouseHookProc, hInstance, 0); // LL will trigger on more than we need
+    mouseHook = SetWindowsHookEx(WH_MOUSE, MouseHookProc, hInstance, 0);
 
     return popup;
 }
