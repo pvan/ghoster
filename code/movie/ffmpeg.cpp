@@ -1,7 +1,7 @@
 
 
 
-const bool FFMPEG_LOADING_MSG = false;
+const bool FFMPEG_LOADING_MSG = true;
 
 extern "C"
 {

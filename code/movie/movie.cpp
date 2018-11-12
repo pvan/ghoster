@@ -820,7 +820,7 @@ struct MovieProjector
 
 
 // todo: consider a sep file / lib for a yotube-dl interface/wrapper?
-bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe_dir)
+bool GetStringFromYoutubeDL(char *url, char *options, char *outString, int outStringBufferSize, char *exe_dir)
 {
     // setup our custom pipes...
 
@@ -830,7 +830,8 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sa.lpSecurityDescriptor = NULL;
     sa.bInheritHandle = TRUE;
 
-    if (LOADING_DEBUG_MSG) PRINT("Creating pipe...\n");
+    // if (LOADING_DEBUG_MSG)
+        PRINT("Creating pipe...\n");
 
     HANDLE outRead, outWrite;
     if (!CreatePipe(&outRead, &outWrite, &sa, 0))
@@ -845,7 +846,7 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     PROCESS_INFORMATION pi;
     STARTUPINFO si;
 
-    // Set up the start up info struct.
+    // Set up the start-up-info struct.
     ZeroMemory(&si,sizeof(STARTUPINFO));
     si.cb = sizeof(STARTUPINFO);
     si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
@@ -861,8 +862,10 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
     sprintf(args, "%syoutube-dl.exe %s %s", exe_dir, options, url);
     // MsgBox(args);
 
-    if (LOADING_DEBUG_MSG) PRINT("Starting youtube-dl process...\n");
+    // if (LOADING_DEBUG_MSG)
+        PRINT("Starting youtube-dl process...\n");
 
+    // todo: look into named pipes, might help here
     // try a guard like this so we don't force this thread closed while ytdl is running
     movie_ytdl_running = true;       // this actually shouldn't be needed since we close the prev thread
     {
@@ -881,20 +884,29 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         // so we use the movie_ytdl_running as a guard against closing this thread until it's ready
         movie_ytdl_process = pi.hProcess;
 
-        if (LOADING_DEBUG_MSG) PRINT("Waiting for youtube-dl process...\n");
+        // if (LOADING_DEBUG_MSG)
+            PRINT("Waiting for youtube-dl process...\n");
 
         DWORD res = WaitForSingleObject(pi.hProcess, YTDL_TIMEOUT_MS);
         if (res==WAIT_TIMEOUT) { LogError("Youtube-dl process timeout"); return false; }
         if (res==WAIT_FAILED) { LogError("Youtube-dl process WAIT_FAILED"); return false; }
 
-        if (LOADING_DEBUG_MSG) PRINT("Terminating youtube-dl process...\n");
+        // if (LOADING_DEBUG_MSG)
+            PRINT("Terminating youtube-dl process...\n");
 
         TerminateProcess(pi.hProcess, 0); // kill youtube-dl if still running
+
+        DWORD exitCode;
+        GetExitCodeProcess(pi.hProcess, &exitCode);
+        char tempbuf[123];
+        sprintf(tempbuf, "exit code: %i\n", exitCode);
+        PRINT(tempbuf);
     }
     movie_ytdl_running = false;
     movie_ytdl_process = 0;
 
-    if (LOADING_DEBUG_MSG) PRINT("Closing handle...\n");
+    // if (LOADING_DEBUG_MSG)
+        PRINT("Closing handle...\n");
 
     // close write end before reading from read end
     if (!CloseHandle(outWrite))
@@ -903,12 +915,29 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
         return false;
     }
 
-    if (LOADING_DEBUG_MSG) PRINT("Reading from pipe...\n");
+    // if (LOADING_DEBUG_MSG)
+        PRINT("Reading from pipe...\n");
 
     DWORD bytesRead;
-    if (!ReadFile(outRead, outString, 1024*8, &bytesRead, NULL))
+    if (!ReadFile(outRead, outString, outStringBufferSize, &bytesRead, NULL))
     {
         LogError("youtube-dl: Read pipe error!");
+        { // print error msg (todo: make into function)
+            DWORD err = GetLastError();
+            char *errtext;
+            DWORD fm = FormatMessage(
+                FORMAT_MESSAGE_ALLOCATE_BUFFER |
+                FORMAT_MESSAGE_FROM_SYSTEM |
+                FORMAT_MESSAGE_IGNORE_INSERTS,
+                0,
+                err,
+                MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                (LPTSTR)&errtext,
+                0,
+                0
+            );
+            PRINT(errtext);
+        }
         return false;
     }
 
@@ -923,12 +952,13 @@ bool GetStringFromYoutubeDL(char *url, char *options, char *outString, char *exe
 
 
 
-
 bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTitle, char *exe_dir, int maxQual)
 {
-    char *tempString = (char*)malloc(1024*30); // big enough for messy urls
+    int tempStringSize = 1024*30; // big enough for messy urls
+    char *tempString = (char*)malloc(tempStringSize);
 
-    if (LOADING_DEBUG_MSG) PRINT("Calling youtube-dl...\n");
+    // if (LOADING_DEBUG_MSG)
+        PRINT("Calling youtube-dl...\n");
 
     // --get-title returns title of vid (first to have it be first line of output)
     // -g gets urls instead of dling (default will return two urls)
@@ -941,10 +971,13 @@ bool ParseOutputFromYoutubeDL(char *path, char *video, char *audio, char *outTit
     // now only get videos with maxQual resolution or less (default 1440 at time of writting, 720 for never stutter)
     char args[256];
     sprintf(args, "--get-title -g -f \"bestvideo[height<=?%i]+bestaudio/best\"", maxQual);
-    if (!GetStringFromYoutubeDL(path, args, tempString, exe_dir))
+    // >youtube-dl.exe [url] --get-title -g -f "bestvideo[height<=720]+bestaudio/best"
+    if (!GetStringFromYoutubeDL(path, args, tempString, tempStringSize, exe_dir))
     {
         return false;
     }
+
+    OutputDebugString(tempString);
 
     if (StringBeginsWith(tempString, "ERROR")) return false; // probably no internet
     // todo: check for other possible error outcomes here? bad urls, etc?
@@ -1029,6 +1062,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
                 free(video_url);
                 free(audio_url);
 
+                PRINT("video failed\n");
                 SetSplash("video failed", 0xffff0000);
                 return false;
             }
@@ -1040,6 +1074,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
             free(video_url);
             free(audio_url);
 
+            PRINT("no video\n");
             SetSplash("no video", 0xffff0000);
             return false;
         }
@@ -1049,6 +1084,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
         // *newSource = OpenMovieReel(path, path);
         if (!newSource->SetFromPaths(path, path))
         {
+            PRINT("invalid file\n");
             SetSplash("invalid file", 0xffff0000);
             return false;
         }
@@ -1066,6 +1102,7 @@ bool SlowCreateMovieSourceFromAnyPath(char *path, ffmpeg_source *newSource, char
         // char buf[123];
         // sprintf(buf, "invalid url\n%s", path);
         // SetSplash(buf, 0xffff0000);
+        PRINT("invalid url\n");
         SetSplash("invalid url", 0xffff0000);
         return false;
     }

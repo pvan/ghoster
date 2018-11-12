@@ -1,4 +1,24 @@
 
+
+[ ] youtube playback has become pretty inconsistent -- try something a little more future-proof
+    [ ] maybe just download the whole video and play from local hd
+    [ ] maybe download 10 seconds and play from hd.. then 30 seconds... then 2min... etc...
+
+
+[ ] leave paused for a while, then unpause, plays for a bit then stops
+
+
+[ ] metric for intermit stutters ("dropped frames" or "ms" maybe?)
+
+[ ] autoplay youtube
+
+[ ] trim menu
+
+
+[ ] disable screen saver in fullscreen?
+
+[ ] freezes at end of https://www.youtube.com/watch?v=L3j_VnpEGPs
+
 [ ] add basic yt autoplay option
 
 [ ] add support for (yt) urls with a bunch of trailing vars
@@ -44,6 +64,10 @@ bugs inherent to rendering on the sys msg loop thread:
 
 
 ----bigger projects----
+
+[ ] add win 10 support
+    [ ] figure out if any directx version ships on both win7 and 10
+    [ ] option for opengl renderer, in case nvidia driver bug is fixed
 
 
 --improve sites supported--

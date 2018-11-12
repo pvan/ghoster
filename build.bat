@@ -45,12 +45,12 @@ REM  -O2             max speed
 
 REM debug build folder....
 
-set build_folder=..\debug
+set build_folder=debug
 
 IF NOT EXIST %build_folder% mkdir %build_folder%
 
 REM  better way?
-set lib_folder=..\lib
+set lib_folder=lib
 xcopy /s /y /q %lib_folder%\ffmpeg-3.3.3-win64-shared\bin\*.dll %build_folder%
 xcopy /s /y /q %lib_folder%\ffmpeg-3.3.3-win64-shared\bin\*.exe %build_folder%
 xcopy /s /y /q %lib_folder%\SDL2-2.0.5\lib\x64\*.dll %build_folder%
@@ -63,7 +63,7 @@ popd
 
 REM copy to release folder....
 
-set release_folder=..\ghoster
+set release_folder=ghoster
 
 IF NOT EXIST %release_folder% mkdir %release_folder%
 xcopy /s /y /q %build_folder%\SDL2.dll %release_folder%>NUL

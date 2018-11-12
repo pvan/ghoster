@@ -652,5 +652,5 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 }
 
 
-void LogError(char *str) { SetSplash(str, 0xffff0000); }
+void LogError(char *str) { SetSplash(str, 0xffff0000); OutputDebugString(str);OutputDebugString("\n"); }
 void LogMessage(char *str) { OutputDebugString(str); }

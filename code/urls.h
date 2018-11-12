@@ -195,6 +195,15 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=SPHgcj0-pXw",  // fairy tale
     "https://www.youtube.com/watch?v=NJztfsXKcPQ",  // day9
     "https://www.youtube.com/watch?v=Jcghl0lbDSk",  // cantina
+	"https://www.youtube.com/watch?v=RBpfImpTT5Y?t=30",  // reversed smb2 music table
+	"https://www.youtube.com/watch?v=8MqJ3iGBdOo?t=15",  // buckaroo credits
+	"https://www.youtube.com/watch?v=Gt06S5OM8xM",  // 3D cup
+	"https://www.youtube.com/watch?v=qr12M8Ua_iA",  // luiz bonfa
+	"https://www.youtube.com/watch?v=S-BViOtYrqw",  // gambino live remix
+	"https://www.youtube.com/watch?v=0RXdd0pCJ9Q",  // orange evening
+	"https://www.youtube.com/watch?v=IQGWiM0JVdk",  // elvis costello
+	"https://www.youtube.com/watch?v=uin5LDFr1SE",  // zero 7
+	"https://www.youtube.com/watch?v=lnjtP89tYGY",  // not for use in color testing
     // hunchback cathedral scene?
     // spirits of the dead running scene?
     // rififi heist scene
