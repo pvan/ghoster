@@ -42,7 +42,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=F0O_6nMvqiM",  // yule log
     "https://www.youtube.com/watch?v=aia3bqQfXNk",  // l'eclisse
     "https://www.youtube.com/watch?v=UW8tpjJt0xc",  // rabbit hole 2 mix
-    "https://www.youtube.com/watch?v=APmBT96ETJk",  // kiki mix
+    // "https://www.youtube.com/watch?v=APmBT96ETJk",  // kiki mix   // gone
     "https://www.youtube.com/watch?v=p_FF-VN7xmg",  // snow day in raleigh
     "https://www.youtube.com/watch?v=XKDGZ-VWLMg",  // raining in tokyo
     "https://www.youtube.com/watch?v=_JPa3BNi6l4",  // gondry daft p backwards
@@ -55,7 +55,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=qpMIijaTePA",  // samantha fish
     "https://www.youtube.com/watch?v=CN3-4Z4ae_0",  // wind games
     "https://www.youtube.com/watch?v=aeEQDtk63H4",  // daft train
-    "https://www.youtube.com/watch?v=pC0HpEq-rb0",  // music video
+    "https://www.youtube.com/watch?v=pC0HpEq-rb0",  // music video   // intermittent fail?
     "https://www.youtube.com/watch?v=aB4M9rl8GvM",  // big charade
     "https://www.youtube.com/watch?v=uieM18rZdHY",  // fox in space
     "https://www.youtube.com/watch?v=NAh9oLs67Cw&t=60",  // garfield
@@ -68,8 +68,8 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=OQN6Gkv4JRU",  // fallen angels
     "https://www.youtube.com/watch?v=zdjXoZB-Oc4",  // days of being wild
     "https://www.youtube.com/watch?v=M1F0lBnsnkE",  // uptown funk hollywood dance supercut
-    "https://www.youtube.com/watch?v=ahoJReiCaPk",  // Hellzapoppin
-    "https://www.youtube.com/watch?v=PVG_QA5stBc",  // dancing at the movies
+    // "https://www.youtube.com/watch?v=ahoJReiCaPk",  // Hellzapoppin  // cut?
+    "https://www.youtube.com/watch?v=PVG_QA5stBc&t=12",  // dancing at the movies
     "https://www.youtube.com/watch?v=E-6xk4W6N20",  // disney to madeon
     "https://www.youtube.com/watch?v=nUWur-T598s",  // brick chase
     "https://www.youtube.com/watch?v=2jQ-ehu3ZS8",  // strictly ballroom
@@ -78,24 +78,25 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=GTFaOxLlJCA",  // blue cheer
     "https://www.youtube.com/watch?v=7Z0lNch5qkQ",  // morvern callar scene  cut? maybe autocrop test
     "https://www.youtube.com/watch?v=11p0y9z1XOU",  // quinoa w/ lynch
-    "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car // todo failed once?
+    // "https://www.youtube.com/watch?v=TmoBMjbY5Nw",  // pierrot le fou car // todo failed once?
     "https://www.youtube.com/watch?v=LmWaoovzYlw",  // pierrot le fou beach
-    // "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // todo: fail?
-    "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video
+    "https://www.youtube.com/watch?v=HW8f6V0beH8",  // buona sera  // intermittent fail?
+    "https://www.youtube.com/watch?v=dQEmaj9C6ko",  // BoC video  // intermittent fail?
     "https://www.youtube.com/watch?v=0o9qDBFKmGw",  // my brightest diamond
     "https://www.youtube.com/watch?v=19r7ctge2lI&t=18",  // birds
-    "https://www.youtube.com/watch?v=hi4pzKvuEQM",  // chet faker
-    "https://www.youtube.com/watch?v=kMyIFrEZtnw",  // raw run
+    "https://www.youtube.com/watch?v=hi4pzKvuEQM",  // chet faker  // (ffmpeg: unsupported codec?)
+    // "https://www.youtube.com/watch?v=kMyIFrEZtnw",  // raw run   // down  //https://vimeo.com/179152628
     "https://www.youtube.com/watch?v=LscksnGO09Q",  // raw run puebla
     "https://www.youtube.com/watch?v=RjzC1Dgh17A",  // ghostbusters
-    "https://www.youtube.com/watch?v=6KES5UH6fHE",  // peking opera blues
+    "https://www.youtube.com/watch?v=6KES5UH6fHE",  // peking opera blues  // intermittent fail?
     "https://www.youtube.com/watch?v=ygI-2F8ApUM",  // brodyquest
     "https://www.youtube.com/watch?v=ekdLYH04LHQ",  // electric feel cover
     "https://www.youtube.com/watch?v=ckJVotYWyRQ",  // portico quartet live  // cut? sax saves it?
     "https://www.youtube.com/watch?v=GRPw0xGwYNQ",  // smore jazz, tv
     "https://www.youtube.com/watch?v=Pv-Do30-P8A",  // graffiti timelapse  // cut?
     "https://www.youtube.com/watch?v=hE7l6Adoiiw",  // coming from biomed?
-    "https://www.youtube.com/watch?v=Sk_ga0Y_lnM",  // russian dance
+    // "https://www.youtube.com/watch?v=Sk_ga0Y_lnM",  // russian dance  // down
+    "https://www.youtube.com/watch?v=DohkNLyUnGQ",  // russian dance
     "https://www.youtube.com/watch?v=voBp8BLU9Gk",  // magenta
     "https://www.youtube.com/watch?v=HFBjfzsOtx0",  // spaceship ambience
     "https://www.youtube.com/watch?v=9pVWfzsgLoQ",  // train nordland line
@@ -103,7 +104,7 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=m4oZZhpMXP4",  // cathedral mix
     "https://www.youtube.com/watch?v=6ddO3jPUFpg",  // winter ambient
     "https://www.youtube.com/watch?v=g9fZ9YZsQ9A",  // uakti live
-    "https://www.youtube.com/watch?v=T9hHKYfXIE0",  // monkees shred
+    // "https://www.youtube.com/watch?v=T9hHKYfXIE0",  // monkees shred  // taken down ;_;
     "https://www.youtube.com/watch?v=w4x-571JN3Q",  // fake dr levin
     "https://www.youtube.com/watch?v=Gel58oDnB3c&t=690",  // manups dance party
     "https://www.youtube.com/watch?v=MLrC7e3vSv8",  // africa toto cover
@@ -136,12 +137,12 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=AXTwB-NftjA",  // kid at wedding
     "https://www.youtube.com/watch?v=4KzFe50RQkQ",  // wind trees ambient
     "https://www.youtube.com/watch?v=InbaU387Wl8",  // pepe silvia w/ drums
-    "https://www.youtube.com/watch?v=KgqORthqbuM?t=114",  // raise the dead live
+    "https://www.youtube.com/watch?v=KgqORthqbuM?t=114",  // raise the dead live  // fails?
     "https://www.youtube.com/watch?v=HJD-GeSJ-oY",  // mathnet trial
-    "https://www.youtube.com/watch?v=WJiCUdLBxuI",  // van session 17
+    "https://www.youtube.com/watch?v=WJiCUdLBxuI",  // van session 17   // intermittent fail?
     "https://www.youtube.com/watch?v=63gdelpCp4k",  // love like a sunset
     "https://www.youtube.com/watch?v=mMuTDdWXbNo?t=64",  // edelweiss cp's voice
-    "https://www.youtube.com/watch?v=Yrt-ZKa4u0k",  // bottle rocket short
+    // "https://www.youtube.com/watch?v=Yrt-ZKa4u0k",  // bottle rocket short  // down
     "https://www.youtube.com/watch?v=Pzl4cM1jKNU",  // cs poker simul
     "https://www.youtube.com/watch?v=yYAw79386WI",  // differential steering
     "https://www.youtube.com/watch?v=yJDv-zdhzMY",  // mother of all demos
@@ -158,13 +159,13 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=w5qf9O6c20o",  // theremin
     "https://www.youtube.com/watch?v=b64lKqbbaUM",  // level editors
     "https://www.youtube.com/watch?v=Vmb1tqYqyII",  // office
-    "https://www.youtube.com/watch?v=YSrpSAKDajQ",  // ellery december days
+    // "https://www.youtube.com/watch?v=YSrpSAKDajQ",  // ellery december days  // cut
     "https://www.youtube.com/watch?v=XTg3PJWh5nU",  // i find that i miss it
     "https://www.youtube.com/watch?v=7_aJHJdCHAo",  // call your girlfriend
     "https://www.youtube.com/watch?v=mERAVdY0hF4?t=26",  // real-time drive to fatburger
     "https://www.youtube.com/watch?v=TupjTEEU4Ms",  // marble race 2017 40m
     "https://www.youtube.com/watch?v=0HHs7hnkqGk",  // fiasconauts pen show
-    "https://www.youtube.com/watch?v=UkCAvIDYZUo&t=697",  // scrumbers final
+    "https://www.youtube.com/watch?v=UkCAvIDYZUo&t=691",  // scrumbers final
     // "https://www.youtube.com/watch?v=2FjZkJJx3bc",  // shuffling  // cut
     "https://www.youtube.com/watch?v=mHjRZ688t3c",  // perfidia
     "https://www.youtube.com/watch?v=-_Q5kO4YXFs",  // baby hearing
@@ -173,15 +174,15 @@ char *RANDOM_VIDEOS[] = {
     "https://www.youtube.com/watch?v=R-tMbLYGbvY",  // cowboy bebop opening
     "https://www.youtube.com/watch?v=jMe6Y8GDVEI",  // too many zooz
     "https://www.youtube.com/watch?v=otktRxKo2XY",  // spalding gray
-    "https://www.youtube.com/watch?v=bBamIi0tIRg?t=70",  // dark side of the rainbow
+    // "https://www.youtube.com/watch?v=bBamIi0tIRg?t=70",  // dark side of the rainbow  // down
     "https://www.youtube.com/watch?v=pF_Fi7x93PY",  // jason & the argonauts skeletons
     // "https://www.youtube.com/watch?v=K8b4NQhMZms",  // red dwarf credits  // todo fail
-    "https://www.youtube.com/watch?v=pEgMOSS5pmc",  // lupin credits
+    // "https://www.youtube.com/watch?v=pEgMOSS5pmc",  // lupin credits  // blocked
     "https://www.youtube.com/watch?v=5kc-bhOOLxE",  // bode vocoder
     "https://www.youtube.com/watch?v=vL-bjKTy8-Q",  // toys & tiny instruments
     "https://www.youtube.com/watch?v=v1DKOUWSf-A",  // habingo
     "https://www.youtube.com/watch?v=xXbrPn6_Uos",  // magic song machine
-    "https://www.youtube.com/watch?v=PFu0KyrNAAA",  // marx bros cabin
+    // "https://www.youtube.com/watch?v=PFu0KyrNAAA",  // marx bros cabin   // cut?
     "https://www.youtube.com/watch?v=k5YuBRwAo0Y?t=3", // marx bros bridge
     "https://www.youtube.com/watch?v=YblaO87Tqf8",  // balloonatic
     "https://www.youtube.com/watch?v=JKTQ4a3BR5c",  // manhattan
@@ -202,8 +203,11 @@ char *RANDOM_VIDEOS[] = {
 	"https://www.youtube.com/watch?v=S-BViOtYrqw",  // gambino live remix
 	"https://www.youtube.com/watch?v=0RXdd0pCJ9Q",  // orange evening
 	"https://www.youtube.com/watch?v=IQGWiM0JVdk",  // elvis costello
-	"https://www.youtube.com/watch?v=uin5LDFr1SE",  // zero 7
+	"https://www.youtube.com/watch?v=Xxx_MwcfbEs",  // zero 7
 	"https://www.youtube.com/watch?v=lnjtP89tYGY",  // not for use in color testing
+    "https://www.youtube.com/watch?v=LI_Oe-jtgdI",  // right here in rivercity
+    "https://www.youtube.com/watch?v=5iL4Y5KFM0o",  // goma
+    // "https://www.youtube.com/watch?v=FU1cAmkXSh0",  // fm filter feedback  // fails
     // hunchback cathedral scene?
     // spirits of the dead running scene?
     // rififi heist scene
@@ -220,9 +224,10 @@ char *RANDOM_VIDEOS[] = {
     // "https://vimeo.com/241007433",  // art of flying
     // "https://player.vimeo.com/video/106771962", // soderbergh raiders
 
-    // works at time or writing but soundcloud seems to break youtube-dl frequently
+    // works at time of writing but soundcloud seems to break youtube-dl frequently
     // todo: either update youtube-dl automatically or don't include these
-    "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+    // "https://soundcloud.com/otherpeoplerecords/csp06-nicolas-jaar-essential",
+    "https://soundcloud.com/ed612313/nicolas-jaar-essential-mix-19",
     "https://soundcloud.com/brainpicker/a-rare-interview-with-stanley",  // jeremy bernstein w/ kubrick
 };
 const int VIDS_COUNT = sizeof(RANDOM_VIDEOS) / sizeof(RANDOM_VIDEOS[0]);

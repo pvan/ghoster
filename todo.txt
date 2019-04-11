@@ -1,4 +1,13 @@
 
+--yt bugs (see notes in urls)--
+[ ] some videos loading or not intermittently
+[ ] ffmpeg unsupported codec?
+[ ] some videos seem to stop at exact halfway point (framerate/duration miscalculation?)
+[ ] some seem to restart at a random time
+[ ] freezing / many dup frames in middle of videos
+[ ] freezing just before the end of many videos 
+[ ] dailymotion not working
+
 
 [ ] keep "fetching..." msg up until done
 
@@ -11,6 +20,7 @@
 
 
 [ ] leave paused for a while, then unpause, plays for a bit then stops
+    (urls expired?)
 
 
 [ ] metric for intermit stutters ("dropped frames" or "ms" maybe?)
