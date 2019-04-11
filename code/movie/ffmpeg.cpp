@@ -459,6 +459,369 @@ struct ffmpeg_source
 
 
 
+    // so from what i understand it works a little like this:
+    // file -> demuxer -> packet of compressed data
+    // packet -> decoder -> complete/raw data we want (called a frame)
+    // the demuxer api is av_read_frame()
+    // the decoder api is send_packet() and receive_frame()
+
+
+
+    // https://blogs.gentoo.org/lu_zero/2016/03/29/new-avcodec-api/
+    // The flush packet is a non-NULL packet with size=0 and data=NULL
+    int decode(AVCodecContext *avctx, AVFrame *frame, int *got_frame, AVPacket *pkt)
+    {
+        int ret;
+
+        *got_frame = 0;
+
+        if (pkt) {
+            ret = avcodec_send_packet(avctx, pkt);
+            if (ret < 0)
+                return ret == AVERROR_EOF ? 0 : ret;
+        }
+
+        ret = avcodec_receive_frame(avctx, frame);
+        if (ret < 0 && ret != AVERROR(EAGAIN) && ret != AVERROR_EOF)
+            return ret;
+        if (ret >= 0)
+            *got_frame = 1;
+
+        return 0;
+    }
+
+
+    // // new api attempt
+    // // returns actual bytes written to the out_buffer
+    // int GetAudioFrameAtTime(
+    //     ffmpeg_sound_buffer out_sound_buffer,  // buffer of set size for us to fill with new sound data
+    //     // int *out_buffer_bytes, // return this to match our old function
+    //     int requested_bytes,
+    //     double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
+    //     i64 *out_pts)
+    // {
+    //     u8 *out_buffer = out_sound_buffer.data;
+
+    //     AVFormatContext *fc = afc;
+    //     AVCodecContext *cc = audio.codecContext;
+    //     int streamIndex = audio.index;
+    //     if (!fc || !cc)
+    //     {
+    //         *out_pts = 0;
+    //         return 0;
+    //     }
+
+
+    //     // "packet" is compressed data (usually a frame?) output from demuxer and sent to decoder
+    //     AVPacket *packet;
+    //     av_init_packet(packet); // doesn't alloc anything, mostly just sets things to 0
+    //     packet->data = 0; // supposedly packet will be allocated by encoder
+    //     packet->size = 0; // (it looks like .data and .size are not touched in av_init_packet)
+
+    //     // "frame" is an uncompressed (raw) frame of data received from the decoder (after sending packets to it)
+    //     // AVFrame frame;
+    //     AVFrame *frame = av_frame_alloc();
+    //     if (!frame) {
+    //         LogError("ffmpeg: Error allocating the frame.\n");
+    //         return 0;
+    //     }
+
+    //     int res = av_read_frame(fc, packet); // allocs packet mem and needs a av_packet_unref(&packet) call when done with packet
+    //     if (res <= 0) {
+    //         // error or end of file
+    //         return 0;
+    //     }
+    //     if (res == 0/*success*/) {
+
+    //         res = avcodec_send_packet(cc, packet);
+    //         if (res < 0) {
+    //             // error sending packet (todo: check for end of file or averror(eagain)?
+    //             return 0;
+    //         }
+    //     }
+
+    //         while (res >= 0) {
+    //             res = avcodec_receive_frame(cc, frame);
+    //             if (res == AVERROR(EAGAIN) || res == AVERROR_EOF) {
+    //                 // out of data to decode
+    //                 return 0;
+    //             } else if (res < 0) {
+    //                 // error decoding
+    //                 return 0;
+    //             }
+
+    //             // pgm_save(frame->data[0], frame->linesize[0], frame->width, frame->height, buf);
+
+    //             int additional_bytes = frame->nb_samples * cc->channels * av_get_bytes_per_sample(cc->sample_fmt);
+
+    //             double msToPlayThisFrame = 1000.0 *
+    //                 av_frame_get_best_effort_timestamp(frame) *
+    //                 fc->streams[streamIndex]->time_base.num /
+    //                 fc->streams[streamIndex]->time_base.den;
+
+    //             // see notes from http://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-February/013592.html
+    //             // "It depends on sample format you set in swr_alloc_set_opts().
+    //             // For planar sample formats out[x] have x channel
+    //             // For interleaved sample formats there is out[0] only and it have
+    //             // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
+    //             bool planar = false;
+    //             switch (cc->sample_fmt) {
+    //                 case AV_SAMPLE_FMT_U8P:
+    //                 case AV_SAMPLE_FMT_S16P:
+    //                 case AV_SAMPLE_FMT_S32P:
+    //                 case AV_SAMPLE_FMT_FLTP:
+    //                 case AV_SAMPLE_FMT_DBLP: planar = true;
+    //             }
+
+    //             if (!planar || cc->channels == 1) {
+    //                 memcpy(out_buffer, frame->data[0], additional_bytes);
+    //                 out_buffer += additional_bytes;
+    //                 // bytes_written += additional_bytes;
+    //             } else {
+    //                 for (int sample = 0; sample < frame->nb_samples; sample++) {
+    //                     for (int channel = 0; channel < cc->channels; channel++) {
+    //                         u8 *thisChannel = frame->data[channel];
+    //                         u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
+    //                         for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++) {
+    //                             *out_buffer = *thisSample;
+    //                             out_buffer++;
+    //                             thisSample++;
+    //                             // bytes_written++;
+    //                         }
+    //                     }
+    //                 }
+    //             }
+
+
+
+
+
+    //         }
+
+
+    //     }
+    //     av_packet_unref(packet); // free mem alloced in av_read_frame
+
+    // }
+
+
+
+
+    // return bytes (not samples) written to outBuffer
+    int GetNextAudioFrame_NEW(
+        ffmpeg_sound_buffer outBuf,
+        int requestedBytes,
+        double startAtThisMsTimestamp, // throw out data until this TS, used for seeking, not used if < 0
+        i64 *outPTS)
+    {
+        AVFormatContext *fc = afc;
+        AVCodecContext *cc = audio.codecContext;
+        int streamIndex = audio.index;
+
+        if (!fc || !cc) {
+            *outPTS = 0;
+            return 0;
+        }
+
+        u8 *outBuffer = outBuf.data;
+
+        AVPacket readingPacket;
+        av_init_packet(&readingPacket);
+
+
+        AVFrame *frame = av_frame_alloc();
+        if (!frame) {
+            LogError("ffmpeg: Error allocating the frame.\n");
+            return 1;
+        }
+
+        int bytes_written = 0;
+
+
+        // Read the packets in a loop
+        while (av_read_frame(fc, &readingPacket) == 0)
+        {
+            if (readingPacket.stream_index == streamIndex)
+            {
+                // // if this is just a copy, if we free and unref readingP do we free decodingP?
+                // AVPacket decodingPacket = readingPacket;
+
+                // // Audio packets can have multiple audio frames in a single packet
+                // while (decodingPacket.size > 0)
+                // {
+                    // // Try to decode the packet into a frame
+                    // // Some frames rely on multiple packets,
+                    // // so we have to make sure the frame is finished before
+                    // // we can use it
+                    // int gotFrame = 0;
+                    // int packet_bytes_decoded = avcodec_decode_audio4(cc, frame, &gotFrame, &decodingPacket);
+
+                int got_frame = 0;
+                int result = decode(cc, frame, &got_frame, &readingPacket);
+
+                if (got_frame) {
+
+                // if (packet_bytes_decoded >= 0 && gotFrame)
+                // {
+
+                //     // shift packet over to get next frame (if there is one)
+                //     decodingPacket.size -= packet_bytes_decoded;
+                //     decodingPacket.data += packet_bytes_decoded;
+
+
+                    int additional_bytes = frame->nb_samples *
+                                           cc->channels *
+                                           av_get_bytes_per_sample(cc->sample_fmt);
+
+
+
+                    double msToPlayThisFrame = 1000.0 *
+                        av_frame_get_best_effort_timestamp(frame) *
+                        fc->streams[streamIndex]->time_base.num /
+                        fc->streams[streamIndex]->time_base.den;
+
+
+                    if (msToPlayThisFrame < startAtThisMsTimestamp && startAtThisMsTimestamp>=0)
+                    {
+                        // LogMessage("skipped a frame\n");
+                        // frames_skipped++;
+
+                        // if (!displayedSkipMsg) { displayedSkipMsg = true; LogMessage("skip: "); }
+
+                        // double msTimestamp = msToPlayFrame + msAudioLatencyEstimate;
+                        // i64 frame_count = nearestI64(msTimestamp/1000.0 * 30.0);
+                        //     char frambuf[123];
+                        //     sprintf(frambuf, "%lli ", frame_count+1);
+                        //     LogMessage(frambuf);
+
+                        // seems like we'd want this here right?
+                        // av_packet_unref(&packet);
+                        av_frame_unref(frame);
+
+                        // continue;
+                        goto next_frame;
+                    }
+                    // if (frames_skipped > 0) {
+                    //     char skipbuf[256];
+                    //     sprintf(skipbuf, "frames skipped: %i\n", frames_skipped);
+                    //     LogMessage(skipbuf);
+                    // }
+
+
+                    // little fail-safe check so we don't overflow outBuffer
+                    // (ie, in case we guessed when to quit wrong below)
+                    if (bytes_written+additional_bytes > outBuf.size_in_bytes)
+                    {
+                        // assert(false); // for now we want to know if this ever happens
+                        // update: happened on https://www.youtube.com/watch?v=w-NXWQ9QZwo
+                        // todo: i wouldn't expect it to work to just return here, but it seems to in above vid
+                        // maybe because it appears to only happen once, some time near startup
+                        PRINT("Unexpected early return from audio decoder\n");
+                        return bytes_written;
+                    }
+
+
+                    // double msToPlayFrame = 1000 * frame->pts *
+                    //     fc->streams[streamIndex]->time_base.num /
+                    //     fc->streams[streamIndex]->time_base.den;
+
+                    // char zxcv[123];
+                    // sprintf(zxcv, "msToPlayAudioFrame: %.1f msSinceStart: %.1f\n",
+                    //         msToPlayFrame,
+                    //         msSinceStart
+                    //         );
+                    // LogMessage(zxcv);
+
+                    // // todo: stretch or shrink this buffer
+                    // // to external clock? but tough w/ audio latency right?
+                    // double msDelayAllowed = 20;  // feels janky
+                    // // console yourself with the thought that this should only happen if
+                    // // our sound library or driver is playing audio out of sync w/ the system clock???
+                    // if (msToPlayFrame + msDelayAllowed < msSinceStart)
+                    // {
+                    //     LogMessage("skipping some audio bytes.. tempy\n");
+                    //     //continue;
+
+                    //     // todo: replace this with better
+                    //     int samples_to_skip = 10;
+                    //     additional_bytes -= samples_to_skip *
+                    //         av_get_bytes_per_sample(cc->sample_fmt);
+                    // }
+
+
+                    // see notes from http://lists.ffmpeg.org/pipermail/ffmpeg-user/2013-February/013592.html
+                    // "It depends on sample format you set in swr_alloc_set_opts().
+                    // For planar sample formats out[x] have x channel
+                    // For interleaved sample formats there is out[0] only and it have
+                    // all channels interleaved: ABABABABAB -> stereo: A is 1st and B 2nd channel.
+
+                    bool planar = false;
+                    switch (cc->sample_fmt) {
+                        case AV_SAMPLE_FMT_U8P:
+                        case AV_SAMPLE_FMT_S16P:
+                        case AV_SAMPLE_FMT_S32P:
+                        case AV_SAMPLE_FMT_FLTP:
+                        case AV_SAMPLE_FMT_DBLP: planar = true;
+                    }
+
+                    if (!planar || cc->channels == 1)
+                    {
+                        memcpy(outBuffer, frame->data[0], additional_bytes);
+                        outBuffer += additional_bytes;
+                        bytes_written+=additional_bytes;
+                    }
+                    else
+                    {
+                        for (int sample = 0; sample < frame->nb_samples; sample++)
+                        {
+                            for (int channel = 0; channel < cc->channels; channel++)
+                            {
+                                u8 *thisChannel = frame->data[channel];
+                                u8 *thisSample = thisChannel + sample*av_get_bytes_per_sample(cc->sample_fmt);
+                                for (int byte = 0; byte < av_get_bytes_per_sample(cc->sample_fmt); byte++)
+                                {
+                                    *outBuffer = *thisSample;
+                                    outBuffer++;
+                                    thisSample++;
+                                    bytes_written++;
+                                }
+                            }
+                        }
+                    }
+
+                    // now try to guess when we're done based on the size of the last frame
+                    if (bytes_written+additional_bytes > requestedBytes) {
+                        *outPTS = av_frame_get_best_effort_timestamp(frame);
+                        av_free_packet(&readingPacket);
+                        av_frame_free(&frame);
+                        return bytes_written;
+                    }
+                } else { // !got_frame
+                    // decodingPacket.size = 0;
+                    // decodingPacket.data = nullptr;
+                }
+                // grab pts from frame before unref, in case we exit via end of function
+                *outPTS = av_frame_get_best_effort_timestamp(frame);
+                av_frame_unref(frame);  // clear allocs made by avcodec_decode_audio4 ?
+                // }
+            }
+
+            next_frame:
+
+            av_packet_unref(&readingPacket);  // clear allocs made by av_read_frame ?
+        }
+
+        // // now that we're syncing a/v so well, we need to flush these or our video will freeze at the end?
+        // if (cc->codec->capabilities & CODEC_CAP_DELAY) {
+        //     bytes_written *= -1;  // for now, use this code to let caller know we're at end of file
+        // }
+
+        av_free_packet(&readingPacket);
+        av_frame_free(&frame);
+        return bytes_written; // ever get here? yes, at the end of a file
+    }
+
+
 
     // todo: decode with newest api?
     // avcodec_send_packet / avcodec_receive_frame
