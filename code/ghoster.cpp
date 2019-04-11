@@ -14,7 +14,9 @@
 
 
 // these are the things movie needs that it shouldn't
-void SetSplash(char *msg, u32 col = 0xffffffff);
+const double SEC_OF_SPLASH_MSG = 4; // how long our splash messages last (fade included) (todo: should make a fast and slow default)
+const double SPLASH_PERMANENT = -37; // anything negative will work
+void SetSplash(char *msg, u32 col = 0xffffffff, double length = SEC_OF_SPLASH_MSG);
 #include "movie/movie.cpp"
 
 // these are the things glass needs that it shouldn't
@@ -32,8 +34,6 @@ void hacky_extra_toggle_pause_function_for_glass();
 const int PROGRESS_BAR_H = 22;  // progress bar position from bottom
 
 const double PROGRESS_BAR_TIMEOUT = 1.0;  // hide progress bar after this many seconds
-
-const double SEC_OF_SPLASH_MSG = 2; // how long our splash messages last (fade included)
 
 const bool D3D_DEBUG_MSG = false;
 
@@ -80,11 +80,11 @@ void create_quads()
     screen.create((u8*)&green,1,1, -1,-1,1,1,0);
 }
 
-void SetSplash(char *msg, u32 col)
+void SetSplash(char *msg, u32 col, double length) // pass in SPLASH_PERMANENT to keep msg up until clear
 {
     TransmogrifyTextInto(splash_msg, msg); // todo: check length somehow hmm...
     splash_color = col;
-    splash_sec_left = SEC_OF_SPLASH_MSG;
+    splash_sec_left = length;
 }
 void ClearSplash() { splash_msg[0] = '\0'; splash_sec_left = 0; }
 
@@ -252,12 +252,16 @@ void render()  // os msg pump thread
 
 
     double splash_alpha = 0;
-    if (splash_sec_left > 0)
+    if (splash_sec_left > 0 || splash_sec_left == SPLASH_PERMANENT)
     {
-        splash_sec_left -= temp_dt;
 
         double maxA = 0.65; // implicit min of 0
-        splash_alpha = ((-cos(splash_sec_left*M_PI / SEC_OF_SPLASH_MSG) + 1.0) / 2.0) * maxA;
+        if (splash_sec_left > 0) {
+            splash_sec_left -= temp_dt;
+            splash_alpha = ((-cos(splash_sec_left*M_PI / SEC_OF_SPLASH_MSG) + 1.0) / 2.0) * maxA;
+        } else {
+            splash_alpha = maxA;
+        }
 
         if (splash_msg && *splash_msg) // todo check if msg changed
         {
@@ -275,7 +279,7 @@ void render()  // os msg pump thread
     screen.render(); // todo: strange bar on right
     if (show_bar) progress_bar_gray.render(0.4);
     if (show_bar) progress_bar_red.render(0.6);
-    if (splash_sec_left > 0) { overlay_quad.render(splash_alpha); splash_quad.render(splash_alpha); }
+    if (splash_sec_left > 0 || splash_sec_left == SPLASH_PERMANENT) { overlay_quad.render(splash_alpha); splash_quad.render(splash_alpha); }
     if (show_debug) debug_quad.render();
     d3d_swap();
 }

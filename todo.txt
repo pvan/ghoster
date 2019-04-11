@@ -9,7 +9,7 @@
 [ ] dailymotion not working
 
 
-[ ] keep "fetching..." msg up until done
+[x] keep "fetching..." msg up until done
 
 [ ] hide cursor if on edge of screen and fullscreen
 
