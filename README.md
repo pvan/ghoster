@@ -10,8 +10,9 @@ goal:
 - optionally always-on-top ✔
 - option to ignore clicks ("ghost mode") ✔
 - option to place under desktop icons ("wallpaper mode") ✔
-- play local videos or video urls ✔
+- play local videos ✔
+- or video urls ✖ (pretty broken now)
 - always responsive ✔
 - command line options ✔
-- playlists / youtube autoplay
+- playlists / youtube autoplay ✖
 
